@@ -7,14 +7,14 @@ The web surfaces for **AIN-Registry** — a Next.js application: the tenant **we
 ## Role
 - **Web app** (authenticated, tenant-scoped): register / manage agents, request and download evidence.
 - **Trust-ops console** (`trust_ops` role): the org-verification queue, key state, audit log.
-- **Public resolver view**: a server-rendered `/{ULID}` page — identity, status, scope, verify — with **no tenant data and no login**.
+- **Public resolver view**: a server-rendered `/{ain}` page (the full `did:ain:…` identifier) — identity, status, scope, verify — with **no tenant data and no login**.
 - Talks to `ain_backend_api` **over HTTP through a typed client**; holds no domain logic and no database.
 
 ## Layering
 `ain_frontend → ain_backend_api → …`. The frontend's only dependency is the HTTP API.
 
 ## Stack
-TypeScript · Next.js (App Router) · Tailwind + shadcn/ui `[PROPOSED]` · Zod. Conventions: `conventions-frontend.md`, `conventions-shared.md`, `conventions-security.md` (in the `ain_docs` repo).
+TypeScript · Next.js (App Router) · Tailwind + shadcn/ui · Zod. Conventions: `conventions-frontend.md`, `conventions-shared.md`, `conventions-security.md` (in the `ain_docs` repo).
 
 ## Getting started
-*Stub.* `pnpm install` `[PROPOSED]`; point at a running `ain_backend_api`; `pnpm dev`.
+*Stub.* `pnpm install`; point at a running `ain_backend_api`; `pnpm dev`.
