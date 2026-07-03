@@ -17,4 +17,21 @@ The web surfaces for **AIN-Registry** — a Next.js application: the tenant **we
 TypeScript · Next.js (App Router) · Tailwind + shadcn/ui · Zod. Conventions: `conventions-frontend.md`, `conventions-shared.md`, `conventions-security.md` (in the `ain_docs` repo).
 
 ## Getting started
-*Stub.* `pnpm install`; point at a running `ain_backend_api`; `pnpm dev`.
+Requires **Node 24** (pinned in `.node-version`) and **pnpm 11**. Install pnpm via the [standalone installer](https://pnpm.io/installation) or `npm install -g pnpm@11` — do **not** use Corepack.
+
+```sh
+pnpm install
+pnpm dev        # http://localhost:3000
+```
+
+Checks (all four must be green — CI runs the same set):
+
+```sh
+pnpm lint       # ESLint
+pnpm typecheck  # tsc --noEmit
+pnpm test       # Vitest, 90% coverage thresholds enforced
+pnpm build      # Next.js production build
+```
+
+### Phase 0 status
+Phase 0 ships a **static landing page only**. Authentication (Zitadel), the typed API client for `ain_backend_api`, and the three product surfaces — web app, trust-ops console, public resolver view — arrive in later phases per the `ain_docs` build plan.
