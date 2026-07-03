@@ -16,14 +16,6 @@ export default defineConfig({
         "src/components/ui/**",
         "src/instrumentation.ts",
         "src/instrumentation-client.ts",
-        // Auth.js framework glue — verified by the manual "invited user logs
-        // in" exit test, not unit tests (the tested logic lives in the
-        // dashboard / sign-in / sign-out components).
-        "src/auth.ts",
-        "src/proxy.ts",
-        "src/lib/auth-actions.ts",
-        "src/app/api/**",
-        "src/app/dashboard/**",
         "src/**/*.test.{ts,tsx}",
       ],
       thresholds: {

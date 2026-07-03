@@ -1,20 +1,18 @@
 version: 2
-# Security-only: no scheduled version-update PRs (open-pull-requests-limit: 0).
-# Dependabot *security* updates still open PRs when a GitHub advisory fires, and
-# inherit the conventional commit prefix below so they pass commit-lint.
-# See DECISIONS.md (2026-07-09).
 updates:
-  - package-ecosystem: "npm"
-    directory: "/"
+  - package-ecosystem: npm
+    directory: /
     schedule:
-      interval: "weekly"
-    open-pull-requests-limit: 0
-    commit-message:
-      prefix: "chore"
-  - package-ecosystem: "github-actions"
-    directory: "/"
+      interval: weekly
+    groups:
+      npm-dependencies:
+        patterns:
+          - "*"
+  - package-ecosystem: github-actions
+    directory: /
     schedule:
-      interval: "weekly"
-    open-pull-requests-limit: 0
-    commit-message:
-      prefix: "chore"
+      interval: weekly
+    groups:
+      github-actions:
+        patterns:
+          - "*"
