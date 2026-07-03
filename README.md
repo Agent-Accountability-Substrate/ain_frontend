@@ -34,4 +34,4 @@ pnpm build      # Next.js production build
 ```
 
 ### Phase 0 status
-Phase 0 ships a **static landing page only**. Authentication (Zitadel), the typed API client for `ain_backend_api`, and the three product surfaces — web app, trust-ops console, public resolver view — arrive in later phases per the `ain_docs` build plan.
+Phase 0 ships a **static landing page only**. Authentication (Auth0, via generic Auth.js OIDC), the typed API client for `ain_backend_api`, and the three product surfaces — web app, trust-ops console, public resolver view — arrive in later phases per the `ain_docs` build plan.
