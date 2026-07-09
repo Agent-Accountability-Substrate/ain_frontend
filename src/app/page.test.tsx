@@ -1,7 +1,14 @@
 import { render, screen } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import HomePage from "@/app/page";
+
+// The sign-in button wraps a server action; mock it so the component tree
+// renders without pulling the server-only auth module into jsdom.
+vi.mock("@/lib/auth-actions", () => ({
+  signInAction: vi.fn(),
+  signOutAction: vi.fn(),
+}));
 
 describe("home page", () => {
   it("renders the AIN-Registry heading", () => {
@@ -24,5 +31,11 @@ describe("home page", () => {
     render(<HomePage />);
 
     expect(screen.getByText("Phase 0 — under construction")).toBeDefined();
+  });
+
+  it("offers a sign-in button", () => {
+    render(<HomePage />);
+
+    expect(screen.getByRole("button", { name: "Sign in" })).toBeDefined();
   });
 });
