@@ -7,5 +7,7 @@ export { auth as proxy } from "@/auth";
  * itself — middleware is an optimization, never the sole gate.
  */
 export const config = {
-  matcher: ["/((?!api/auth|_next/static|_next/image|favicon.ico).*)"],
+  matcher: [
+    "/((?!api/auth|_next/static|_next/image|favicon.ico|media/).*)",
+  ],
 };

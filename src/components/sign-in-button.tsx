@@ -1,11 +1,17 @@
+import type { ButtonHTMLAttributes } from "react";
 import { signInAction } from "@/lib/auth-actions";
 
-export function SignInButton() {
+type SignInButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
+  className?: string;
+};
+
+export function SignInButton({ className, ...props }: SignInButtonProps) {
   return (
     <form action={signInAction}>
       <button
         type="submit"
-        className="rounded-md bg-foreground px-4 py-2 text-sm font-medium text-background"
+        className={`inline-flex items-center justify-center rounded-[12px] bg-[var(--primary)] px-5 py-3 text-sm font-semibold text-white shadow-sm shadow-[#091126]/20 transition hover:bg-slate-900 ${className ?? ""}`}
+        {...props}
       >
         Sign in
       </button>

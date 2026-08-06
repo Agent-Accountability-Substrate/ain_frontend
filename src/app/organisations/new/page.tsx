@@ -1,19 +1,18 @@
 import { redirect } from "next/navigation";
 
 import { auth } from "@/auth";
-import { DashboardView } from "@/components/dashboard-view";
+import { OrganisationCreationView } from "@/components/organisation-creation-view";
 import { initialAccountWorkspaceState } from "@/lib/account-workspace";
 
-// Reads the session per request; never prerendered at build time.
 export const dynamic = "force-dynamic";
 
-export default async function DashboardPage() {
+export default async function OrganisationCreationPage() {
   const session = await auth();
-  // Fail closed independently of middleware — never render the authenticated
-  // shell to an anonymous request.
+
   if (!session?.user) redirect("/");
+
   return (
-    <DashboardView
+    <OrganisationCreationView
       email={session.user.email}
       state={initialAccountWorkspaceState}
     />
