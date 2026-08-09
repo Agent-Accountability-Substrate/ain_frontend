@@ -10,6 +10,7 @@
 !.yarn/releases
 !.yarn/versions
 
+
 # testing
 /coverage
 
@@ -19,6 +20,8 @@
 
 # production
 /build
+AGENT.md
+CLAUDE.md
 
 # misc
 .DS_Store

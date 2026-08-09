@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "AIN-Registry",
+  title: "SUBRA | AIN Registry",
   description: "The accountability registry for autonomous AI agents.",
 };
 
