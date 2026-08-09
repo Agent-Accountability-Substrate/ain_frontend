@@ -35,9 +35,9 @@ describe("home page", () => {
     const rotatingWord = screen.getByTestId("hero-proof-word");
     expect(rotatingWord.getAttribute("aria-hidden")).toBe("true");
     expect(rotatingWord.getAttribute("data-words")).toBe(
-      "accountable,authorised,traceable,verifiable",
+      "accountable.,authorised.,traceable.,verifiable.",
     );
-    expect(within(rotatingWord).getByText("accountable")).toBeDefined();
+    expect(within(rotatingWord).getByText("accountable.")).toBeDefined();
   });
 
   it("renders the complete illustrative accountability passport", () => {

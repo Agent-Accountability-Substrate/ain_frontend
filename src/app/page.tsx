@@ -1,4 +1,5 @@
 import { AgentIdentityDeck } from "@/components/agent-identity-deck";
+import { AinPassport } from "@/components/ain-passport";
 import { HeroEvidenceField } from "@/components/hero-evidence-field";
 import { HeroRotatingProofWord } from "@/components/hero-rotating-proof-word";
 import { LandingNav } from "@/components/landing-nav";
@@ -17,12 +18,12 @@ export default function HomePage() {
               <div className="inline-flex rounded-full border border-[#E4E6ED] bg-[#EDF0F7] px-4 py-2 font-medium  text-xs tracking-[0.06em] text-[var(--secondary)]">
                 ✨ Accountability infrastructure for autonomous AI
               </div>
-              <div className="mt-8 text-2xl font-semibold tracking-tight text-[#091126] sm:text-5xl md:text-[44px] lg:text-[62px]">
+              <h1 className="mt-8 text-2xl font-semibold tracking-tight text-[#091126] sm:text-5xl md:text-[44px] lg:text-[62px]">
                 Prove which AI agent acted, what it was allowed to do, and{" "}
                 <span className="font-instrument italic text-[#091126]">
                   who was <HeroRotatingProofWord />
                 </span>
-              </div>
+              </h1>
               <p className="mx-auto mt-6 max-w-2xl text-sm leading-7 text-slate-700 sm:text-[16px]">
                 Give every consequential agent a permanent identity, signed
                 authority record and verifiable action trail - without placing
@@ -45,6 +46,8 @@ export default function HomePage() {
               </p>
             </section>
           </div>
+
+          <AinPassport />
 
           <AgentIdentityDeck />
 
