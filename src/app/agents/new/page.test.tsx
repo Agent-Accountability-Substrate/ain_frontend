@@ -22,7 +22,9 @@ describe("agent creation page", () => {
     authMock.mockResolvedValue({ user: { email: "owner@example.com" } });
     render(await AgentCreationPage());
     expect(
-      screen.getByRole("heading", { name: "Choose an organisation to continue" }),
+      screen.getByRole("heading", {
+        name: "Choose an organisation to continue",
+      }),
     ).toBeDefined();
     expect(
       screen.queryByRole("button", { name: /prepare agent record/i }),

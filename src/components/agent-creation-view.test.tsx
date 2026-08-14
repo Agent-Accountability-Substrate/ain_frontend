@@ -15,9 +15,13 @@ describe("AgentCreationView", () => {
     expect(
       screen.getByRole("heading", { name: "Select an organisation first" }),
     ).toBeDefined();
-    expect(screen.getAllByRole("link", { name: "Choose organisation" })).toHaveLength(2);
     expect(
-      screen.getByRole("heading", { name: "Choose an organisation to continue" }),
+      screen.getAllByRole("link", { name: "Choose organisation" }),
+    ).toHaveLength(2);
+    expect(
+      screen.getByRole("heading", {
+        name: "Choose an organisation to continue",
+      }),
     ).toBeDefined();
 
     // With no organisation there must be no submittable agent form at all.
