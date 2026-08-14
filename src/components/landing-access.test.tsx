@@ -117,6 +117,26 @@ describe("LandingAccessForm", () => {
     expect(describedBy).toBe(screen.getByRole("alert").id);
   });
 
+  it("keeps the typed address in the field when the send fails", async () => {
+    // React resets an uncontrolled form once the action returns, so the
+    // address only survives because the action hands it back.
+    action.mockImplementation(async (_previous: unknown, data: FormData) => ({
+      status: "error",
+      message: "That did not send.",
+      email: String(data.get("email") ?? ""),
+    }));
+    const { container } = render(<LandingAccessForm />);
+    const field = screen.getByLabelText("Work email") as HTMLInputElement;
+
+    fireEvent.change(field, { target: { value: "head.of.risk@firm.co.uk" } });
+    submit(container);
+
+    await waitFor(() => {
+      screen.getByRole("alert");
+    });
+    expect(field.value).toBe("head.of.risk@firm.co.uk");
+  });
+
   it("disables the button while the request is in flight", async () => {
     let release: (value: { status: string }) => void = () => {};
     action.mockReturnValue(

@@ -29,7 +29,7 @@ type ObserverCallback = (entries: { isIntersecting: boolean }[]) => void;
 
 let fire: ObserverCallback | undefined;
 
-function stubObserver() {
+function stubObserver(reduced = false) {
   class FakeObserver {
     constructor(callback: ObserverCallback) {
       fire = callback;
@@ -42,9 +42,15 @@ function stubObserver() {
     }
   }
   vi.stubGlobal("IntersectionObserver", FakeObserver);
+  // The hook subscribes to the query, so the stub has to be a MediaQueryList
+  // rather than a bare { matches }.
   vi.stubGlobal(
     "matchMedia",
-    vi.fn(() => ({ matches: false })),
+    vi.fn(() => ({
+      matches: reduced,
+      addEventListener: () => {},
+      removeEventListener: () => {},
+    })),
   );
 }
 
@@ -128,5 +134,30 @@ describe("LandingIntegrity motion", () => {
       '[data-chain-state="fail"]',
     );
     expect(stillBroken?.style.opacity).toBe("1");
+  });
+
+  it("settles on the verified chain under reduced motion", () => {
+    stubObserver(true);
+    const { container } = render(<LandingIntegrity />);
+    const rows = [...container.querySelectorAll("tbody tr")];
+
+    // Rendered once, with no ticker driving it.
+    expect(frames).toHaveLength(0);
+
+    // The one frame a reduced-motion reader ever sees is the whole argument
+    // this section makes, so it has to be the record holding — not the
+    // cascade's end state frozen in place.
+    const verdicts = rows.map((row) => {
+      const fail = row.querySelector<HTMLElement>('[data-chain-state="fail"]');
+      return fail?.style.opacity === "1" ? "failed" : "verified";
+    });
+    expect(verdicts).toEqual(["verified", "verified", "verified", "verified"]);
+
+    const verdict = container.querySelector<HTMLElement>(
+      "[data-chain-verdict]",
+    );
+    expect(verdict?.textContent).toBe("Chain intact");
+    // Left to the stylesheet rather than repainted red by the render.
+    expect(verdict?.style.color).toBe("");
   });
 });

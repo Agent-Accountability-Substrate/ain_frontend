@@ -12,7 +12,12 @@ vi.mock("gsap", () => ({
   default: {
     ticker: {
       add: (fn: (time: number, delta: number) => void) => frames.push(fn),
-      remove: () => {},
+      // Actually detaches, so `frames` reflects what the ticker is driving
+      // rather than everything ever attached to it.
+      remove: (fn: (time: number, delta: number) => void) => {
+        const at = frames.indexOf(fn);
+        if (at !== -1) frames.splice(at, 1);
+      },
     },
   },
 }));
@@ -22,6 +27,9 @@ import { AinDelegationDiagram } from "@/components/ain-delegation-diagram";
 type ObserverCallback = (entries: { isIntersecting: boolean }[]) => void;
 
 let fire: ObserverCallback | undefined;
+
+/** Flips the reduce-motion preference the way an OS settings change does. */
+let setReducedMotion: ((value: boolean) => void) | undefined;
 
 function stubObserver(reduced = false) {
   class FakeObserver {
@@ -36,9 +44,26 @@ function stubObserver(reduced = false) {
     }
   }
   vi.stubGlobal("IntersectionObserver", FakeObserver);
+
+  // A real MediaQueryList, not a bare { matches }: the preference can change
+  // while the page is open, and a stub without listeners cannot show that.
+  const query = {
+    matches: reduced,
+    listeners: new Set<() => void>(),
+    addEventListener(_event: string, listener: () => void) {
+      query.listeners.add(listener);
+    },
+    removeEventListener(_event: string, listener: () => void) {
+      query.listeners.delete(listener);
+    },
+  };
+  setReducedMotion = (value: boolean) => {
+    query.matches = value;
+    for (const listener of query.listeners) listener();
+  };
   vi.stubGlobal(
     "matchMedia",
-    vi.fn(() => ({ matches: reduced })),
+    vi.fn(() => query),
   );
 }
 
@@ -51,6 +76,7 @@ function advance(seconds: number) {
 
 afterEach(() => {
   fire = undefined;
+  setReducedMotion = undefined;
   frames.length = 0;
   vi.unstubAllGlobals();
 });
@@ -170,7 +196,9 @@ describe("AinDelegationDiagram motion", () => {
   it("fills each neighbour's own scope, and drains only the revoked one", () => {
     stubObserver();
     const { container } = render(<AinDelegationDiagram />);
-    const bars = [...container.querySelectorAll<SVGElement>("[data-dl-bar]")];
+    const bars = [
+      ...container.querySelectorAll<SVGElement>("[data-dl-bar-fill]"),
+    ];
     const revocable = bars.filter((b) =>
       b.hasAttribute("data-dl-revocable-bar"),
     );
@@ -230,5 +258,29 @@ describe("AinDelegationDiagram motion", () => {
     ).toBe("1");
     const chip = container.querySelector<SVGElement>("[data-dl-scope-fill]");
     expect(chip?.getAttribute("width")).toBe(chip?.dataset["dlW"]);
+  });
+
+  it("stops when the preference is turned on mid-session", () => {
+    stubObserver();
+    render(<AinDelegationDiagram />);
+    fire?.([{ isIntersecting: true }]);
+
+    expect(frames).toHaveLength(1);
+
+    // Someone reaching for the OS setting because the page is moving wants it
+    // to stop now, not on their next reload.
+    setReducedMotion?.(true);
+    expect(frames).toHaveLength(0);
+  });
+
+  it("resumes when the preference is turned back off", () => {
+    stubObserver(true);
+    render(<AinDelegationDiagram />);
+    expect(frames).toHaveLength(0);
+
+    // And the reverse: a figure frozen on one frame is not the right answer
+    // once the reader has said motion is welcome again.
+    setReducedMotion?.(false);
+    expect(frames).toHaveLength(1);
   });
 });

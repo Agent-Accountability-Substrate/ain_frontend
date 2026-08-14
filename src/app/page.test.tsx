@@ -118,7 +118,7 @@ describe("home page", () => {
   it("closes on the ask, and carries the form into the footer", () => {
     render(<HomePage />);
 
-    screen.getByRole("link", { name: "Start now" });
+    screen.getByRole("button", { name: "Start now" });
 
     // One field, submitted through a server action, so the ask works whether
     // or not the visitor has a mail client configured.

@@ -40,22 +40,35 @@ describe("LandingIntegrity", () => {
     );
   });
 
-  it("shows the break, and keeps the verified state as the readable one", () => {
+  it("shows the break, and describes it rather than animating it at a reader", () => {
     const { container } = render(<LandingIntegrity />);
 
-    // A ledger that only ever reads VERIFIED is asking to be taken at its
-    // word. The failure states are a moment in the loop rather than the
-    // record's condition, so they stay out of the accessibility tree.
     const failures = container.querySelectorAll('[data-chain-state="fail"]');
     expect(failures).toHaveLength(3);
-    for (const node of failures) {
-      expect(node.getAttribute("aria-hidden")).toBe("true");
-    }
 
     // Genesis sits above the edit, so it never fails.
     const rows = container.querySelectorAll("tbody tr");
     expect(rows[0]?.querySelector('[data-chain-state="fail"]')).toBeNull();
     expect(rows[0]?.textContent).toContain("Verified");
+
+    // Which verdict is visible changes several times a cycle and opacity does
+    // not hide anything from a screen reader, so exposing either state told
+    // one audience something the other could see was untrue. Both the cells
+    // and the verdict line are out of the tree.
+    for (const cell of container.querySelectorAll("tbody tr td:last-child")) {
+      expect(cell.firstElementChild?.getAttribute("aria-hidden")).toBe("true");
+    }
+    expect(
+      container
+        .querySelector("[data-chain-verdict]")
+        ?.getAttribute("aria-hidden"),
+    ).toBe("true");
+
+    // What replaces them: one static description that holds whether or not
+    // the loop is running, and does not contradict the screen.
+    const description = container.querySelector(".sr-only");
+    expect(description?.textContent).toMatch(/every entry here verifies/i);
+    expect(description?.textContent).toMatch(/stop verifying/i);
   });
 
   it("holds one figure and nothing beside it", () => {

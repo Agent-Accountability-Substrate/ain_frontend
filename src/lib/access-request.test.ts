@@ -1,6 +1,15 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-const { send } = vi.hoisted(() => ({ send: vi.fn() }));
+const { send, forwardedFor } = vi.hoisted(() => ({
+  send: vi.fn(),
+  // Null by default: no proxy header, so the per-caller budget is skipped and
+  // only the shared ceiling applies. Tests that want throttling set an address.
+  forwardedFor: vi.fn<() => string | null>(() => null),
+}));
+
+vi.mock("next/headers", () => ({
+  headers: async () => ({ get: () => forwardedFor() }),
+}));
 
 // A class, not vi.fn(() => ...). The action calls `new Resend(key)`, and a
 // mock backed by an arrow function is not constructible — it throws a
@@ -13,6 +22,7 @@ vi.mock("resend", () => ({
 }));
 
 import { requestAccessAction } from "@/lib/access-request";
+import { resetRateLimits } from "@/lib/rate-limit";
 
 function form(fields: Record<string, string>) {
   const data = new FormData();
@@ -27,6 +37,9 @@ let logged: Record<string, unknown>[] = [];
 
 beforeEach(() => {
   logged = [];
+  // The counters are module state, so they outlive a test unless cleared.
+  resetRateLimits();
+  forwardedFor.mockReturnValue(null);
   send.mockReset();
   send.mockResolvedValue({ data: { id: "sent" }, error: null });
 
@@ -65,6 +78,84 @@ describe("requestAccessAction", () => {
     ]);
     // Reply-to means answering the notification answers the prospect.
     expect(payload["replyTo"]).toBe("head.of.risk@firm.co.uk");
+  });
+
+  it("stops one caller looping the form", async () => {
+    forwardedFor.mockReturnValue("203.0.113.7, 10.0.0.1");
+
+    const attempts = [];
+    for (let i = 0; i < 7; i += 1) {
+      attempts.push(
+        await requestAccessAction(
+          IDLE,
+          form({ email: `bot${i}@spam.example`, company: "" }),
+        ),
+      );
+    }
+
+    // Nothing authenticates this action, so an unbounded loop would deliver a
+    // mail per iteration and bill for every one.
+    expect(send).toHaveBeenCalledTimes(5);
+    expect(attempts.slice(0, 5).every((r) => r.status === "sent")).toBe(true);
+    expect(attempts.slice(5).every((r) => r.status === "error")).toBe(true);
+
+    const line = logged.find(
+      (l) => l["event"] === "access_request.rate_limited",
+    );
+    expect(line?.["scoped"]).toBe(true);
+    // The address is the thing being throttled, so it is the thing most
+    // likely to end up in the log line by accident.
+    expect(JSON.stringify(logged)).not.toContain("203.0.113.7");
+  });
+
+  it("holds a shared ceiling when there is no address to key on", async () => {
+    // Rotating x-forwarded-for defeats the per-caller budget, so the ceiling
+    // is what actually protects the send quota and the sending domain.
+    for (let i = 0; i < 61; i += 1) {
+      await requestAccessAction(
+        IDLE,
+        form({ email: `bot${i}@spam.example`, company: "" }),
+      );
+    }
+
+    expect(send).toHaveBeenCalledTimes(60);
+    const line = logged.find(
+      (l) => l["event"] === "access_request.rate_limited",
+    );
+    expect(line?.["scoped"]).toBe(false);
+  });
+
+  it("drops empty recipients left by a stray separator", async () => {
+    vi.stubEnv("ACCESS_REQUEST_TO", "valentin@subrahq.com,");
+
+    const result = await requestAccessAction(
+      IDLE,
+      form({ email: "head.of.risk@firm.co.uk", company: "" }),
+    );
+
+    // A trailing comma is the usual way this env var gets written, and an
+    // empty string in the list makes Resend reject the whole message.
+    expect(result).toEqual({ status: "sent" });
+    const payload = send.mock.calls[0]![0] as Record<string, unknown>;
+    expect(payload["to"]).toEqual(["valentin@subrahq.com"]);
+  });
+
+  it("reads a separator with no address as unconfigured", async () => {
+    vi.stubEnv("ACCESS_REQUEST_TO", " , ");
+
+    const result = await requestAccessAction(
+      IDLE,
+      form({ email: "head.of.risk@firm.co.uk", company: "" }),
+    );
+
+    // Truthy but naming nobody. Reporting it as configured would fail every
+    // submission with a generic message and no hint at the cause.
+    expect(result.status).toBe("error");
+    expect(send).not.toHaveBeenCalled();
+    const line = logged.find(
+      (l) => l["event"] === "access_request.not_configured",
+    );
+    expect(line?.["missing"]).toEqual(["ACCESS_REQUEST_TO"]);
   });
 
   it("never writes the address to the log", async () => {

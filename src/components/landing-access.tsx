@@ -59,6 +59,9 @@ export function LandingAccessForm() {
               required
               autoComplete="email"
               placeholder="name@firm.co.uk"
+              // React resets the form once the action returns, which restores
+              // the field to this value rather than emptying it.
+              defaultValue={state.status === "error" ? state.email : undefined}
               aria-describedby={
                 state.status === "error" ? "access-error" : undefined
               }

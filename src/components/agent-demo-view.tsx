@@ -34,7 +34,10 @@ const agentRecordItems = [
   { label: "Lifecycle History", href: "#lifecycle-history" },
   { label: "Action Receipts", href: "#action-receipts" },
   { label: "Evidence Packs", href: "#evidence-packs" },
-  { label: "Public Resolver Link", href: "/#download" },
+  // "Public Resolver Link" sat here pointing at /#download, a landing-page
+  // section that no longer exists. There is no resolver route in this app yet,
+  // so the entry is gone rather than aimed at the nearest other thing: every
+  // remaining item names a section of the record on this page.
 ] as const;
 
 export function AgentDemoView({ email }: { email: string | null | undefined }) {

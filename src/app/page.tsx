@@ -7,6 +7,7 @@ import { LandingIntegrity } from "@/components/landing-integrity";
 import { LandingNav } from "@/components/landing-nav";
 import { LandingRegisterEntry } from "@/components/landing-register-entry";
 import { LandingScopeChange } from "@/components/landing-scope-change";
+import { SignInButton } from "@/components/sign-in-button";
 
 export default function HomePage() {
   return (
@@ -91,6 +92,8 @@ export default function HomePage() {
             src="/media/globe.svg"
             alt=""
             aria-hidden="true"
+            loading="lazy"
+            decoding="async"
             className="pointer-events-none absolute left-1/2 top-1/2 ml-[-76px] hidden w-[860px] max-w-none -translate-y-1/2 select-none opacity-90 md:block"
           />
           <section className="relative z-10 mx-auto max-w-7xl px-4 py-24 sm:px-6 md:py-60 lg:px-8">
@@ -142,12 +145,11 @@ export default function HomePage() {
             </p>
 
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-              <a
-                href="/login"
-                className="inline-flex items-center justify-center rounded-sm bg-primary px-6 py-3 text-sm font-semibold text-white transition hover:bg-slate-900"
-              >
+              {/* The sign-in flow is a server action, not a route: there is no
+                  /login page to link to. */}
+              <SignInButton className="w-full sm:w-auto">
                 Start now
-              </a>
+              </SignInButton>
               <a
                 href="mailto:contact@subrahq.com?subject=AIN%20Registry"
                 className="inline-flex items-center justify-center rounded-sm border border-line-strong bg-white px-6 py-3 text-sm font-semibold text-ink transition hover:border-secondary hover:text-secondary"

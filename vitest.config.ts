@@ -13,6 +13,9 @@ export default defineConfig({
       include: ["src/**/*.{ts,tsx}"],
       exclude: [
         "src/app/layout.tsx",
+        // Renders to a PNG through next/og, so there is nothing jsdom can
+        // assert. Verified by `next build`, which prerenders it.
+        "src/app/opengraph-image.tsx",
         "src/components/ui/**",
         "src/instrumentation.ts",
         "src/instrumentation-client.ts",

@@ -63,10 +63,30 @@ describe("AgentDemoView", () => {
       "Lifecycle History",
       "Action Receipts",
       "Evidence Packs",
-      "Public Resolver Link",
     ].forEach((label) => {
       within(agentNavigation).getByRole("link", { name: label });
     });
+  });
+
+  it("points every record link at a section that exists on the page", () => {
+    const { container } = render(<AgentDemoView email="user@example.com" />);
+    const agentNavigation = screen.getByRole("navigation", {
+      name: "Agent record sections",
+    });
+
+    const targets = [...agentNavigation.querySelectorAll("a")].map((link) =>
+      link.getAttribute("href"),
+    );
+    expect(targets.length).toBeGreaterThan(0);
+
+    // An entry whose target was deleted navigates away silently rather than
+    // erroring, so nothing surfaces it but a check like this one.
+    for (const href of targets) {
+      expect(href).toMatch(/^#/);
+      expect(
+        container.querySelector(`[id="${href!.slice(1)}"]`),
+      ).not.toBeNull();
+    }
   });
 
   it("falls back to 'unknown' when no email is present", () => {

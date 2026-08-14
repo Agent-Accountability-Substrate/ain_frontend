@@ -1,9 +1,11 @@
 "use server";
 
+import { headers } from "next/headers";
 import { Resend } from "resend";
 import { z } from "zod";
 
 import { logger } from "@/lib/logger";
+import { overLimit } from "@/lib/rate-limit";
 
 /**
  * The private-preview access request: one work email, mailed to us.
@@ -31,17 +33,44 @@ const accessRequestSchema = z.object({
 export type AccessRequestState =
   | { status: "idle" }
   | { status: "sent" }
-  | { status: "error"; message: string };
+  // `email` carries the submitted address back to the form: React resets an
+  // uncontrolled field once the action returns, so without it a failed send
+  // silently empties the box the visitor just filled.
+  | { status: "error"; message: string; email: string };
 
 const GENERIC_ERROR =
   "That did not send. Email contact@subrahq.com and we will pick it up there.";
+
+const THROTTLE_WINDOW_MS = 10 * 60 * 1000;
+/** Valid submissions, per caller, per window. Malformed ones never get here. */
+const PER_CALLER = 5;
+/**
+ * A ceiling for everyone together. The per-caller budget is keyed on a header
+ * the caller controls, so on its own it is defeated by rotating that header;
+ * this is the limit that actually bounds the send quota and the sending
+ * domain's reputation, which is what a burst puts at risk.
+ */
+const PER_WINDOW = 60;
+
+/** The forwarded client address, or null when there is no proxy to trust. */
+async function callerAddress(): Promise<string | null> {
+  try {
+    const forwarded = (await headers()).get("x-forwarded-for");
+    return forwarded?.split(",")[0]?.trim() || null;
+  } catch {
+    // Outside a request scope. Fall back to the shared ceiling rather than
+    // bucketing every caller together, which would throttle the whole form.
+    return null;
+  }
+}
 
 export async function requestAccessAction(
   _previous: AccessRequestState,
   formData: FormData,
 ): Promise<AccessRequestState> {
+  const email = String(formData.get("email") ?? "").trim();
   const parsed = accessRequestSchema.safeParse({
-    email: String(formData.get("email") ?? "").trim(),
+    email,
     company: String(formData.get("company") ?? "").trim(),
   });
 
@@ -55,28 +84,50 @@ export async function requestAccessAction(
     return {
       status: "error",
       message: "Enter a work email address so we can reply.",
+      email,
     };
   }
 
+  // The action is public and unauthenticated, so this is the only thing
+  // between a script and the send quota. A tripped limit reports the generic
+  // failure, which already names a mailbox, so a real visitor caught by it
+  // still has a way to reach us.
+  const caller = await callerAddress();
+  if (
+    (caller !== null &&
+      overLimit(`caller:${caller}`, PER_CALLER, THROTTLE_WINDOW_MS)) ||
+    overLimit("all", PER_WINDOW, THROTTLE_WINDOW_MS)
+  ) {
+    logger.warn("access_request.rate_limited", { scoped: caller !== null });
+    return { status: "error", message: GENERIC_ERROR, email };
+  }
+
   const apiKey = process.env.RESEND_API_KEY;
-  const to = process.env.ACCESS_REQUEST_TO;
+  // Split here rather than at the call: a trailing comma leaves an empty
+  // recipient that Resend rejects the whole message for, and " " or "," are
+  // truthy, so a separator on its own would otherwise pass as configured and
+  // then fail every send.
+  const to = (process.env.ACCESS_REQUEST_TO ?? "")
+    .split(",")
+    .map((address) => address.trim())
+    .filter(Boolean);
   const from = process.env.ACCESS_REQUEST_FROM;
 
-  if (!apiKey || !to || !from) {
+  if (!apiKey || to.length === 0 || !from) {
     logger.error("access_request.not_configured", {
       missing: [
         apiKey ? undefined : "RESEND_API_KEY",
-        to ? undefined : "ACCESS_REQUEST_TO",
+        to.length ? undefined : "ACCESS_REQUEST_TO",
         from ? undefined : "ACCESS_REQUEST_FROM",
       ].filter(Boolean),
     });
-    return { status: "error", message: GENERIC_ERROR };
+    return { status: "error", message: GENERIC_ERROR, email };
   }
 
   try {
     const { error } = await new Resend(apiKey).emails.send({
       from,
-      to: to.split(",").map((address) => address.trim()),
+      to,
       replyTo: parsed.data.email,
       subject: "Access request — private preview",
       text: [
@@ -87,13 +138,13 @@ export async function requestAccessAction(
 
     if (error) {
       logger.error("access_request.send_failed", { reason: error.name });
-      return { status: "error", message: GENERIC_ERROR };
+      return { status: "error", message: GENERIC_ERROR, email };
     }
   } catch (cause) {
     logger.error("access_request.send_threw", {
       reason: cause instanceof Error ? cause.name : "unknown",
     });
-    return { status: "error", message: GENERIC_ERROR };
+    return { status: "error", message: GENERIC_ERROR, email };
   }
 
   logger.info("access_request.sent");

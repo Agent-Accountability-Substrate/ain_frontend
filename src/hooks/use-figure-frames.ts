@@ -33,40 +33,66 @@ export function useFigureFrames<T extends HTMLElement>(
     const root = ref.current;
     if (!root) return;
 
-    if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) {
-      renderRef.current(still, root);
-      return;
-    }
+    const start = () => {
+      let elapsed = 0;
+      let onScreen = false;
 
-    let elapsed = 0;
-    let onScreen = false;
+      // gsap's ticker rather than a private rAF loop: one clock for the page,
+      // and it already throttles itself when the tab is hidden.
+      const frame = (_time: number, delta: number) => {
+        if (!onScreen) return;
+        elapsed = (elapsed + delta / 1000) % duration;
+        renderRef.current(elapsed, root);
+      };
 
-    // gsap's ticker rather than a private rAF loop: one clock for the page,
-    // and it already throttles itself when the tab is hidden.
-    const frame = (_time: number, delta: number) => {
-      if (!onScreen) return;
-      elapsed = (elapsed + delta / 1000) % duration;
-      renderRef.current(elapsed, root);
+      gsap.ticker.add(frame);
+
+      if (typeof IntersectionObserver === "undefined") {
+        onScreen = true;
+        return () => gsap.ticker.remove(frame);
+      }
+
+      const observer = new IntersectionObserver(
+        (entries) => {
+          for (const entry of entries) onScreen = entry.isIntersecting;
+        },
+        { threshold: 0.16 },
+      );
+      observer.observe(root);
+
+      return () => {
+        observer.disconnect();
+        gsap.ticker.remove(frame);
+      };
     };
 
-    gsap.ticker.add(frame);
-
-    if (typeof IntersectionObserver === "undefined") {
-      onScreen = true;
-      return () => gsap.ticker.remove(frame);
-    }
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        for (const entry of entries) onScreen = entry.isIntersecting;
-      },
-      { threshold: 0.16 },
+    const reducedMotion = window.matchMedia?.(
+      "(prefers-reduced-motion: reduce)",
     );
-    observer.observe(root);
+    let stop: (() => void) | undefined;
+
+    // Read on every change, not once on mount. Someone who turns the
+    // preference on mid-session is asking for the motion to stop now, and
+    // someone who turns it off should not be left with a frozen figure until
+    // they reload.
+    const sync = () => {
+      stop?.();
+      stop = undefined;
+
+      if (reducedMotion?.matches) {
+        renderRef.current(still, root);
+        return;
+      }
+
+      stop = start();
+    };
+
+    sync();
+    reducedMotion?.addEventListener("change", sync);
 
     return () => {
-      observer.disconnect();
-      gsap.ticker.remove(frame);
+      reducedMotion?.removeEventListener("change", sync);
+      stop?.();
     };
   }, [duration, still]);
 

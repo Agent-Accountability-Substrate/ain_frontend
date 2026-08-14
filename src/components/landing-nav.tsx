@@ -74,7 +74,7 @@ export function LandingNav() {
         </div>
 
         <div className="hidden items-center gap-2 md:flex">
-          <SignInButton className="px-3 py-2 text-sm !bg-transparent !text-ink !shadow-none hover:!bg-line-soft" />
+          <SignInButton className="bg-transparent px-3 py-2 text-sm text-ink shadow-none hover:bg-line-soft" />
           <a
             href="#talk"
             className="inline-flex items-center justify-center rounded-sm bg-primary px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-900"
@@ -122,7 +122,7 @@ export function LandingNav() {
               ))}
             </nav>
             <div className="mt-2 flex flex-col gap-2 border-t border-line-hair pt-2">
-              <SignInButton className="w-full px-3 py-2 text-sm !bg-transparent !text-ink !shadow-none hover:!bg-line-soft" />
+              <SignInButton className="w-full bg-transparent px-3 py-2 text-sm text-ink shadow-none hover:bg-line-soft" />
               <a
                 href="#talk"
                 onClick={() => setMenuOpen(false)}

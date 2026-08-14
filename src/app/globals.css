@@ -4610,12 +4610,25 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .faq-answer {
+  .hero-proof-copy {
     animation: none;
   }
 
-  .faq-mark-vertical {
-    transition: none;
+  .agent-deck-card,
+  .agent-card-light,
+  .agent-card-flipper {
+    transition-duration: 0.01ms;
+  }
+
+  .agent-deck-card,
+  .agent-card-brand-mark,
+  .agent-card-scan,
+  .agent-card-orbit,
+  .agent-card-node,
+  .agent-card-seal,
+  .agent-card-status > span,
+  .agent-card-biometric {
+    animation: none;
   }
 }
 

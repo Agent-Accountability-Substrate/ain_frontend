@@ -44,7 +44,16 @@ const CHAIN = [
 
 function VerifiedTick({ fails }: { fails: string | null }) {
   return (
-    <span className="grid font-mono text-[10.5px] uppercase tracking-[0.1em]">
+    // Both states are animation rather than data: which one is visible changes
+    // several times a cycle, and swapping opacity does not move either out of
+    // the accessibility tree. Exposing one meant a screen reader was told
+    // every row read "Verified" at the moment the figure was showing three of
+    // them failing. The whole cell is decorative, and the caption below the
+    // table states the argument once, in full.
+    <span
+      aria-hidden="true"
+      className="grid font-mono text-[10.5px] uppercase tracking-[0.1em]"
+    >
       <span
         data-chain-state="ok"
         className="col-start-1 row-start-1 inline-flex items-center gap-1.5 text-success-soft"
@@ -52,12 +61,8 @@ function VerifiedTick({ fails }: { fails: string | null }) {
         Verified
       </span>
 
-      {/* The failure state is a moment in the loop, not the record's
-          condition, so it stays out of the accessibility tree and starts
-          hidden. */}
       {fails ? (
         <span
-          aria-hidden="true"
           data-chain-state="fail"
           className="col-start-1 row-start-1 inline-flex items-center gap-1.5 text-destructive-soft opacity-0"
         >
@@ -76,7 +81,13 @@ function LifecycleChainFigure() {
   // gap is what gives a reader time to read ALTERED before the break travels.
   // Verdicts snap rather than fade; a ledger reporting a fault does not ease
   // into it.
-  const ref = useFigureFrames<HTMLElement>(beat(8), beat(4), (t, root) => {
+  //
+  // The still frame sits inside that first hold, before the edit at 1.9. This
+  // figure has nothing to assemble — the table is whole in the markup — so
+  // "settled" here means the chain verified, not the cascade finished. Landing
+  // it after 1.9 would leave a reader who asked for reduced motion looking at
+  // a permanently broken ledger on the section arguing the record holds.
+  const ref = useFigureFrames<HTMLElement>(beat(8), beat(1), (t, root) => {
     const rows = root.querySelectorAll("tbody tr");
 
     const broken =
@@ -176,12 +187,23 @@ function LifecycleChainFigure() {
           If entry 2 is edited
         </p>
         {/* Names what the cascade above is showing. Without it a reader
-              watches rows turn red and has to infer why. */}
+              watches rows turn red and has to infer why. Its text is rewritten
+              as the break travels, and there is no live region to announce
+              that, so it is hidden too and the caption below says it once. */}
         <p
+          aria-hidden="true"
           data-chain-verdict
           className="mt-3 font-mono text-[12.5px] leading-[1.6] text-white/70"
         >
           Chain intact
+        </p>
+
+        {/* The one description of the figure that never moves. Everything it
+            describes is a loop, which cannot be read aloud as it changes. */}
+        <p className="sr-only">
+          Every entry here verifies. If entry 2 were edited, its hash would no
+          longer match the one entry 3 records, and the two entries chained
+          after it would stop verifying. Entry 1 is above the edit.
         </p>
       </div>
     </figure>
