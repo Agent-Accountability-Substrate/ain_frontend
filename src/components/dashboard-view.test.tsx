@@ -110,17 +110,18 @@ describe("DashboardView", () => {
       .closest("li");
 
     expect(verifyStep?.getAttribute("data-state")).toBe("current");
-    expect(createOrganisationStep?.getAttribute("data-state")).toBe("available");
-    expect(selectOrganisationStep?.getAttribute("data-state")).toBe("available");
+    expect(createOrganisationStep?.getAttribute("data-state")).toBe(
+      "available",
+    );
+    expect(selectOrganisationStep?.getAttribute("data-state")).toBe(
+      "available",
+    );
     expect(createAgentStep?.getAttribute("data-state")).toBe("available");
     expect(
       within(verifyStep!).getByRole("link", { name: "Continue" }),
     ).toHaveProperty("href", "http://localhost:3000/onboarding/identity");
     expect(
       within(createOrganisationStep!).getByRole("link", { name: "Open" }),
-    ).toHaveProperty(
-      "href",
-      "http://localhost:3000/organisations/new",
-    );
+    ).toHaveProperty("href", "http://localhost:3000/organisations/new");
   });
 });

@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, within } from "@testing-library/react";
+﻿import { fireEvent, render, screen, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 import { AgentIdentityDeck } from "@/components/agent-identity-deck";
@@ -8,31 +8,27 @@ describe("AgentIdentityDeck", () => {
     render(<AgentIdentityDeck />);
 
     const paymentsCard = screen.getByLabelText(
-      "Payments Operations Agent identity card",
+      "Payments Operations Agent v1 identity card",
     );
     const customerCard = screen.getByLabelText(
-      "Customer Communications Agent identity card",
+      "Payments Operations Agent v2 identity card",
     );
     const vendorCard = screen.getByLabelText(
-      "Vendor Risk Review Agent identity card",
+      "Payments Operations Agent v3 identity card",
     );
 
-    expect(screen.getAllByText("Illustrative demo data")).toHaveLength(4);
-    expect(screen.getByText("Payments Operations Agent selected")).toBeDefined();
+    expect(screen.getAllByText("Sample record")).toHaveLength(4);
+    screen.getByText("Payments Operations Agent v1 selected");
     expect(paymentsCard.getAttribute("aria-current")).toBe("true");
     expect(paymentsCard.getAttribute("data-position")).toBe("active");
     expect(customerCard.getAttribute("data-position")).toBe("next");
     expect(vendorCard.getAttribute("data-position")).toBe("previous");
-    expect(
-      screen.getByRole("button", {
-        name: "View registered record for Payments Operations Agent",
-      }),
-    ).toBeDefined();
-    expect(
-      screen.getByRole("button", {
-        name: "Show Customer Communications Agent",
-      }),
-    ).toBeDefined();
+    screen.getByRole("button", {
+      name: "View registered record for Payments Operations Agent v1",
+    });
+    screen.getByRole("button", {
+      name: "Show Payments Operations Agent v2",
+    });
     expect(
       screen.queryByRole("button", { name: "Show next agent" }),
     ).toBeNull();
@@ -45,40 +41,39 @@ describe("AgentIdentityDeck", () => {
     render(<AgentIdentityDeck />);
 
     const paymentsCard = screen.getByLabelText(
-      "Payments Operations Agent identity card",
+      "Payments Operations Agent v1 identity card",
     );
     fireEvent.click(
       screen.getByRole("button", {
-        name: "View registered record for Payments Operations Agent",
+        name: "View registered record for Payments Operations Agent v1",
       }),
     );
 
     expect(paymentsCard.getAttribute("data-flipped")).toBe("true");
-    expect(
-      screen.getByRole("heading", {
-        name: "Agent accountability passport",
-      }),
-    ).toBeDefined();
-    expect(
-      screen.getByText(
-        "did:ain:gb:01ARZ3NDEKTSV4RRFFQ69G5FAV:01BX5ZZKBKACTAV9WEVGEMMVRZ",
-      ),
-    ).toBeDefined();
-    expect(screen.getByText("key-demo-7F3A91C2")).toBeDefined();
-    expect(screen.getByText("23 Jul 2026, 11:42 BST")).toBeDefined();
-    expect(
-      screen.getByRole("button", { name: "Copy permanent AIN" }),
-    ).toBeDefined();
-
-    const scope = screen.getByRole("list", {
-      name: "Payments Operations Agent scope",
+    screen.getByRole("heading", {
+      name: "Agent accountability passport",
     });
-    expect(within(scope).getByText("payments.initiate")).toBeDefined();
-    expect(within(scope).getByText("customer_comms.send")).toBeDefined();
+    // The identifier is byte-identical on every card. That IS the permanence
+    // claim, shown rather than asserted. So it appears three times, and the
+    // organisation segment is EXAMPLE-ORG rather than a plausible ULID.
+    expect(
+      screen.getAllByText("did:ain:gb:EXAMPLE-ORG:01BX5ZZKBKACTAV9WEVGEMMVRZ"),
+    ).toHaveLength(3);
+    expect(screen.getAllByText("key-example-a1")).toHaveLength(3);
+    screen.getByText("Signed 4 Mar 2026");
+
+    // v1 carries one scope. The scope growing under a fixed identifier is
+    // what the deck exists to show, so v1 must NOT already list the refund
+    // permission that v2 introduces.
+    const scopeV1 = screen.getByRole("list", {
+      name: "Payments Operations Agent v1 scope",
+    });
+    within(scopeV1).getByText("payments.initiate");
+    expect(within(scopeV1).queryByText("payments.refund")).toBeNull();
 
     fireEvent.click(
       screen.getByRole("button", {
-        name: "Show identity card for Payments Operations Agent",
+        name: "Show v1 of Payments Operations Agent",
       }),
     );
     expect(paymentsCard.getAttribute("data-flipped")).toBe("false");
@@ -89,44 +84,42 @@ describe("AgentIdentityDeck", () => {
 
     fireEvent.click(
       screen.getByRole("button", {
-        name: "View registered record for Payments Operations Agent",
+        name: "View registered record for Payments Operations Agent v1",
       }),
     );
     fireEvent.click(
       screen.getByRole("button", {
-        name: "Show Customer Communications Agent",
+        name: "Show Payments Operations Agent v2",
       }),
     );
 
     const customerCard = screen.getByLabelText(
-      "Customer Communications Agent identity card",
+      "Payments Operations Agent v2 identity card",
     );
     expect(customerCard.getAttribute("aria-current")).toBe("true");
     expect(customerCard.getAttribute("data-flipped")).toBe("false");
-    expect(
-      screen.getByText("Customer Communications Agent selected"),
-    ).toBeDefined();
+    screen.getByText("Payments Operations Agent v2 selected");
 
     fireEvent.click(
       screen.getByRole("button", {
-        name: "View registered record for Customer Communications Agent",
+        name: "View registered record for Payments Operations Agent v2",
       }),
     );
     expect(customerCard.getAttribute("data-flipped")).toBe("true");
 
     fireEvent.click(
       screen.getByRole("button", {
-        name: "Show identity card for Customer Communications Agent",
+        name: "Show v2 of Payments Operations Agent",
       }),
     );
     expect(customerCard.getAttribute("data-flipped")).toBe("false");
 
     fireEvent.click(
-      screen.getByRole("button", { name: "Show Vendor Risk Review Agent" }),
+      screen.getByRole("button", { name: "Show Payments Operations Agent v3" }),
     );
     expect(
       screen
-        .getByLabelText("Vendor Risk Review Agent identity card")
+        .getByLabelText("Payments Operations Agent v3 identity card")
         .getAttribute("aria-current"),
     ).toBe("true");
   });
@@ -135,10 +128,10 @@ describe("AgentIdentityDeck", () => {
     render(<AgentIdentityDeck />);
 
     const activeCard = screen.getByLabelText(
-      "Payments Operations Agent identity card",
+      "Payments Operations Agent v1 identity card",
     );
     const inactiveCard = screen.getByLabelText(
-      "Customer Communications Agent identity card",
+      "Payments Operations Agent v2 identity card",
     );
 
     vi.spyOn(activeCard, "getBoundingClientRect").mockReturnValue({

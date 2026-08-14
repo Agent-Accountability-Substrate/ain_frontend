@@ -11,10 +11,7 @@ vi.mock("@/lib/auth-actions", () => ({
 describe("AccountSecurityView", () => {
   it("separates authentication from identity assurance", () => {
     render(
-      <AccountSecurityView
-        email="casey@example.com"
-        name="Casey Morgan"
-      />,
+      <AccountSecurityView email="casey@example.com" name="Casey Morgan" />,
     );
 
     expect(

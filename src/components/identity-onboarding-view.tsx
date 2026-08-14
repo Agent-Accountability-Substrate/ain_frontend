@@ -207,8 +207,8 @@ export function IdentityOnboardingView({
                 <ArrowRight className="h-4 w-4" aria-hidden="true" />
               </button>
               <p id="identity-provider-status" role="status">
-                Verification provider not connected yet. No identity
-                information will be collected or sent.
+                Verification provider not connected yet. No identity information
+                will be collected or sent.
               </p>
             </div>
           </div>

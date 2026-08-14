@@ -33,7 +33,7 @@ export function UserAccountMenu({
             <small>Available when account settings are connected</small>
           </span>
           <LockKeyhole
-            className="ml-auto h-3.5 w-3.5 text-[#98A2B3]"
+            className="ml-auto h-3.5 w-3.5 text-mist-light"
             aria-hidden="true"
           />
         </div>

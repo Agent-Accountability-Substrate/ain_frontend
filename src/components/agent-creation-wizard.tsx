@@ -1,6 +1,12 @@
 "use client";
 
-import { ArrowLeft, ArrowRight, Bot, CheckCircle2, KeyRound } from "lucide-react";
+import {
+  ArrowLeft,
+  ArrowRight,
+  Bot,
+  CheckCircle2,
+  KeyRound,
+} from "lucide-react";
 import { type FormEvent, useState } from "react";
 
 export function AgentCreationWizard({
@@ -53,7 +59,10 @@ export function AgentCreationWizard({
 
   if (complete) {
     return (
-      <section className="wizard-complete" aria-labelledby="agent-created-title">
+      <section
+        className="wizard-complete"
+        aria-labelledby="agent-created-title"
+      >
         <span className="wizard-complete-icon">
           <CheckCircle2 className="h-6 w-6" aria-hidden="true" />
         </span>
@@ -109,7 +118,10 @@ export function AgentCreationWizard({
         </label>
         <label>
           <span>Initial authorised scope</span>
-          <select value={scope} onChange={(event) => setScope(event.target.value)}>
+          <select
+            value={scope}
+            onChange={(event) => setScope(event.target.value)}
+          >
             <option value="payments.initiate">payments.initiate</option>
             <option value="customer_comms.send">customer_comms.send</option>
           </select>
@@ -124,13 +136,17 @@ export function AgentCreationWizard({
       </div>
 
       <div className="wizard-form-note">
-        This first pass collects the declaration only. No key material,
-        customer data, or live agent action is created by this screen.
+        This first pass collects the declaration only. No key material, customer
+        data, or live agent action is created by this screen.
       </div>
 
       <div className="wizard-form-actions">
         {onBack ? (
-          <button type="button" className="wizard-secondary-action" onClick={onBack}>
+          <button
+            type="button"
+            className="wizard-secondary-action"
+            onClick={onBack}
+          >
             <ArrowLeft className="h-4 w-4" aria-hidden="true" />
             Back to organisation
           </button>

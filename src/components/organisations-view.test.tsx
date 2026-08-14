@@ -29,10 +29,7 @@ describe("OrganisationsView", () => {
     ).toBeDefined();
     expect(
       screen.getByRole("link", { name: "Create first organisation" }),
-    ).toHaveProperty(
-      "href",
-      "http://localhost:3000/organisations/new",
-    );
+    ).toHaveProperty("href", "http://localhost:3000/organisations/new");
     const navigation = screen.getByRole("navigation", {
       name: "Account sections",
     });
@@ -48,10 +45,7 @@ describe("OrganisationsView", () => {
     };
 
     render(
-      <OrganisationsView
-        email="user@example.com"
-        state={verifiedState}
-      />,
+      <OrganisationsView email="user@example.com" state={verifiedState} />,
     );
 
     expect(

@@ -7,14 +7,11 @@ type SubraLogoProps = {
   preload?: boolean;
 };
 
-export function SubraLogo({
-  className,
-  preload = false,
-}: SubraLogoProps) {
+export function SubraLogo({ className, preload = false }: SubraLogoProps) {
   return (
     <Image
       src="/media/subra-logo.png"
-      alt="SUBRA"
+      alt="Subra"
       width={1660}
       height={373}
       preload={preload}

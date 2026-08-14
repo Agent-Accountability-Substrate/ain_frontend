@@ -105,7 +105,10 @@ export function OrganisationCreationView({
                 </div>
               </div>
 
-              <ol className="wizard-progress" aria-label="Organisation setup steps">
+              <ol
+                className="wizard-progress"
+                aria-label="Organisation setup steps"
+              >
                 <li data-current={step === 1}>
                   <span>1</span>
                   Organisation details
@@ -123,7 +126,9 @@ export function OrganisationCreationView({
                     <input
                       required
                       value={organisationName}
-                      onChange={(event) => setOrganisationName(event.target.value)}
+                      onChange={(event) =>
+                        setOrganisationName(event.target.value)
+                      }
                       placeholder="Example Holdings Ltd"
                     />
                   </label>
@@ -141,7 +146,10 @@ export function OrganisationCreationView({
                   </label>
                   <label>
                     <span>Registration jurisdiction</span>
-                    <select value={country} onChange={(event) => setCountry(event.target.value)}>
+                    <select
+                      value={country}
+                      onChange={(event) => setCountry(event.target.value)}
+                    >
                       <option>United Kingdom</option>
                     </select>
                   </label>
@@ -165,7 +173,9 @@ export function OrganisationCreationView({
                       type="checkbox"
                       required
                       checked={authorityConfirmed}
-                      onChange={(event) => setAuthorityConfirmed(event.target.checked)}
+                      onChange={(event) =>
+                        setAuthorityConfirmed(event.target.checked)
+                      }
                     />
                     <span>
                       I confirm I am authorised to submit this organisation for
@@ -174,7 +184,10 @@ export function OrganisationCreationView({
                   </label>
                   <label>
                     <span>Your relationship to the organisation</span>
-                    <select value={authority} onChange={(event) => setAuthority(event.target.value)}>
+                    <select
+                      value={authority}
+                      onChange={(event) => setAuthority(event.target.value)}
+                    >
                       <option>Director or equivalent</option>
                       <option>Authorised company representative</option>
                       <option>Professional adviser with authority</option>
@@ -204,7 +217,9 @@ export function OrganisationCreationView({
                   </a>
                 )}
                 <button type="submit" className="wizard-primary-action">
-                  {step === 1 ? "Continue to authority" : "Complete organisation setup"}
+                  {step === 1
+                    ? "Continue to authority"
+                    : "Complete organisation setup"}
                   <ArrowRight className="h-4 w-4" aria-hidden="true" />
                 </button>
               </div>

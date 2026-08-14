@@ -4,9 +4,7 @@ import type {
 } from "@/lib/identity-assurance";
 
 export type OrganisationVerificationStatus =
-  | "pending"
-  | "verified"
-  | "needs_attention";
+  "pending" | "verified" | "needs_attention";
 
 export type OrganisationSummary = {
   id: string;
@@ -81,8 +79,7 @@ export function getAccountOverviewStats(
       (organisation) => organisation.verificationStatus === "pending",
     ).length,
     organisationsRequiringAttention: state.organisations.filter(
-      (organisation) =>
-        organisation.verificationStatus === "needs_attention",
+      (organisation) => organisation.verificationStatus === "needs_attention",
     ).length,
     totalAccessibleAgents: state.totalAccessibleAgents,
   };

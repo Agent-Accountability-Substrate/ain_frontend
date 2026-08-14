@@ -12,35 +12,25 @@ describe("AgentDemoView", () => {
   it("renders the illustrative AIN accountability workspace", () => {
     render(<AgentDemoView email="user@example.com" />);
 
-    expect(
-      screen.getByRole("link", { name: "SUBRA AIN Registry home" }),
-    ).toBeDefined();
-    expect(screen.getByRole("img", { name: "SUBRA" })).toBeDefined();
-    expect(screen.getByText("user@example.com")).toBeDefined();
-    expect(
-      within(screen.getByRole("contentinfo")).getByText(
-        "Illustrative workspace",
-      ),
-    ).toBeDefined();
-    expect(
-      screen.getByRole("heading", {
-        name: "Agent accountability console",
-      }),
-    ).toBeDefined();
+    screen.getByRole("link", { name: "Subra AIN Registry home" });
+    screen.getByRole("img", { name: "Subra" });
+    screen.getByText("user@example.com");
+    within(screen.getByRole("contentinfo")).getByText("Illustrative workspace");
+    screen.getByRole("heading", {
+      name: "Agent accountability console",
+    });
     expect(screen.getAllByText("Payments Operations Agent").length).toBe(2);
-    expect(screen.getByText("Illustrative workspace data")).toBeDefined();
+    screen.getByText("Illustrative workspace data");
   });
 
   it("shows verification, scope, and linked receipt evidence", () => {
     render(<AgentDemoView email="user@example.com" />);
 
-    expect(
-      screen.getByRole("heading", {
-        name: "Proposed action assessment",
-      }),
-    ).toBeDefined();
-    expect(screen.getByText("Identity record authentic")).toBeDefined();
-    expect(screen.getByText("Signing key acceptable")).toBeDefined();
+    screen.getByRole("heading", {
+      name: "Proposed action assessment",
+    });
+    screen.getByText("Identity record authentic");
+    screen.getByText("Signing key acceptable");
     expect(screen.getAllByText("payments.initiate").length).toBeGreaterThan(1);
     expect(screen.getAllByText("Sequence 43").length).toBeGreaterThan(1);
   });
@@ -55,14 +45,10 @@ describe("AgentDemoView", () => {
     expect(
       within(navigation).getByRole("link", { name: "Overview" }),
     ).toHaveProperty("href", "http://localhost:3000/dashboard");
-    expect(
-      within(navigation).getByRole("link", { name: "Organisations" }),
-    ).toBeDefined();
-    expect(
-      within(navigation).getByRole("link", {
-        name: "Account & Security",
-      }),
-    ).toBeDefined();
+    within(navigation).getByRole("link", { name: "Organisations" });
+    within(navigation).getByRole("link", {
+      name: "Account & Security",
+    });
 
     const agentNavigation = screen.getByRole("navigation", {
       name: "Agent record sections",
@@ -79,27 +65,23 @@ describe("AgentDemoView", () => {
       "Evidence Packs",
       "Public Resolver Link",
     ].forEach((label) => {
-      expect(
-        within(agentNavigation).getByRole("link", { name: label }),
-      ).toBeDefined();
+      within(agentNavigation).getByRole("link", { name: label });
     });
   });
 
   it("falls back to 'unknown' when no email is present", () => {
     render(<AgentDemoView email={undefined} />);
 
-    expect(screen.getByText("unknown")).toBeDefined();
+    screen.getByText("unknown");
   });
 
   it("offers notifications and the original account dropdown", () => {
     render(<AgentDemoView email="user@example.com" />);
 
-    expect(screen.getByLabelText("Open notifications")).toBeDefined();
-    expect(screen.getByText("You are up to date")).toBeDefined();
-    expect(
-      screen.getByLabelText("Open account menu for user@example.com"),
-    ).toBeDefined();
-    expect(screen.getByText("Profile & account management")).toBeDefined();
-    expect(screen.getByRole("button", { name: "Sign out" })).toBeDefined();
+    screen.getByLabelText("Open notifications");
+    screen.getByText("You are up to date");
+    screen.getByLabelText("Open account menu for user@example.com");
+    screen.getByText("Profile & account management");
+    screen.getByRole("button", { name: "Sign out" });
   });
 });

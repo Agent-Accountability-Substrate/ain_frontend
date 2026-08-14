@@ -12,7 +12,7 @@ export function SignInButton({ className, ...props }: SignInButtonProps) {
       <button
         type="submit"
         className={cn(
-          "inline-flex items-center justify-center rounded-[12px] bg-[var(--primary)] px-5 py-3 text-sm font-semibold text-white shadow-sm shadow-[#091126]/20 transition hover:bg-slate-900",
+          "inline-flex items-center justify-center rounded-sm bg-primary px-5 py-3 text-sm font-semibold text-white shadow-sm shadow-ink/20 transition hover:bg-slate-900",
           className,
         )}
         {...props}
