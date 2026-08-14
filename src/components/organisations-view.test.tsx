@@ -58,4 +58,49 @@ describe("OrganisationsView", () => {
       screen.getByRole("heading", { name: "No organisations yet" }),
     ).toBeDefined();
   });
+
+  it("lists the organisations the account belongs to", () => {
+    const populatedState: AccountWorkspaceState = {
+      ...initialAccountWorkspaceState,
+      organisations: [
+        {
+          id: "org-a",
+          name: "Alpha Holdings Ltd",
+          membershipRole: "owner",
+          verificationStatus: "verified",
+        },
+        {
+          id: "org-b",
+          name: "Beta Systems Ltd",
+          membershipRole: "member",
+          verificationStatus: "pending",
+        },
+      ],
+      selectedOrganisationId: "org-b",
+    };
+
+    render(
+      <OrganisationsView email="user@example.com" state={populatedState} />,
+    );
+
+    expect(
+      screen.queryByRole("heading", { name: "No organisations yet" }),
+    ).toBeNull();
+    expect(
+      screen.getByRole("heading", { name: "Your organisations" }),
+    ).toBeDefined();
+
+    const entries = within(
+      screen.getByRole("region", { name: "Your organisations" }),
+    ).getAllByRole("listitem");
+    expect(entries).toHaveLength(2);
+    expect(within(entries[0]!).getByText("Alpha Holdings Ltd")).toBeDefined();
+    expect(within(entries[0]!).getByText(/Owner · Verified/)).toBeDefined();
+    expect(within(entries[1]!).getByText("Beta Systems Ltd")).toBeDefined();
+    expect(
+      within(entries[1]!).getByText(/Member · Verification pending/),
+    ).toBeDefined();
+    expect(within(entries[1]!).getByText("Selected")).toBeDefined();
+    expect(within(entries[0]!).queryByText("Selected")).toBeNull();
+  });
 });

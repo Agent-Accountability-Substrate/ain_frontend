@@ -11,7 +11,7 @@ export function AgentCreationView({
 }) {
   return (
     <WorkspaceShell
-      currentPath="/dashboard"
+      currentPath="/agents/new"
       email={email}
       navigationItems={userMenuItems}
       navigationLabel="Account sections"
@@ -31,9 +31,9 @@ export function AgentCreationView({
             Choose organisation
           </a>
         </aside>
-        <main className="account-wizard-main">
-          <AgentCreationWizard organisationName="No organisation selected" />
-        </main>
+        <div className="account-wizard-main">
+          <AgentCreationWizard organisationName={null} />
+        </div>
       </div>
     </WorkspaceShell>
   );

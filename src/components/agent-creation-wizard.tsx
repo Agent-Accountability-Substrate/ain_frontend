@@ -7,7 +7,8 @@ export function AgentCreationWizard({
   organisationName,
   onBack,
 }: {
-  organisationName: string;
+  /** `null` when no organisation is selected — the wizard then refuses to run. */
+  organisationName: string | null;
   onBack?: () => void;
 }) {
   const [agentName, setAgentName] = useState("");
@@ -19,6 +20,35 @@ export function AgentCreationWizard({
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setComplete(true);
+  }
+
+  // An agent record is always owned by an organisation, so with none selected
+  // there is no form to submit — rendering one would stage a record against an
+  // organisation that does not exist.
+  if (organisationName === null) {
+    return (
+      <section className="wizard-form" aria-labelledby="agent-blocked-title">
+        <div className="wizard-form-heading">
+          <span className="wizard-form-icon">
+            <Bot className="h-5 w-5" aria-hidden="true" />
+          </span>
+          <div>
+            <p className="dashboard-eyebrow">Step 3 · Agent workspace</p>
+            <h2 id="agent-blocked-title">Choose an organisation to continue</h2>
+            <p>
+              Agent records belong to an organisation. Select one and this step
+              will open.
+            </p>
+          </div>
+        </div>
+        <div className="wizard-form-actions">
+          <a className="wizard-secondary-action" href="/organisations">
+            <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+            Choose organisation
+          </a>
+        </div>
+      </section>
+    );
   }
 
   if (complete) {

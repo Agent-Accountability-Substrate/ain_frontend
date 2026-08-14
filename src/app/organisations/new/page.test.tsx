@@ -1,4 +1,3 @@
-import { render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const { authMock, redirectMock } = vi.hoisted(() => ({
@@ -18,12 +17,13 @@ describe("organisation creation page", () => {
     redirectMock.mockReset();
   });
 
-  it("renders the protected wizard", async () => {
+  it("redirects signed-in accounts that are not identity verified", async () => {
     authMock.mockResolvedValue({ user: { email: "owner@example.com" } });
-    render(await OrganisationCreationPage());
-    expect(
-      screen.getByRole("heading", { name: "Create your first organisation" }),
-    ).toBeDefined();
+    redirectMock.mockImplementation(() => {
+      throw new Error("NEXT_REDIRECT");
+    });
+    await expect(OrganisationCreationPage()).rejects.toThrow("NEXT_REDIRECT");
+    expect(redirectMock).toHaveBeenCalledWith("/onboarding/identity");
   });
 
   it("redirects anonymous requests", async () => {

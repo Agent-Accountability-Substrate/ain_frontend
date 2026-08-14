@@ -18,12 +18,15 @@ describe("agent creation page", () => {
     redirectMock.mockReset();
   });
 
-  it("renders the protected agent wizard", async () => {
+  it("renders the protected agent route blocked until an organisation exists", async () => {
     authMock.mockResolvedValue({ user: { email: "owner@example.com" } });
     render(await AgentCreationPage());
     expect(
-      screen.getByRole("heading", { name: "Create your first agent" }),
+      screen.getByRole("heading", { name: "Choose an organisation to continue" }),
     ).toBeDefined();
+    expect(
+      screen.queryByRole("button", { name: /prepare agent record/i }),
+    ).toBeNull();
   });
 
   it("redirects anonymous requests", async () => {

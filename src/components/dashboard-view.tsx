@@ -103,7 +103,7 @@ export function DashboardView({
           <PrimaryNextActions state={state} />
         </aside>
 
-        <main className="account-overview-main">
+        <div className="account-overview-main">
           <header className="account-overview-heading">
             <div>
               <p className="dashboard-eyebrow">Account workspace</p>
@@ -172,7 +172,7 @@ export function DashboardView({
               );
             })}
           </section>
-        </main>
+        </div>
 
         <aside className="account-overview-support">
           <section

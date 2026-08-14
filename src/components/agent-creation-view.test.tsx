@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 import { AgentCreationView } from "@/components/agent-creation-view";
@@ -16,16 +16,14 @@ describe("AgentCreationView", () => {
       screen.getByRole("heading", { name: "Select an organisation first" }),
     ).toBeDefined();
     expect(screen.getAllByRole("link", { name: "Choose organisation" })).toHaveLength(2);
-    expect(screen.getByRole("heading", { name: "Create your first agent" })).toBeDefined();
+    expect(
+      screen.getByRole("heading", { name: "Choose an organisation to continue" }),
+    ).toBeDefined();
 
-    fireEvent.change(screen.getByLabelText("Agent name"), {
-      target: { value: "Payments Operations Agent" },
-    });
-    fireEvent.change(screen.getByLabelText("Accountable owner"), {
-      target: { value: "Payments Operations" },
-    });
-    fireEvent.click(screen.getByRole("button", { name: /prepare agent record/i }));
-
-    expect(screen.getByText("Your first agent is ready to review")).toBeDefined();
+    // With no organisation there must be no submittable agent form at all.
+    expect(screen.queryByLabelText("Agent name")).toBeNull();
+    expect(
+      screen.queryByRole("button", { name: /prepare agent record/i }),
+    ).toBeNull();
   });
 });

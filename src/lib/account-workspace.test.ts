@@ -58,6 +58,62 @@ describe("account workspace state", () => {
     );
   });
 
+  it("treats membership, not ownership, as the organisation prerequisite", () => {
+    const memberOfTwo: AccountWorkspaceState = {
+      ...initialAccountWorkspaceState,
+      individualAssurance: { status: "verified" },
+      organisations: [
+        {
+          id: "org-1",
+          name: "First member org",
+          membershipRole: "member",
+          verificationStatus: "verified",
+        },
+        {
+          id: "org-2",
+          name: "Second member org",
+          membershipRole: "member",
+          verificationStatus: "verified",
+        },
+      ],
+    };
+
+    // Belongs to two organisations, so "Create first organisation" is done and
+    // "Select organisation" is the one thing left to do.
+    expect(
+      getPrimaryNextActions(memberOfTwo).map((action) => action.state),
+    ).toEqual(["completed", "completed", "current", "available"]);
+
+    const selected: AccountWorkspaceState = {
+      ...memberOfTwo,
+      selectedOrganisationId: "org-1",
+    };
+    expect(
+      getPrimaryNextActions(selected).map((action) => action.state),
+    ).toEqual(["completed", "completed", "completed", "current"]);
+  });
+
+  it("never marks two steps current at once", () => {
+    const invitedBeforeVerifying: AccountWorkspaceState = {
+      ...initialAccountWorkspaceState,
+      organisations: [
+        {
+          id: "org-1",
+          name: "Invited org",
+          membershipRole: "member",
+          verificationStatus: "verified",
+        },
+      ],
+      selectedOrganisationId: "org-1",
+    };
+
+    const states = getPrimaryNextActions(invitedBeforeVerifying).map(
+      (action) => action.state,
+    );
+    expect(states.filter((value) => value === "current")).toHaveLength(1);
+    expect(states[0]).toBe("current");
+  });
+
   it("counts owner, member, pending and attention records independently", () => {
     const state: AccountWorkspaceState = {
       ...initialAccountWorkspaceState,

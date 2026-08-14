@@ -91,46 +91,44 @@ export function getAccountOverviewStats(
 export function getPrimaryNextActions(
   state: AccountWorkspaceState,
 ): readonly PrimaryNextAction[] {
-  const verified = isAccountVerified(state);
-  const ownsOrganisation = state.organisations.some(
-    (organisation) => organisation.membershipRole === "owner",
-  );
-  const hasSelection = Boolean(getSelectedOrganisation(state));
-
-  return [
+  // Belonging to an organisation is what unlocks the later steps, so these read
+  // membership rather than ownership — a member of two organisations has one to
+  // select and is not being asked to create their first.
+  const steps = [
     {
       label: "Verify account",
       detail: "Complete individual identity due diligence",
       href: "/onboarding/identity",
-      state: verified ? "completed" : "current",
+      done: isAccountVerified(state),
     },
     {
       label: "Create first organisation",
       detail: "Register and verify a UK legal entity",
       href: "/organisations/new",
-      state: ownsOrganisation
-        ? "completed"
-        : verified
-          ? "current"
-          : "available",
+      done: state.organisations.length > 0,
     },
     {
       label: "Select organisation",
       detail: "Choose the organisation workspace to manage",
       href: "/organisations",
-      state:
-        hasSelection ? "completed" : ownsOrganisation ? "current" : "available",
+      done: Boolean(getSelectedOrganisation(state)),
     },
     {
       label: "Create first agent",
       detail: "Register an agent inside the selected organisation",
       href: "/agents/new",
-      state:
-        state.totalAccessibleAgents > 0
-          ? "completed"
-          : hasSelection
-            ? "current"
-            : "available",
+      done: state.totalAccessibleAgents > 0,
     },
   ];
+
+  // Progress is sequential, so only the first unfinished step is the primary
+  // action. Anything after it is merely available — never a second "current".
+  let currentTaken = false;
+
+  return steps.map(({ done, ...action }): PrimaryNextAction => {
+    if (done) return { ...action, state: "completed" };
+    if (currentTaken) return { ...action, state: "available" };
+    currentTaken = true;
+    return { ...action, state: "current" };
+  });
 }

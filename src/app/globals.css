@@ -791,7 +791,8 @@
 .primary-next-actions li a,
 .account-demo-card > a,
 .organisation-locked-state > a,
-.organisation-empty-state > a {
+.organisation-empty-state > a,
+.organisation-list > header a {
   display: inline-flex;
   align-items: center;
   gap: 0.4rem;
@@ -812,7 +813,8 @@
 .account-overview-heading h1,
 .account-settings-workspace > header h1,
 .organisation-locked-state h1,
-.organisation-empty-state h1 {
+.organisation-empty-state h1,
+.organisation-list > header h1 {
   margin: 0.32rem 0 0;
   color: #091126;
   font-size: clamp(1.65rem, 2.5vw, 2.2rem);
@@ -1597,6 +1599,64 @@
   color: #667085;
   font-size: 0.58rem;
   line-height: 1.5;
+}
+
+/* Populated counterpart to .organisation-empty-state. The parent centres its
+   single child for the empty case, so the list opts back out with align-self. */
+.organisation-list {
+  display: flex;
+  width: min(100%, 43rem);
+  flex-direction: column;
+  align-self: flex-start;
+  gap: 0.85rem;
+}
+
+.organisation-list > header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.organisation-list ul {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  gap: 0.5rem;
+  list-style: none;
+}
+
+.organisation-list li {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  border: 1px solid #e1e6ef;
+  border-radius: 1rem;
+  background: #fbfcfe;
+  padding: 0.85rem 1rem;
+}
+
+.organisation-list-name {
+  color: #091126;
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.organisation-list-meta {
+  margin-right: auto;
+  color: #667085;
+  font-size: 0.6rem;
+}
+
+.organisation-list-current {
+  border: 1px solid #cfe3d7;
+  border-radius: 999px;
+  background: #eaf5ee;
+  padding: 0.2rem 0.55rem;
+  color: #16794a;
+  font-size: 0.55rem;
+  font-weight: 750;
 }
 
 .account-settings-workspace {
@@ -2639,8 +2699,18 @@
     min-height: 0;
   }
 
+  /* The other four workspaces carry `flex: 1; min-height: 0` on their base
+     rule; without it a flex item keeps `min-height: auto` and refuses to
+     shrink, so `overflow: hidden` below could never constrain it. */
+  .dashboard-workspace {
+    flex: 1;
+    min-height: 0;
+  }
+
   .account-overview-workspace,
   .account-route-workspace,
+  .account-wizard-workspace,
+  .dashboard-workspace,
   .identity-workspace {
     overflow: hidden;
   }
@@ -2651,6 +2721,11 @@
   .account-route-workspace > aside,
   .account-route-main,
   .account-settings-workspace,
+  .account-wizard-side,
+  .account-wizard-main,
+  .dashboard-left-rail,
+  .dashboard-agent-map,
+  .dashboard-verification-panel,
   .identity-progress-panel,
   .identity-verification-main,
   .identity-guidance-panel {

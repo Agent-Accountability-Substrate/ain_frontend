@@ -29,11 +29,16 @@ export function OrganisationCreationView({
   const [createdOrganisation, setCreatedOrganisation] =
     useState<OrganisationSummary | null>(null);
 
-  const organisations = createdOrganisation
-    ? [createdOrganisation]
-    : state.organisations;
-  const selectedOrganisationId =
-    createdOrganisation?.id ?? state.selectedOrganisationId;
+  // One derived state for every child: the shell footer and the sidebar
+  // checklist both read from this, so they cannot disagree about whether the
+  // organisation exists.
+  const workspaceState: AccountWorkspaceState = createdOrganisation
+    ? {
+        ...state,
+        organisations: [createdOrganisation],
+        selectedOrganisationId: createdOrganisation.id,
+      }
+    : state;
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -58,15 +63,15 @@ export function OrganisationCreationView({
       email={email}
       navigationItems={userMenuItems}
       navigationLabel="Account sections"
-      organisations={organisations}
-      selectedOrganisationId={selectedOrganisationId}
+      organisations={workspaceState.organisations}
+      selectedOrganisationId={workspaceState.selectedOrganisationId}
       showOrganisationSwitcher
       signedInAs={createdOrganisation?.name ?? "No organisation selected"}
       workspaceLabel="Create organisation"
     >
       <div className="account-wizard-workspace">
         <aside className="account-wizard-side">
-          <PrimaryNextActions state={state} />
+          <PrimaryNextActions state={workspaceState} />
           <div className="wizard-side-note">
             <ShieldCheck className="h-4 w-4" aria-hidden="true" />
             <p>
@@ -76,7 +81,7 @@ export function OrganisationCreationView({
           </div>
         </aside>
 
-        <main className="account-wizard-main">
+        <div className="account-wizard-main">
           {createdOrganisation ? (
             <AgentCreationWizard
               organisationName={createdOrganisation.name}
@@ -158,6 +163,7 @@ export function OrganisationCreationView({
                   <label className="wizard-checkbox">
                     <input
                       type="checkbox"
+                      required
                       checked={authorityConfirmed}
                       onChange={(event) => setAuthorityConfirmed(event.target.checked)}
                     />
@@ -204,7 +210,7 @@ export function OrganisationCreationView({
               </div>
             </form>
           )}
-        </main>
+        </div>
       </div>
     </WorkspaceShell>
   );
