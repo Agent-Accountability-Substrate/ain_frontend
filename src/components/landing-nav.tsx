@@ -5,10 +5,8 @@ import { SignInButton } from "./sign-in-button";
 import { SubraLogo } from "./subra-logo";
 
 const navLinks = [
-  { label: "Home", href: "#home" },
-  { label: "Feature", href: "#feature" },
-  { label: "Story", href: "#story" },
-  { label: "Download", href: "#download" },
+  { label: "How it works", href: "#how-it-works" },
+  { label: "Integrity", href: "#integrity" },
 ];
 
 export function LandingNav() {
@@ -23,89 +21,116 @@ export function LandingNav() {
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
+  useEffect(() => {
+    if (!menuOpen) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setMenuOpen(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [menuOpen]);
+
   return (
     <header
-      className={`sticky left-0 right-0 z-50 px-4 transition-all duration-300 ease-out ${scrolled ? "top-0" : "top-4"}`}
+      className={`sticky left-0 right-0 z-50 px-4 transition-all duration-300 ease-out sm:px-6 lg:px-8 ${
+        scrolled ? "top-2" : "top-4"
+      }`}
     >
       <div
-        className={`mx-auto flex max-w-7xl items-center justify-between overflow-hidden rounded-full px-5 transition-all duration-300 ${
+        className={`mx-auto flex max-w-content items-center justify-between rounded-full py-2 pl-2 pr-4 transition-all duration-300 ${
           scrolled
-            ? "border border-[#E4E6ED] bg-white/85 shadow-[0_24px_50px_-30px_rgba(9,17,38,0.18)] backdrop-blur-xl py-2"
-            : "bg-transparent py-2"
+            ? // A 1px #E4E6ED edge plus a 50px shadow drew a box around the
+              // bar. A 7% hairline over a blurred ground reads as chrome
+              // lifting off the page, which is the whole point of the pill.
+              "border border-line-hair bg-white/80 shadow-[0_1px_2px_rgba(9,17,38,0.04),0_12px_32px_-20px_rgba(9,17,38,0.22)] backdrop-blur-xl"
+            : "border border-transparent bg-transparent"
         }`}
       >
-        <a
-          href="#home"
-          aria-label="SUBRA AIN Registry home"
-          className="flex items-center gap-3 rounded-[12px] px-2 py-2 transition hover:bg-[#EDF0F7]"
-        >
-          <SubraLogo preload className="w-28 sm:w-32" />
-          <span className="hidden border-l border-[#D8DDE8] pl-3 text-[10px] font-semibold uppercase tracking-[0.16em] text-[#526078] xl:inline">
-            AIN Registry
-          </span>
-        </a>
+        {/* Links cluster with the lockup instead of orbiting the far side:
+            with two links, justify-between left ~700px of dead pill. */}
+        <div className="flex min-w-0 items-center">
+          <a
+            href="#home"
+            aria-label="Subra AIN Registry home"
+            className="flex items-center gap-3 rounded-sm px-2 py-2 transition hover:bg-line-soft"
+          >
+            <SubraLogo preload className="w-28 sm:w-32" />
+            <span className="hidden border-l border-line-strong pl-3 text-[10px] font-semibold uppercase tracking-[0.16em] text-ink-muted xl:inline">
+              AIN Registry
+            </span>
+          </a>
 
-        <div className="hidden items-center gap-6 md:flex">
-          <nav className="flex items-center gap-3 text-sm font-medium text-[#091126]">
+          <nav className="ml-6 hidden items-center gap-1 text-sm font-medium text-ink md:flex">
             {navLinks.map((link) => (
               <a
                 key={link.href}
                 href={link.href}
-                className="rounded-full px-2.5 py-1.5 transition hover:bg-[#EDF0F7] hover:text-[var(--secondary)]"
+                className="rounded-sm px-2.5 py-1.5 transition hover:bg-line-soft hover:text-secondary"
               >
                 {link.label}
               </a>
             ))}
           </nav>
+        </div>
 
-          <div className="flex items-center gap-2">
-            <SignInButton className="px-4 py-2 text-sm" />
-            <a
-              href="#download"
-              className="inline-flex items-center justify-center rounded-[12px] bg-[var(--primary)] px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-900"
-            >
-              Download
-            </a>
-          </div>
+        <div className="hidden items-center gap-2 md:flex">
+          <SignInButton className="px-3 py-2 text-sm !bg-transparent !text-ink !shadow-none hover:!bg-line-soft" />
+          <a
+            href="#talk"
+            className="inline-flex items-center justify-center rounded-sm bg-primary px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-900"
+          >
+            Request access
+          </a>
         </div>
 
         <button
           type="button"
           onClick={() => setMenuOpen((open) => !open)}
-          className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-[#E4E6ED] text-[#091126] shadow-sm shadow-[#091126]/5 md:hidden"
+          className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-line-hair bg-white/70 text-ink md:hidden"
           aria-label="Toggle navigation menu"
           aria-expanded={menuOpen}
+          aria-controls="landing-nav-menu"
         >
           <span className="sr-only">Toggle navigation menu</span>
           <div className="space-y-1">
-            <span className="block h-0.5 w-6 rounded-full bg-[#091126]"></span>
-            <span className="block h-0.5 w-6 rounded-full bg-[#091126]"></span>
-            <span className="block h-0.5 w-6 rounded-full bg-[#091126]"></span>
+            <span className="block h-0.5 w-6 rounded-full bg-ink"></span>
+            <span className="block h-0.5 w-6 rounded-full bg-ink"></span>
+            <span className="block h-0.5 w-6 rounded-full bg-ink"></span>
           </div>
         </button>
       </div>
 
+      {/* Absolute, not in flow. As a sibling in the sticky header's box this
+          panel added its own height to the header and pushed <main> down 218px
+          on open — the page moved underneath the reader's thumb. */}
       {menuOpen ? (
-        <div className="mx-auto mt-3 max-w-7xl overflow-hidden rounded-[22px] border border-[#E4E6ED] bg-white/95 px-4 py-3 shadow-[0_24px_50px_-30px_rgba(9,17,38,0.18)] md:hidden">
-          <nav className="flex flex-col gap-2 text-sm font-medium text-[#091126]">
-            {navLinks.map((link) => (
+        <div
+          id="landing-nav-menu"
+          className="absolute inset-x-0 top-full px-4 sm:px-6 md:hidden lg:px-8"
+        >
+          <div className="mx-auto mt-2 max-w-content rounded-lg border border-line-hair bg-white/95 p-2 shadow-[0_1px_2px_rgba(9,17,38,0.04),0_24px_48px_-24px_rgba(9,17,38,0.28)] backdrop-blur-xl">
+            <nav className="flex flex-col gap-1 text-sm font-medium text-ink">
+              {navLinks.map((link) => (
+                <a
+                  key={link.href}
+                  href={link.href}
+                  onClick={() => setMenuOpen(false)}
+                  className="block rounded-sm px-4 py-2.5 transition hover:bg-line-soft"
+                >
+                  {link.label}
+                </a>
+              ))}
+            </nav>
+            <div className="mt-2 flex flex-col gap-2 border-t border-line-hair pt-2">
+              <SignInButton className="w-full px-3 py-2 text-sm !bg-transparent !text-ink !shadow-none hover:!bg-line-soft" />
               <a
-                key={link.href}
-                href={link.href}
-                className="block rounded-[14px] px-4 py-2 transition hover:bg-[#EDF0F7]"
+                href="#talk"
+                onClick={() => setMenuOpen(false)}
+                className="inline-flex items-center justify-center rounded-sm bg-primary px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-900"
               >
-                {link.label}
+                Request access
               </a>
-            ))}
-          </nav>
-          <div className="mt-3 flex flex-col gap-2">
-            <SignInButton className="w-full px-4 py-2 text-sm" />
-            <a
-              href="#download"
-              className="inline-flex items-center justify-center rounded-[12px] bg-[var(--primary)] px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-900"
-            >
-              Download
-            </a>
+            </div>
           </div>
         </div>
       ) : null}

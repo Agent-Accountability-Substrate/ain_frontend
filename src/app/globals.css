@@ -1,4 +1,8 @@
-@import url("https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@1&family=Poppins:wght@400;500;600;700;800&display=swap");
+/* Both faces are now loaded by `next/font/google` in app/layout.tsx, which
+   downloads them at build time and serves them from our own origin. The
+   previous `@import url("https://fonts.googleapis.com/...")` made every visitor
+   disclose their IP to a US server before first paint — on the page that claims
+   UK/EU residency and data minimisation. See the note in layout.tsx. */
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
@@ -6,6 +10,60 @@
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
+  /* ── Colour tokens ──────────────────────────────────────────────────────
+     One name per value, so a colour can drift only by editing this block.
+     The sweep that introduced these found 35 distinct arbitrary hexes across
+     the components, six of them near-identical hairline greys — exactly the
+     drift a token stops. Near-duplicates were merged where the shift is
+     imperceptible and contrast-safe; the WCAG audit ran after the merge.
+     Semantic roles (secondary, success, warm, destructive) alias the :root
+     values below so there is still exactly one source of truth for each. */
+  --color-ink: #091126;
+  --color-ink-soft: var(--ink-soft);
+  --color-ink-muted: var(--ink-muted);
+  --color-mist: var(--mist);
+  --color-mist-light: #98a2b3;
+  --color-steel: #7c899c;
+  --color-line: #e4e6ed;
+  --color-line-soft: #eef2f4;
+  --color-line-strong: #d8dde8;
+  --color-band: #f7faff;
+  --color-panel: #fbfdff;
+  --color-wash-blue: #eef3ff;
+  --color-frost: #dce5f8;
+  --color-sky: var(--sky);
+  --color-sky-mid: var(--sky-mid);
+  --color-sky-soft: #c8d3e8;
+  --color-azure: #8fb1ff;
+  --color-cobalt: #1d4ed8;
+  --color-success-strong: #0f7a52;
+  --color-success-soft: #74d6a2;
+  --color-success-wash: #eaf7f0;
+  --color-warm-wash: #fff0e9;
+
+  /* Hairline for floating chrome over a light ground. A 1px #E4E6ED edge on a
+     translucent pill reads as a drawn box; 7% navy reads as an edge. */
+  --color-line-hair: rgba(9, 17, 38, 0.07);
+
+  /* The one colour the palette was actually missing. --destructive #B42318
+     is 1.7:1 on ink and unreadable there; every other value the dark surface
+     needs already exists (ink, sky, white, mist, success-soft), so the slab
+     borrows them rather than forking the palette.
+       destructive-soft #FF9182 on ink  8.2:1 */
+  --color-destructive-soft: var(--destructive-soft);
+
+  /* The content column, not the section box. max-w-7xl (1280) minus the two
+     32px gutters, so anything capped at this width has edges that land exactly
+     on the text column at every breakpoint — see the nav pill. */
+  --container-content: 76rem;
+
+  --color-primary: var(--primary);
+  --color-secondary: var(--secondary);
+  --color-success: var(--success);
+  --color-destructive: var(--destructive);
+  --color-warm-500: var(--warm-500);
+  --color-warm-600: var(--warm-600);
+  --color-warm-700: var(--warm-700);
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --font-sans:
@@ -75,6 +133,47 @@
   --destructive: #b42318;
   --warning: #9a6700;
   --success: #16794a;
+
+  /* Warm carries exactly one meaning on this page: a named human, or a slot
+     only a human can fill. Everything else here (signature, hash, scope,
+     chain, residency) is checkable by a machine and stays cool. Rationing it
+     to one meaning is what stops an accent becoming decoration.
+
+     Contrast, computed against #F7FAFF page / #FFFFFF card / #091126 navy:
+       --warm-500  2.98 / 3.12 / 6.01   FILL ONLY. Never a stroke or letterform on light.
+       --warm-600  3.84 / 4.02 / 4.66   strokes and 1.5px rules (WCAG 1.4.11).
+       --warm-700  4.80 / 5.02 /  n/a   text at any display size on light.
+       --warm-800  6.99 / 7.31 /  n/a   micro-labels, AAA.
+       --warm-300   n/a /  n/a / 8.03   text and strokes on navy. */
+  --warm-500: #ff5a1f;
+  --warm-600: #e24a12;
+  --warm-700: #b54708; /* Guidance-icon amber */
+  --warm-800: #9a3412;
+  --destructive-soft: #ff9182;
+  --warm-300: #ff8a4c;
+  --warm-tint: #fff0e9; /* Guidance-icon ground */
+  --warm-fill: rgba(255, 90, 31, 0.1);
+  --warm-on: #091126;
+
+  /* Four durations, three easings, nothing else. Matches the timing scales
+     shipped by IBM Carbon, Atlassian and Notion: free familiarity with a
+     buyer who spends their working day inside those tools. */
+  --dur-hover: 150ms;
+  --dur-state: 250ms;
+  --dur-enter: 400ms;
+  --ease-enter: cubic-bezier(0, 0, 0.38, 0.9);
+  --ease-standard: cubic-bezier(0.2, 0, 0.38, 0.9);
+  --ease-exit: cubic-bezier(0.2, 0, 1, 0.9);
+
+  /* Neutrals that plain CSS needs by name. @theme does not emit its
+     variables to :root, so anything reached through var() — the boundary
+     diagram's contract, chiefly — has to live here or be invented locally. */
+  --ink-soft: #344054;
+  --ink-muted: #526078;
+  --mist: #667085;
+  --sky: #9cb6e8;
+  --sky-mid: #8fa8d5;
+
   --border: #e4e6ed;
   --input: #ffffff;
   --ring: #091126;
@@ -134,7 +233,7 @@
   }
   html {
     font-family:
-      "Poppins",
+      var(--font-poppins),
       ui-sans-serif,
       system-ui,
       -apple-system,
@@ -157,7 +256,8 @@
     color: var(--foreground);
   }
   .font-instrument {
-    font-family: "Instrument Serif", Georgia, "Times New Roman", serif;
+    font-family:
+      var(--font-instrument-serif), Georgia, "Times New Roman", serif;
     font-style: italic;
   }
 }
@@ -478,7 +578,7 @@
 .user-account-profile-item small {
   margin-top: 0.14rem;
   color: #98a2b3;
-  font-size: 0.56rem;
+  font-size: 0.6875rem; /* was 0.56rem = 9px */
   line-height: 1.45;
 }
 
@@ -593,7 +693,7 @@
   background: #eef3ff;
   color: #1d4ed8;
   padding: 0.26rem 0.45rem;
-  font-size: 0.56rem;
+  font-size: 0.6875rem; /* was 0.56rem = 9px */
   font-weight: 750;
 }
 
@@ -636,7 +736,7 @@
   display: block;
   margin-top: 0.42rem;
   color: #98a2b3;
-  font-size: 0.54rem;
+  font-size: 0.75rem; /* was 0.54rem = 9px */
   font-weight: 650;
 }
 
@@ -763,7 +863,7 @@
 .primary-next-action-index {
   display: block;
   color: #98a2b3;
-  font-size: 0.52rem;
+  font-size: 0.75rem; /* was 0.52rem = 8px */
   font-weight: 750;
   letter-spacing: 0.1em;
   text-transform: uppercase;
@@ -798,7 +898,7 @@
   gap: 0.4rem;
   margin-top: 0.55rem;
   color: #1d4ed8;
-  font-size: 0.62rem;
+  font-size: 0.75rem; /* was 0.62rem = 10px */
   font-weight: 750;
 }
 
@@ -841,7 +941,7 @@
   background: #f8fafd;
   color: #667085;
   padding: 0.36rem 0.58rem;
-  font-size: 0.56rem;
+  font-size: 0.6875rem; /* was 0.56rem = 9px */
   font-weight: 700;
 }
 
@@ -1061,7 +1161,7 @@
   margin-top: auto;
   padding-top: 0.85rem;
   color: #667085;
-  font-size: 0.56rem;
+  font-size: 0.6875rem; /* was 0.56rem = 9px */
   line-height: 1.4;
 }
 
@@ -1360,7 +1460,7 @@
   justify-content: center;
   border: 1px solid currentColor;
   border-radius: 999px;
-  font-size: 0.56rem;
+  font-size: 0.6875rem; /* was 0.56rem = 9px */
 }
 
 .wizard-form-grid {
@@ -1442,7 +1542,7 @@
 
 .wizard-review > div span {
   color: #667085;
-  font-size: 0.56rem;
+  font-size: 0.6875rem; /* was 0.56rem = 9px */
 }
 
 .wizard-review > div strong {
@@ -1597,7 +1697,7 @@
   border-top: 1px solid #e1e6ef;
   padding-top: 1rem;
   color: #667085;
-  font-size: 0.58rem;
+  font-size: 0.6875rem; /* was 0.58rem = 9px */
   line-height: 1.5;
 }
 
@@ -1704,7 +1804,7 @@
 .account-settings-grid section p:last-child {
   margin: 0.3rem 0 0;
   color: #667085;
-  font-size: 0.62rem;
+  font-size: 0.75rem; /* was 0.62rem = 10px */
   line-height: 1.6;
 }
 
@@ -1779,7 +1879,7 @@
 .dashboard-field-label {
   margin: 0;
   color: #667085;
-  font-size: 0.62rem;
+  font-size: 0.75rem; /* was 0.62rem = 10px */
   font-weight: 700;
   letter-spacing: 0.14em;
   line-height: 1.4;
@@ -1796,7 +1896,7 @@
   background: #eaf7f0;
   color: #0f7a52;
   padding: 0.3rem 0.48rem;
-  font-size: 0.58rem;
+  font-size: 0.6875rem; /* was 0.58rem = 9px */
   font-weight: 800;
   line-height: 1;
 }
@@ -1831,7 +1931,7 @@
   background: #eef3ff;
   color: #1d4ed8;
   padding: 0.34rem 0.58rem;
-  font-size: 0.58rem;
+  font-size: 0.6875rem; /* was 0.58rem = 9px */
   font-weight: 800;
   letter-spacing: 0.03em;
   line-height: 1;
@@ -1966,7 +2066,7 @@
   background: rgba(15, 122, 82, 0.16);
   color: #8be4b3;
   padding: 0.3rem 0.48rem;
-  font-size: 0.58rem;
+  font-size: 0.6875rem; /* was 0.58rem = 9px */
   font-weight: 800;
   line-height: 1;
 }
@@ -2087,7 +2187,7 @@
   border-radius: 999px;
   background: #eef3ff;
   color: #1d4ed8;
-  font-size: 0.58rem;
+  font-size: 0.6875rem; /* was 0.58rem = 9px */
   font-weight: 800;
 }
 
@@ -2100,14 +2200,14 @@
 
 .dashboard-receipt-rail li p {
   color: #344054;
-  font-size: 0.62rem;
+  font-size: 0.75rem; /* was 0.62rem = 10px */
   font-weight: 700;
 }
 
 .dashboard-receipt-rail li strong {
   margin-top: 0.16rem;
   color: #667085;
-  font-size: 0.54rem;
+  font-size: 0.75rem; /* was 0.54rem = 9px */
   font-weight: 600;
 }
 
@@ -2385,7 +2485,7 @@
   background: #eef3ff;
   color: #1d4ed8;
   padding: 0.35rem 0.55rem;
-  font-size: 0.58rem;
+  font-size: 0.6875rem; /* was 0.58rem = 9px */
   font-weight: 800;
   line-height: 1;
 }
@@ -2474,7 +2574,7 @@
   background: #f8fafd;
   color: #667085;
   padding: 0.35rem 0.55rem;
-  font-size: 0.58rem;
+  font-size: 0.6875rem; /* was 0.58rem = 9px */
   font-weight: 700;
 }
 
@@ -2511,7 +2611,7 @@
   display: block;
   margin-top: 0.8rem;
   color: #4d6fad;
-  font-size: 0.54rem;
+  font-size: 0.75rem; /* was 0.54rem = 9px */
   font-weight: 800;
   letter-spacing: 0.12em;
   text-transform: uppercase;
@@ -2669,7 +2769,7 @@
 .identity-privacy-card > p {
   margin: 0.8rem 0 0;
   color: #426856;
-  font-size: 0.62rem;
+  font-size: 0.75rem; /* was 0.62rem = 10px */
   line-height: 1.65;
 }
 
@@ -3174,31 +3274,9 @@
   animation: proof-copy-reveal 650ms cubic-bezier(0.2, 0.72, 0.2, 1) both;
 }
 
-.hero-proof-word {
-  display: inline-flex;
-  min-width: 5.15em;
-  align-items: baseline;
-  color: #ff5a1f;
-  text-align: left;
-  text-shadow: 0 0 22px rgba(255, 90, 31, 0.2);
-  vertical-align: baseline;
-}
-
-.hero-proof-word-text {
-  white-space: pre;
-}
-
-.hero-proof-word-caret {
-  display: inline-block;
-  width: 0.055em;
-  height: 0.78em;
-  margin-left: 0.05em;
-  border-radius: 999px;
-  background: #ff5a1f;
-  box-shadow: 0 0 14px rgba(255, 90, 31, 0.72);
-  transform: translateY(0.04em);
-  animation: proof-word-caret 760ms steps(1, end) infinite;
-}
+/* The typewriter proof word and its blinking caret lived here. Removed with
+   the rotator: 10 of 10 measured infrastructure and compliance landing pages
+   keep the h1 static, so there is no word to type and no caret to blink. */
 
 .hero-proof-passport > div {
   margin-top: 1.5rem;
@@ -3235,17 +3313,6 @@
   to {
     opacity: 1;
     transform: translateY(0);
-  }
-}
-
-@keyframes proof-word-caret {
-  0%,
-  46% {
-    opacity: 1;
-  }
-  47%,
-  100% {
-    opacity: 0;
   }
 }
 
@@ -4047,7 +4114,7 @@
   background: rgba(116, 214, 162, 0.09);
   color: #9aebbe;
   padding: 0.32rem 0.62rem;
-  font-size: 0.58rem;
+  font-size: 0.6875rem; /* was 0.58rem = 9px */
   font-weight: 700;
   letter-spacing: 0.13em;
   text-transform: uppercase;
@@ -4080,7 +4147,7 @@
 
 .agent-card-label {
   color: rgba(255, 255, 255, 0.48);
-  font-size: 0.56rem;
+  font-size: 0.6875rem; /* was 0.56rem = 9px */
   font-weight: 600;
   letter-spacing: 0.17em;
   text-transform: uppercase;
@@ -4100,7 +4167,7 @@
   padding: 0.3rem 0.5rem;
   color: var(--agent-accent-soft);
   font-family: var(--font-mono);
-  font-size: 0.58rem;
+  font-size: 0.6875rem; /* was 0.58rem = 9px */
 }
 
 .agent-card-ain {
@@ -4191,7 +4258,7 @@
 .agent-card-record-details dt {
   margin: 0;
   color: #64748b;
-  font-size: 0.45rem;
+  font-size: 0.6875rem; /* was 0.45rem = 7px */
   font-weight: 700;
   letter-spacing: 0.16em;
   line-height: 1.4;
@@ -4216,7 +4283,7 @@
   background: white;
   color: #64748b;
   padding: 0.24rem 0.36rem;
-  font-size: 0.38rem;
+  font-size: 0.6875rem; /* was 0.38rem = 6px: below any legible floor */
   font-weight: 700;
   line-height: 1;
 }
@@ -4251,7 +4318,7 @@
   background: #eaf7f0;
   color: #0f7a52;
   padding: 0.3rem 0.48rem;
-  font-size: 0.5rem;
+  font-size: 0.75rem; /* was 0.5rem = 8px */
   font-weight: 800;
 }
 
@@ -4286,7 +4353,7 @@
   overflow: hidden;
   color: #0b1220;
   font-family: var(--font-mono);
-  font-size: 0.54rem;
+  font-size: 0.75rem; /* was 0.54rem = 9px */
   font-weight: 600;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -4304,7 +4371,7 @@
   gap: 0.28rem;
   border-radius: 0.42rem;
   padding: 0.28rem 0.45rem;
-  font-size: 0.5rem;
+  font-size: 0.75rem; /* was 0.5rem = 8px */
 }
 
 .agent-card-record-copy button svg {
@@ -4327,14 +4394,14 @@
   margin: 0.2rem 0 0;
   overflow-wrap: anywhere;
   color: #0b1220;
-  font-size: 0.62rem;
+  font-size: 0.75rem; /* was 0.62rem = 10px */
   font-weight: 700;
   line-height: 1.3;
 }
 
 .agent-card-record-details .agent-card-record-mono {
   font-family: var(--font-mono);
-  font-size: 0.52rem;
+  font-size: 0.75rem; /* was 0.52rem = 8px */
   font-weight: 600;
 }
 
@@ -4366,7 +4433,7 @@
   color: #1d4ed8;
   padding: 0.28rem 0.4rem;
   font-family: var(--font-mono);
-  font-size: 0.46rem;
+  font-size: 0.6875rem; /* was 0.46rem = 7px */
   font-weight: 600;
 }
 
@@ -4543,38 +4610,12 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .hero-proof-copy,
-  .hero-evidence-field,
-  .hero-evidence-aura,
-  .hero-evidence-grid,
-  .hero-evidence-trail,
-  .hero-evidence-beacon-ring,
-  .hero-evidence-beacon-core,
-  .hero-evidence-particle,
-  .hero-evidence-scan {
+  .faq-answer {
     animation: none;
   }
 
-  .hero-evidence-field {
-    opacity: 1;
-    transform: none;
-  }
-
-  .agent-deck-card,
-  .agent-card-light,
-  .agent-card-flipper {
-    transition-duration: 0.01ms;
-  }
-
-  .agent-deck-card,
-  .agent-card-brand-mark,
-  .agent-card-scan,
-  .agent-card-orbit,
-  .agent-card-node,
-  .agent-card-seal,
-  .agent-card-status > span,
-  .agent-card-biometric {
-    animation: none;
+  .faq-mark-vertical {
+    transition: none;
   }
 }
 
@@ -4633,9 +4674,184 @@
   .hero-resolver-glow {
     opacity: 0.5;
   }
+}
 
-  .hero-proof-word-caret {
-    display: none;
+/* ── Delegation diagram ──────────────────────────────────────
+   One SVG, two grounds; every value is a palette token. Contrast on the
+   inverted band (#091126): sky 8.6:1, sky-mid 7.3:1, white 15.9:1,
+   destructive-soft 8.2:1. */
+.ain-delegation-diagram {
+  --dl-card-fill: #ffffff;
+  --dl-card-stroke: rgba(9, 17, 38, 0.16);
+  --dl-ghost: rgba(9, 17, 38, 0.1);
+  --dl-rule: rgba(9, 17, 38, 0.1);
+  --dl-value: var(--foreground);
+  --dl-muted: var(--mist);
+  --dl-eyebrow: var(--ink-muted);
+  --dl-edge: var(--ink-muted);
+  --dl-node: var(--secondary);
+  --dl-accent: var(--secondary);
+  --dl-allow-fill: #edf0f7;
+  --dl-allow-text: var(--secondary);
+  /* A constraint bounds a permitted action; it is not a prohibition, so it
+     never borrows the destructive ramp. */
+  --dl-constraint-fill: rgba(9, 17, 38, 0.05);
+  --dl-constraint-text: var(--ink-muted);
+  --dl-revoked: var(--destructive);
+}
+
+.ain-delegation-diagram--inverted {
+  /* Ink lifted, not a second navy. */
+  --dl-card-fill: color-mix(in srgb, #ffffff 7%, var(--foreground));
+  --dl-card-stroke: rgba(255, 255, 255, 0.18);
+  --dl-ghost: rgba(255, 255, 255, 0.12);
+  --dl-rule: rgba(255, 255, 255, 0.14);
+  --dl-value: #ffffff;
+  --dl-muted: var(--sky-mid);
+  --dl-eyebrow: var(--sky-mid);
+  --dl-edge: var(--sky-mid);
+  --dl-node: var(--sky);
+  --dl-accent: var(--sky);
+  --dl-allow-fill: rgba(156, 182, 232, 0.14);
+  --dl-allow-text: var(--sky);
+  --dl-constraint-fill: rgba(255, 255, 255, 0.07);
+  --dl-constraint-text: var(--sky-mid);
+  --dl-revoked: var(--destructive-soft);
+}
+
+.ain-delegation-diagram .dl-eyebrow {
+  fill: var(--dl-eyebrow);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
+  letter-spacing: 0.12em;
+}
+
+.ain-delegation-diagram .dl-value {
+  fill: var(--dl-value);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 15px;
+}
+
+.ain-delegation-diagram .dl-name {
+  fill: var(--dl-value);
+  font-size: 19px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+}
+
+.ain-delegation-diagram .dl-chip {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 13px;
+}
+
+.ain-delegation-diagram .dl-micro,
+.ain-delegation-diagram .dl-micro-accent,
+.ain-delegation-diagram .dl-micro-revoked {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  /* 13px, not the 11 the scale calls for: this SVG renders at roughly 0.9
+     scale, so 11 computes under the legibility floor. */
+  font-size: 13px;
+  letter-spacing: 0.04em;
+}
+
+.ain-delegation-diagram .dl-micro {
+  fill: var(--dl-muted);
+}
+
+.ain-delegation-diagram .dl-micro-accent {
+  fill: var(--dl-accent);
+}
+
+.ain-delegation-diagram .dl-micro-revoked {
+  fill: var(--dl-revoked);
+}
+
+/* The register entry's live marker. The only looping motion on the page
+   besides the hero, and it says one thing: this entry is the one in force. */
+.register-pulse {
+  position: relative;
+  display: inline-block;
+  width: 0.4rem;
+  height: 0.4rem;
+  border-radius: 999px;
+  background: var(--secondary);
+}
+
+.register-pulse::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 999px;
+  background: var(--secondary);
+  animation: register-pulse 2.4s var(--ease-standard) infinite;
+}
+
+@keyframes register-pulse {
+  0% {
+    opacity: 0.5;
+    transform: scale(1);
+  }
+  70%,
+  100% {
+    opacity: 0;
+    transform: scale(3.2);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .register-pulse::after {
     animation: none;
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   Landing figures: labels, reveal system, and the three artifacts
+   ───────────────────────────────────────────────────────────────────────── */
+
+/* Figure motion is composed in JS (see `use-figure-timeline`), because the
+   sequences are conditional — a chain row fails *because* the one above it
+   did — and keyframes cannot express that. The DOM's natural state is each
+   figure's finished state, so anything that stops the timeline running leaves
+   the completed figure on screen.
+
+   Tall artifacts cost nothing to keep off-screen; the intrinsic size stops the
+   scrollbar jumping as each one is skipped and then laid out. */
+.landing-figure,
+.ain-delegation-diagram {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 420px;
+}
+
+/* FAQ. Height is deliberately not animated: a closed <details> does not
+   render its content, so there is no start box to transition from, and the
+   workarounds all cost either markup or browser support. Fading the answer in
+   on open reads as motion and degrades to an instant open everywhere. */
+.faq-answer {
+  animation: figure-reveal var(--dur-state) var(--ease-enter) both;
+}
+
+.faq-mark-vertical {
+  transform-origin: center;
+  transition: transform var(--dur-state) var(--ease-standard);
+}
+
+details[open] > summary .faq-mark-vertical {
+  transform: scaleY(0);
+}
+
+details > summary::-webkit-details-marker {
+  display: none;
+}
+
+/* Under reduced motion the timelines are never created, so each figure keeps
+   the settled state its markup already carries: the chain verified, the scope
+   signed. The transient half of each pair is inert either way. */
+@media (prefers-reduced-motion: reduce) {
+  .faq-answer {
+    animation: none;
+  }
+
+  .faq-mark-vertical {
+    transition: none;
   }
 }
