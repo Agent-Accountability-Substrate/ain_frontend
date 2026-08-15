@@ -33,9 +33,7 @@ describe("dashboard page", () => {
 
     render(await DashboardPage());
 
-    expect(
-      screen.getByRole("heading", { name: "Overview" }),
-    ).toBeDefined();
+    expect(screen.getByRole("heading", { name: "Overview" })).toBeDefined();
     expect(
       within(screen.getByRole("contentinfo")).getByText(
         "No organisation selected",

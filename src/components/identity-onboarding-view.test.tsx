@@ -27,9 +27,7 @@ describe("IdentityOnboardingView", () => {
       within(screen.getByRole("contentinfo")).getByText("Casey Morgan"),
     ).toBeDefined();
     expect(screen.getByText("Not started")).toBeDefined();
-    expect(
-      screen.getByText("Individual identity due diligence"),
-    ).toBeDefined();
+    expect(screen.getByText("Individual identity due diligence")).toBeDefined();
   });
 
   it("uses the side panel for onboarding context without repeating top navigation", () => {
@@ -47,11 +45,13 @@ describe("IdentityOnboardingView", () => {
     const sidePanel = screen.getByRole("complementary", {
       name: "Due-diligence stages",
     });
-    ["Identity verification", "Organisation verification", "Agent workspace"].forEach(
-      (label) => {
-        expect(within(sidePanel).getByText(label)).toBeDefined();
-      },
-    );
+    [
+      "Identity verification",
+      "Organisation verification",
+      "Agent workspace",
+    ].forEach((label) => {
+      expect(within(sidePanel).getByText(label)).toBeDefined();
+    });
   });
 
   it("keeps the identity provider action disabled without claiming success", () => {
@@ -83,11 +83,15 @@ describe("IdentityOnboardingView", () => {
     );
 
     expect(
-      screen.getByText(/will not verify a company or prove that you are authorised/),
+      screen.getByText(
+        /will not verify a company or prove that you are authorised/,
+      ),
     ).toBeDefined();
     expect(screen.getByText("Minimal data retained")).toBeDefined();
     expect(
-      screen.getByText(/not document images, selfies, video or biometric templates/),
+      screen.getByText(
+        /not document images, selfies, video or biometric templates/,
+      ),
     ).toBeDefined();
     expect(
       screen.getByText(/retry or manual review, not a permanent denial/),
@@ -125,8 +129,6 @@ describe("IdentityOnboardingView", () => {
     );
 
     expect(screen.getByLabelText("Open notifications")).toBeDefined();
-    expect(
-      screen.getByText("Identity verification not started"),
-    ).toBeDefined();
+    expect(screen.getByText("Identity verification not started")).toBeDefined();
   });
 });

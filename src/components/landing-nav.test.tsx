@@ -22,21 +22,34 @@ describe("LandingNav", () => {
       name: "Toggle navigation menu",
     });
 
-    expect(
-      screen.getByRole("link", { name: "SUBRA AIN Registry home" }),
-    ).toBeDefined();
-    expect(screen.getByRole("img", { name: "SUBRA" })).toBeDefined();
+    screen.getByRole("link", { name: "Subra AIN Registry home" });
+    screen.getByRole("img", { name: "Subra" });
     expect(toggle.getAttribute("aria-expanded")).toBe("false");
-    expect(screen.getAllByRole("link", { name: "Home" })).toHaveLength(1);
+    expect(screen.getAllByRole("link", { name: "How it works" })).toHaveLength(
+      1,
+    );
 
     fireEvent.click(toggle);
     expect(toggle.getAttribute("aria-expanded")).toBe("true");
-    expect(screen.getAllByRole("link", { name: "Home" })).toHaveLength(2);
+    expect(screen.getAllByRole("link", { name: "How it works" })).toHaveLength(
+      2,
+    );
     expect(screen.getAllByRole("button", { name: "Sign in" })).toHaveLength(2);
 
     fireEvent.click(toggle);
     expect(toggle.getAttribute("aria-expanded")).toBe("false");
-    expect(screen.getAllByRole("link", { name: "Home" })).toHaveLength(1);
+    expect(screen.getAllByRole("link", { name: "How it works" })).toHaveLength(
+      1,
+    );
+  });
+
+  it("routes the primary CTA to the design partner section", () => {
+    render(<LandingNav />);
+
+    const cta = screen.getByRole("link", { name: "Request access" });
+
+    expect(cta.getAttribute("href")).toBe("#talk");
+    expect(screen.queryByRole("link", { name: "Download" })).toBeNull();
   });
 
   it("applies and removes the compact scrolled state", () => {
@@ -47,7 +60,11 @@ describe("LandingNav", () => {
     const { container } = render(<LandingNav />);
     const header = container.querySelector("header");
 
-    expect(header?.className).toContain("top-0");
+    // The compact state is top-2, never top-0: the pill keeps an 8px gap from
+    // the viewport edge even when compact, matching the 16px it already insets
+    // horizontally.
+    expect(header?.className).toContain("top-2");
+    expect(header?.className).not.toContain("top-0");
 
     Object.defineProperty(window, "scrollY", {
       configurable: true,

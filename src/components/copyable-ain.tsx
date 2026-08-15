@@ -11,7 +11,14 @@ const FEEDBACK_LABELS: Record<CopyFeedback, string> = {
   error: "Copy failed",
 };
 
-export function CopyableAin({ value }: { value: string }) {
+export function CopyableAin({
+  value,
+  label = "Copy permanent AIN",
+}: {
+  value: string;
+  /** Accessible name. Defaults to the agent-passport wording. */
+  label?: string;
+}) {
   const [feedback, setFeedback] = useState<CopyFeedback>("idle");
   const resetTimer = useRef<number | undefined>(undefined);
 
@@ -48,9 +55,9 @@ export function CopyableAin({ value }: { value: string }) {
     <>
       <button
         type="button"
-        aria-label="Copy permanent AIN"
+        aria-label={label}
         onClick={copyAin}
-        className="inline-flex shrink-0 items-center gap-2 rounded-lg border border-[#D8DDE8] bg-white px-3 py-2 text-xs font-semibold text-[#091126] transition hover:border-[#4D6FAD] hover:text-[#4D6FAD] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#091126]"
+        className="inline-flex shrink-0 items-center gap-2 rounded-sm border border-line-strong bg-white px-3 py-2 text-xs font-semibold text-ink transition hover:border-secondary hover:text-secondary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink"
       >
         {feedback === "copied" ? (
           <Check className="h-3.5 w-3.5" aria-hidden="true" />

@@ -64,11 +64,11 @@ export function WorkspaceShell({
         >
           <a
             href="/dashboard"
-            aria-label="SUBRA AIN Registry home"
-            className="flex shrink-0 items-center gap-3 rounded-lg font-semibold text-[#091126]"
+            aria-label="Subra AIN Registry home"
+            className="flex shrink-0 items-center gap-3 rounded-lg font-semibold text-ink"
           >
             <SubraLogo className="w-24 sm:w-28" />
-            <span className="hidden border-l border-[#D8DDE8] pl-3 text-[10px] uppercase tracking-[0.14em] text-[#526078] xl:inline">
+            <span className="hidden border-l border-line-strong pl-3 text-[10px] uppercase tracking-[0.14em] text-ink-muted xl:inline">
               AIN Registry
             </span>
           </a>
@@ -120,7 +120,7 @@ export function WorkspaceShell({
           <div className="dashboard-command-actions">
             <NotificationsMenu context={notificationContext} />
             <span
-              className="hidden h-9 w-9 items-center justify-center rounded-full border border-[#D8DDE8] bg-white text-[#526078] sm:flex"
+              className="hidden h-9 w-9 items-center justify-center rounded-full border border-line-strong bg-white text-ink-muted sm:flex"
               aria-hidden="true"
             >
               <Settings className="h-4 w-4" />

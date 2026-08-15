@@ -1,4 +1,10 @@
-import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { CopyableAin } from "@/components/copyable-ain";
@@ -6,7 +12,9 @@ import { CopyableAin } from "@/components/copyable-ain";
 const permanentAin =
   "did:ain:gb:01ARZ3NDEKTSV4RRFFQ69G5FAV:01BX5ZZKBKACTAV9WEVGEMMVRZ";
 
-function setClipboard(writeText: ((value: string) => Promise<void>) | undefined) {
+function setClipboard(
+  writeText: ((value: string) => Promise<void>) | undefined,
+) {
   Object.defineProperty(navigator, "clipboard", {
     configurable: true,
     value: writeText === undefined ? undefined : { writeText },
@@ -25,9 +33,7 @@ describe("CopyableAin", () => {
     setClipboard(writeText);
     render(<CopyableAin value={permanentAin} />);
 
-    fireEvent.click(
-      screen.getByRole("button", { name: "Copy permanent AIN" }),
-    );
+    fireEvent.click(screen.getByRole("button", { name: "Copy permanent AIN" }));
 
     await waitFor(() => {
       expect(writeText).toHaveBeenCalledExactlyOnceWith(permanentAin);
@@ -40,9 +46,7 @@ describe("CopyableAin", () => {
     setClipboard(writeText);
     render(<CopyableAin value={permanentAin} />);
 
-    fireEvent.click(
-      screen.getByRole("button", { name: "Copy permanent AIN" }),
-    );
+    fireEvent.click(screen.getByRole("button", { name: "Copy permanent AIN" }));
 
     await waitFor(() => {
       expect(screen.getByRole("status").textContent).toBe("Copy failed");
@@ -54,9 +58,7 @@ describe("CopyableAin", () => {
     setClipboard(undefined);
     render(<CopyableAin value={permanentAin} />);
 
-    fireEvent.click(
-      screen.getByRole("button", { name: "Copy permanent AIN" }),
-    );
+    fireEvent.click(screen.getByRole("button", { name: "Copy permanent AIN" }));
 
     await waitFor(() => {
       expect(screen.getByRole("status").textContent).toBe("Copy failed");

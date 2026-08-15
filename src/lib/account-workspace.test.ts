@@ -30,9 +30,9 @@ describe("account workspace state", () => {
       ...initialAccountWorkspaceState,
       individualAssurance: { status: "verified" },
     };
-    expect(getPrimaryNextActions(verified).map((action) => action.state)).toEqual(
-      ["completed", "current", "available", "available"],
-    );
+    expect(
+      getPrimaryNextActions(verified).map((action) => action.state),
+    ).toEqual(["completed", "current", "available", "available"]);
 
     const withOrganisation: AccountWorkspaceState = {
       ...verified,
@@ -53,9 +53,9 @@ describe("account workspace state", () => {
       ...withOrganisation,
       selectedOrganisationId: "org-1",
     };
-    expect(getPrimaryNextActions(selected).map((action) => action.state)).toEqual(
-      ["completed", "completed", "completed", "current"],
-    );
+    expect(
+      getPrimaryNextActions(selected).map((action) => action.state),
+    ).toEqual(["completed", "completed", "completed", "current"]);
   });
 
   it("treats membership, not ownership, as the organisation prerequisite", () => {
@@ -144,6 +144,8 @@ describe("account workspace state", () => {
       totalAccessibleAgents: 2,
     });
     expect(getSelectedOrganisation(state)?.id).toBe("org-member");
-    expect(getSelectedOrganisation({ ...state, selectedOrganisationId: "missing" })).toBeUndefined();
+    expect(
+      getSelectedOrganisation({ ...state, selectedOrganisationId: "missing" }),
+    ).toBeUndefined();
   });
 });

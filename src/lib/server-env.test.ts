@@ -47,7 +47,10 @@ describe("parseServerEnv", () => {
 
   it("rejects a non-https issuer", () => {
     expect(() =>
-      parseServerEnv({ ...valid, AUTH_AUTH0_ISSUER: "http://tenant.auth0.com" }),
+      parseServerEnv({
+        ...valid,
+        AUTH_AUTH0_ISSUER: "http://tenant.auth0.com",
+      }),
     ).toThrow();
   });
 

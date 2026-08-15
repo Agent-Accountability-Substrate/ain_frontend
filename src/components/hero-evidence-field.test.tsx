@@ -49,18 +49,23 @@ describe("HeroEvidenceField", () => {
       return position - rowPositions[index]!;
     });
 
-    expect(field.getAttribute("aria-hidden")).toBe("true");
-    expect(rows).toHaveLength(12);
-    expect(gaps.every((gap, index) => index === 0 || gap > gaps[index - 1]!)).toBe(
-      true,
+    // Described, not hidden. The blue trails are agent actions and the warm
+    // terminal is the person they resolve to: that is an argument, and a
+    // visual carrying an argument gets a description rather than aria-hidden.
+    expect(field.getAttribute("aria-hidden")).toBeNull();
+    expect(field.getAttribute("role")).toBe("img");
+    expect(field.getAttribute("aria-label")).toContain(
+      "named accountable person",
     );
+    expect(rows).toHaveLength(12);
+    expect(
+      gaps.every((gap, index) => index === 0 || gap > gaps[index - 1]!),
+    ).toBe(true);
     expect(container.querySelectorAll("[data-trail]")).toHaveLength(3);
     expect(
-      container
-        .querySelector('[data-trail="primary"]')
-        ?.getAttribute("style"),
+      container.querySelector('[data-trail="primary"]')?.getAttribute("style"),
     ).toContain("--trail-duration: 7s");
-    expect(getByTestId("hero-verification-aperture")).toBeDefined();
+    getByTestId("hero-verification-aperture");
   });
 
   it("damps fine-pointer movement into ledger CSS variables and cleans up", () => {
@@ -91,12 +96,12 @@ describe("HeroEvidenceField", () => {
     fireEvent.pointerMove(window, { clientX: 750, clientY: 100 });
     expect(frames).toHaveLength(1);
     frames.shift()!(16);
-    expect(Number.parseFloat(field.style.getPropertyValue("--ledger-x"))).toBeGreaterThan(
-      0,
-    );
-    expect(Number.parseFloat(field.style.getPropertyValue("--ledger-y"))).toBeLessThan(
-      0,
-    );
+    expect(
+      Number.parseFloat(field.style.getPropertyValue("--ledger-x")),
+    ).toBeGreaterThan(0);
+    expect(
+      Number.parseFloat(field.style.getPropertyValue("--ledger-y")),
+    ).toBeLessThan(0);
 
     unmount();
     expect(cancelFrame).toHaveBeenCalled();
@@ -109,14 +114,17 @@ describe("HeroEvidenceField", () => {
     { desktop: true, finePointer: false, reducedMotion: false },
     { desktop: true, finePointer: true, reducedMotion: true },
     { desktop: false, finePointer: true, reducedMotion: false },
-  ])("disables cursor tracking for $finePointer/$reducedMotion/$desktop", (media) => {
-    installMatchMedia(media);
-    const requestFrame = vi
-      .spyOn(window, "requestAnimationFrame")
-      .mockImplementation(() => 1);
-    render(<HeroEvidenceField />);
+  ])(
+    "disables cursor tracking for $finePointer/$reducedMotion/$desktop",
+    (media) => {
+      installMatchMedia(media);
+      const requestFrame = vi
+        .spyOn(window, "requestAnimationFrame")
+        .mockImplementation(() => 1);
+      render(<HeroEvidenceField />);
 
-    fireEvent.pointerMove(window, { clientX: 500, clientY: 250 });
-    expect(requestFrame).not.toHaveBeenCalled();
-  });
+      fireEvent.pointerMove(window, { clientX: 500, clientY: 250 });
+      expect(requestFrame).not.toHaveBeenCalled();
+    },
+  );
 });

@@ -6,10 +6,7 @@ import { OrganisationSwitcher } from "@/components/organisation-switcher";
 describe("OrganisationSwitcher", () => {
   it("is disabled when no organisations are accessible", () => {
     render(
-      <OrganisationSwitcher
-        organisations={[]}
-        selectedOrganisationId={null}
-      />,
+      <OrganisationSwitcher organisations={[]} selectedOrganisationId={null} />,
     );
 
     const switcher = screen.getByRole("combobox", {

@@ -68,9 +68,7 @@ export function HeroEvidenceField() {
     }
 
     const finePointer = window.matchMedia("(pointer: fine)");
-    const reducedMotion = window.matchMedia(
-      "(prefers-reduced-motion: reduce)",
-    );
+    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
     const desktopViewport = window.matchMedia("(min-width: 640px)");
     let enabled = false;
     let frameId: number | null = null;
@@ -173,7 +171,8 @@ export function HeroEvidenceField() {
   return (
     <div
       ref={fieldRef}
-      aria-hidden="true"
+      role="img"
+      aria-label="Signals from many agent actions converge on a single verification point and resolve to one named accountable person."
       className="hero-evidence-field hero-evidence-field-v2"
       data-testid="hero-evidence-field"
     >
