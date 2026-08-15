@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { signIn, signOut } from "@/auth";
 
 export async function signInAction(): Promise<void> {
-  await signIn("auth0", { redirectTo: "/dashboard" });
+  await signIn("auth0", { redirectTo: "/onboarding/identity" });
 }
 
 export async function signOutAction(): Promise<void> {
