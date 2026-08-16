@@ -9,10 +9,15 @@ import {
 } from "@/lib/account-workspace";
 import { userMenuItems } from "@/lib/workspace-navigation";
 
+// Where the tone lives. The union keeps the registry's own words so the
+// meaning survives a filter; these soften them for a reader. "Not approved"
+// rather than "Rejected", and phrased as finished rather than as a task,
+// because a rejected registration cannot be repaired — the way forward is a
+// fresh one.
 const organisationStatusLabel = {
   pending: "Verification pending",
   verified: "Verified",
-  needs_attention: "Needs attention",
+  rejected: "Not approved",
 } as const;
 
 export function OrganisationsView({

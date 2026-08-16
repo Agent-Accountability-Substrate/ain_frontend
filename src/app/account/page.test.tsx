@@ -1,13 +1,23 @@
 import { render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { authMock, redirectMock } = vi.hoisted(() => ({
+import { initialAccountWorkspaceState } from "@/lib/account-workspace";
+
+const { authMock, redirectMock, loadAccountWorkspaceMock } = vi.hoisted(() => ({
   authMock: vi.fn(),
   redirectMock: vi.fn(),
+  loadAccountWorkspaceMock: vi.fn(),
 }));
 
 vi.mock("@/auth", () => ({
   auth: authMock,
+}));
+
+// The page now reads the registry. Mocked here so these stay tests of the
+// route's own behaviour — fail closed, render the right shell — rather than
+// of the DAL, which has its own.
+vi.mock("@/lib/registry-api", () => ({
+  loadAccountWorkspace: loadAccountWorkspaceMock,
 }));
 
 vi.mock("next/navigation", () => ({
@@ -24,6 +34,8 @@ describe("account page", () => {
   beforeEach(() => {
     authMock.mockReset();
     redirectMock.mockReset();
+    loadAccountWorkspaceMock.mockReset();
+    loadAccountWorkspaceMock.mockResolvedValue(initialAccountWorkspaceState);
   });
 
   it("renders profile and assurance as separate account facts", async () => {

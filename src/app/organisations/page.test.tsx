@@ -1,13 +1,23 @@
 import { render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { authMock, redirectMock } = vi.hoisted(() => ({
+import { initialAccountWorkspaceState } from "@/lib/account-workspace";
+
+const { authMock, redirectMock, loadAccountWorkspaceMock } = vi.hoisted(() => ({
   authMock: vi.fn(),
   redirectMock: vi.fn(),
+  loadAccountWorkspaceMock: vi.fn(),
 }));
 
 vi.mock("@/auth", () => ({
   auth: authMock,
+}));
+
+// The page now reads the registry. Mocked here so these stay tests of the
+// route's own behaviour — fail closed, render the right shell — rather than
+// of the DAL, which has its own.
+vi.mock("@/lib/registry-api", () => ({
+  loadAccountWorkspace: loadAccountWorkspaceMock,
 }));
 
 vi.mock("next/navigation", () => ({
@@ -24,6 +34,8 @@ describe("organisations page", () => {
   beforeEach(() => {
     authMock.mockReset();
     redirectMock.mockReset();
+    loadAccountWorkspaceMock.mockReset();
+    loadAccountWorkspaceMock.mockResolvedValue(initialAccountWorkspaceState);
   });
 
   it("renders the first-organisation entry point for a signed-in user", async () => {
@@ -31,7 +43,7 @@ describe("organisations page", () => {
       user: { email: "creator@example.com", name: "Casey Morgan" },
     });
 
-    render(await OrganisationsPage());
+    render(await OrganisationsPage({ searchParams: Promise.resolve({}) }));
 
     expect(
       screen.getByRole("heading", { name: "No organisations yet" }),
@@ -48,7 +60,9 @@ describe("organisations page", () => {
       throw new Error("NEXT_REDIRECT");
     });
 
-    await expect(OrganisationsPage()).rejects.toThrow("NEXT_REDIRECT");
+    await expect(
+      OrganisationsPage({ searchParams: Promise.resolve({}) }),
+    ).rejects.toThrow("NEXT_REDIRECT");
     expect(redirectMock).toHaveBeenCalledWith("/");
   });
 });

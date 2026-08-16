@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 
 import { auth } from "@/auth";
 import { AccountSecurityView } from "@/components/account-security-view";
-import { initialAccountWorkspaceState } from "@/lib/account-workspace";
+import { loadAccountWorkspace } from "@/lib/registry-api";
 
 export const dynamic = "force-dynamic";
 
@@ -15,7 +15,7 @@ export default async function AccountPage() {
     <AccountSecurityView
       email={session.user.email}
       name={session.user.name}
-      state={initialAccountWorkspaceState}
+      state={await loadAccountWorkspace()}
     />
   );
 }

@@ -128,7 +128,7 @@ describe("account workspace state", () => {
           id: "org-member",
           name: "Member org",
           membershipRole: "member",
-          verificationStatus: "needs_attention",
+          verificationStatus: "rejected",
         },
       ],
       selectedOrganisationId: "org-member",

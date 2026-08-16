@@ -3,8 +3,26 @@ import type {
   IndividualAssuranceSummary,
 } from "@/lib/identity-assurance";
 
+/**
+ * The registry's own vocabulary, unrenamed.
+ *
+ * This union used to end in `needs_attention`, which reads as a work item —
+ * something the holder can put right. `rejected` is the opposite: trust-ops
+ * has decided, `verify` refuses anything that is not `pending`, membership
+ * routes treat a rejected organisation as non-existent, and the partial unique
+ * on the registration number exists so the *retry* is a new organisation
+ * rather than a repair of this one. Calling it "needs attention" in the type
+ * would send that promise into every `filter` and counter downstream.
+ *
+ * Softer wording belongs on the rendered label, not here — see the status
+ * labels in `organisations-view`.
+ *
+ * A genuine "we need more from you, and your registration is still alive"
+ * state is missing from the schema and belongs with the reject flow
+ * (`DECISIONS.md`, 2026-08-16).
+ */
 export type OrganisationVerificationStatus =
-  "pending" | "verified" | "needs_attention";
+  "pending" | "verified" | "rejected";
 
 export type OrganisationSummary = {
   id: string;
@@ -78,8 +96,12 @@ export function getAccountOverviewStats(
     organisationsPendingVerification: state.organisations.filter(
       (organisation) => organisation.verificationStatus === "pending",
     ).length,
+    // A rejected registration does warrant the holder's notice — they should
+    // know it will never verify. What it does not warrant is a prompt to fix
+    // it, because there is nothing to fix: the next step is a fresh
+    // registration, not an edit.
     organisationsRequiringAttention: state.organisations.filter(
-      (organisation) => organisation.verificationStatus === "needs_attention",
+      (organisation) => organisation.verificationStatus === "rejected",
     ).length,
     totalAccessibleAgents: state.totalAccessibleAgents,
   };

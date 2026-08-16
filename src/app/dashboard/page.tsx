@@ -2,9 +2,9 @@ import { redirect } from "next/navigation";
 
 import { auth } from "@/auth";
 import { DashboardView } from "@/components/dashboard-view";
-import { initialAccountWorkspaceState } from "@/lib/account-workspace";
+import { loadAccountWorkspace } from "@/lib/registry-api";
 
-// Reads the session per request; never prerendered at build time.
+// Reads the session and the registry per request; never prerendered.
 export const dynamic = "force-dynamic";
 
 export default async function DashboardPage() {
@@ -15,7 +15,7 @@ export default async function DashboardPage() {
   return (
     <DashboardView
       email={session.user.email}
-      state={initialAccountWorkspaceState}
+      state={await loadAccountWorkspace()}
     />
   );
 }
