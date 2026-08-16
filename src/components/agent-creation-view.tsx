@@ -7,7 +7,7 @@ import {
   initialAccountWorkspaceState,
   type AccountWorkspaceState,
 } from "@/lib/account-workspace";
-import { userMenuItems } from "@/lib/workspace-navigation";
+import { menuItemsFor } from "@/lib/workspace-navigation";
 
 export function AgentCreationView({
   email,
@@ -23,7 +23,7 @@ export function AgentCreationView({
     <WorkspaceShell
       currentPath="/agents/new"
       email={email}
-      navigationItems={userMenuItems}
+      navigationItems={menuItemsFor(state.isOperator)}
       navigationLabel="Account sections"
       organisations={state.organisations}
       selectedOrganisationId={state.selectedOrganisationId}

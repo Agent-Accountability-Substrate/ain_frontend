@@ -7,7 +7,7 @@ import {
   initialAccountWorkspaceState,
   type AccountWorkspaceState,
 } from "@/lib/account-workspace";
-import { userMenuItems } from "@/lib/workspace-navigation";
+import { menuItemsFor } from "@/lib/workspace-navigation";
 
 // Where the tone lives. The union keeps the registry's own words so the meaning
 // survives a filter; these soften them for a reader. The two that are not
@@ -36,7 +36,7 @@ export function OrganisationsView({
       assuranceStatus={state.individualAssurance.status}
       currentPath="/organisations"
       email={email}
-      navigationItems={userMenuItems}
+      navigationItems={menuItemsFor(state.isOperator)}
       navigationLabel="Account sections"
       organisations={state.organisations}
       selectedOrganisationId={state.selectedOrganisationId}

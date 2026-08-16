@@ -14,7 +14,7 @@ import {
   createOrganisationAction,
   type CreateOrganisationState,
 } from "@/lib/organisation-actions";
-import { userMenuItems } from "@/lib/workspace-navigation";
+import { menuItemsFor } from "@/lib/workspace-navigation";
 
 const INITIAL: CreateOrganisationState = { status: "idle" };
 
@@ -53,7 +53,7 @@ export function OrganisationCreationView({
     <WorkspaceShell
       currentPath="/organisations"
       email={email}
-      navigationItems={userMenuItems}
+      navigationItems={menuItemsFor(state.isOperator)}
       navigationLabel="Account sections"
       organisations={state.organisations}
       selectedOrganisationId={state.selectedOrganisationId}

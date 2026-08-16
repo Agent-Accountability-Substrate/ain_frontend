@@ -439,6 +439,101 @@ export async function submitAgent(
   );
 }
 
+const reviewItemSchema = z.object({
+  organisation_id: z.uuid(),
+  name: z.string(),
+  jurisdiction: z.string(),
+  registration_number: z.string(),
+  web_url: z.string().nullable(),
+  address: z.string(),
+  verification_status: z.enum(["pending", "needs_attention"]),
+  review_reason: z.string().nullable(),
+  created_at: z.iso.datetime(),
+});
+
+const reviewQueueSchema = z.object({
+  organisations: z.array(reviewItemSchema),
+});
+
+export type ReviewItem = z.infer<typeof reviewItemSchema>;
+
+/**
+ * `GET /operations/review-queue` — what trust operations has left to decide.
+ *
+ * The one cross-tenant list in the product. The operator belongs to none of
+ * these organisations; the registry's `organisation_review_read` policy is
+ * what makes the read possible, and it re-derives the role from the database
+ * rather than trusting the caller.
+ */
+export async function listReviewQueue(): Promise<ReviewItem[]> {
+  const body = reviewQueueSchema.parse(await get("/operations/review-queue"));
+  return body.organisations;
+}
+
+const registerRecordSchema = z.object({
+  company_name: z.string(),
+  company_status: z.string(),
+  company_type: z.string().nullable(),
+  date_of_creation: z.string().nullable(),
+  registered_office_address: z.string().nullable(),
+});
+
+const registrationCheckSchema = z.object({
+  registration_number: z.string(),
+  jurisdiction: z.string(),
+  claimed_name: z.string(),
+  claimed_address: z.string(),
+  // Absent when the register holds no such company — a finding, and a loud one.
+  register: registerRecordSchema.nullable(),
+  name_matches: z.boolean().nullable(),
+  is_active: z.boolean().nullable(),
+});
+
+export type RegistrationCheck = z.infer<typeof registrationCheckSchema>;
+
+/**
+ * `GET /orgs/{id}/registration-check` — what the company register says.
+ *
+ * Advisory only. It confirms a company exists under that number and what it is
+ * called; whether *this person* may act for it is published nowhere, so this
+ * informs the decision and never makes it.
+ */
+export async function checkRegistration(
+  organisationId: string,
+): Promise<RegistrationCheck> {
+  return registrationCheckSchema.parse(
+    await get(`/orgs/${encodeURIComponent(organisationId)}/registration-check`),
+  );
+}
+
+const verificationDecisionSchema = z.object({
+  organisation_id: z.uuid(),
+  verification_status: z.string(),
+  review_reason: z.string().nullable(),
+  verified_at: z.iso.datetime().nullable(),
+});
+
+export type VerificationOutcome = "verified" | "needs_attention" | "rejected";
+
+/** `POST /orgs/{id}/verification` — record the outcome of a review. */
+export async function recordVerification(
+  organisationId: string,
+  outcome: VerificationOutcome,
+  reviewReason: string | null,
+): Promise<z.infer<typeof verificationDecisionSchema>> {
+  return verificationDecisionSchema.parse(
+    await request(`/orgs/${encodeURIComponent(organisationId)}/verification`, {
+      method: "POST",
+      body: {
+        outcome,
+        // Omitted rather than null for a verified outcome: the registry refuses
+        // a reason there rather than ignoring one.
+        ...(reviewReason !== null && { review_reason: reviewReason }),
+      },
+    }),
+  );
+}
+
 function toSummary(organisation: RegistryOrganisation): OrganisationSummary {
   return {
     id: organisation.organisation_id,
@@ -483,6 +578,12 @@ export async function loadAccountWorkspace(
   );
 
   const summaries = organisations.map(toSummary);
+  // Read off the raw roles before `toSummary` drops them. The console's
+  // navigation entry keys on this; the registry refuses the routes regardless,
+  // so this decides what is *offered*, never what is permitted.
+  const isOperator = organisations.some((organisation) =>
+    organisation.roles.includes("trust_ops"),
+  );
   const selected =
     selectedOrganisationId !== null &&
     summaries.some((summary) => summary.id === selectedOrganisationId)
@@ -496,6 +597,7 @@ export async function loadAccountWorkspace(
 
   return {
     individualAssurance,
+    isOperator,
     organisations: summaries,
     selectedOrganisationId: selected,
     totalAccessibleAgents: agentCounts.reduce((total, n) => total + n, 0),

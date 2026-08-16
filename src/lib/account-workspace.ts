@@ -44,6 +44,13 @@ export type OrganisationActivity = {
 
 export type AccountWorkspaceState = {
   individualAssurance: IndividualAssuranceSummary;
+  /**
+   * Whether this person holds `trust_ops`, which the schema confines to the
+   * platform organisation. Decides whether the console is *offered* in the
+   * navigation — never whether it is permitted, which the registry settles on
+   * every request.
+   */
+  isOperator: boolean;
   organisations: readonly OrganisationSummary[];
   selectedOrganisationId: string | null;
   totalAccessibleAgents: number;
@@ -68,6 +75,7 @@ export type PrimaryNextAction = {
 
 export const initialAccountWorkspaceState: AccountWorkspaceState = {
   individualAssurance: { status: "not_started" },
+  isOperator: false,
   organisations: [],
   selectedOrganisationId: null,
   totalAccessibleAgents: 0,
