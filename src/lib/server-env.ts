@@ -20,7 +20,17 @@ const serverEnvSchema = z
     AUTH_AUTH0_ID: z.string().min(1),
     AUTH_AUTH0_SECRET: z.string().min(1),
     AUTH_AUTH0_ISSUER: z.string().url().startsWith("https://"),
+    // The registered Auth0 API's identifier. Required, not optional: without it
+    // Auth.js requests no audience, Auth0 issues a token the backend cannot
+    // read, and every authenticated call fails at the edge — a failure that
+    // looks like broken permissions rather than missing configuration.
+    AUTH_AUTH0_AUDIENCE: z.string().min(1),
     AUTH_URL: z.string().url().startsWith("https://").optional(),
+    // Where `ain_backend_api` lives. Optional locally, where it defaults to the
+    // uvicorn address in that repo's README; required in production for the
+    // same reason as AUTH_URL — a wrong or absent origin must fail at boot, not
+    // silently send bearer tokens somewhere unintended.
+    AIN_API_BASE_URL: z.string().url().optional(),
   })
   .superRefine((env, ctx) => {
     if (env.NODE_ENV === "production" && env.AUTH_URL === undefined) {
@@ -30,6 +40,16 @@ const serverEnvSchema = z
         message:
           "AUTH_URL is required in production — pin the external https origin " +
           "so session cookies are written Secure behind the TLS-terminating proxy.",
+      });
+    }
+    if (env.NODE_ENV === "production" && env.AIN_API_BASE_URL === undefined) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["AIN_API_BASE_URL"],
+        message:
+          "AIN_API_BASE_URL is required in production — the localhost default " +
+          "is a development convenience, and falling back to it in a deployed " +
+          "environment would send bearer tokens to nothing.",
       });
     }
   });
@@ -50,7 +70,9 @@ export function parseServerEnv(
     AUTH_AUTH0_ID: emptyToUndefined(source["AUTH_AUTH0_ID"]),
     AUTH_AUTH0_SECRET: emptyToUndefined(source["AUTH_AUTH0_SECRET"]),
     AUTH_AUTH0_ISSUER: emptyToUndefined(source["AUTH_AUTH0_ISSUER"]),
+    AUTH_AUTH0_AUDIENCE: emptyToUndefined(source["AUTH_AUTH0_AUDIENCE"]),
     AUTH_URL: emptyToUndefined(source["AUTH_URL"]),
+    AIN_API_BASE_URL: emptyToUndefined(source["AIN_API_BASE_URL"]),
   });
 }
 

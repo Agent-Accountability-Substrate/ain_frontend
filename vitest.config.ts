@@ -4,6 +4,14 @@ import { defineConfig } from "vitest/config";
 
 export default defineConfig({
   plugins: [react(), tsconfigPaths()],
+  resolve: {
+    alias: {
+      // See test/stubs/server-only.ts — Next resolves this internally and
+      // discards the package body; only Vitest needs something to import.
+      "server-only": new URL("./test/stubs/server-only.ts", import.meta.url)
+        .pathname,
+    },
+  },
   test: {
     environment: "jsdom",
     setupFiles: ["./vitest.setup.ts"],
