@@ -29,11 +29,44 @@ import { getServerEnv } from "@/lib/server-env";
 /** Local default matching `uvicorn ain_backend_api.app:create_app --factory`. */
 const LOCAL_API_BASE_URL = "http://127.0.0.1:8000";
 
-/** The registry could not be reached, or answered in a way we cannot use. */
-export class RegistryUnavailableError extends Error {}
+/**
+ * The registry could not be reached, or answered in a way we cannot use.
+ *
+ * `detail` is the registry's own explanation when it gave one. A 503 from this
+ * backend has two quite different meanings — "storage is temporarily
+ * unavailable", where retrying is the right advice, and "issuance signing is
+ * not configured", where it never is. Both arrive as 503, so a caller that
+ * only knows the status tells someone to retry something that cannot succeed.
+ */
+export class RegistryUnavailableError extends Error {
+  readonly detail: string | undefined;
+
+  constructor(message: string, options?: ErrorOptions & { detail?: string }) {
+    super(message, options);
+    this.detail = options?.detail;
+  }
+}
 
 /** No usable session — the caller must authenticate before this can work. */
 export class NotAuthenticatedError extends Error {}
+
+/**
+ * The registry refused this write, and said why in terms a person can act on.
+ *
+ * Separate from `RegistryUnavailableError` because the two need opposite
+ * treatment: this one is the caller's to fix and its `detail` is safe to show,
+ * while an unavailability is ours and its message is not. `status` is carried
+ * so a caller can distinguish "already registered" from "slow down" without
+ * matching on prose.
+ */
+export class RegistryRefusedError extends Error {
+  constructor(
+    readonly status: number,
+    readonly detail: string,
+  ) {
+    super(detail);
+  }
+}
 
 const membershipSchema = z.object({
   organisation_id: z.uuid(),
@@ -107,7 +140,44 @@ function baseUrl(): string {
   return getServerEnv().AIN_API_BASE_URL ?? LOCAL_API_BASE_URL;
 }
 
-async function get(path: string): Promise<unknown> {
+/**
+ * Statuses whose `detail` is written for a person and is theirs to act on.
+ *
+ * An allowlist rather than "any 4xx", because most 4xx are not the caller's at
+ * all. A **405** is the client calling a route the registry does not serve that
+ * way — a version skew between the two, which showed up the first time this was
+ * pointed at a backend running older code and rendered "Method Not Allowed" to
+ * the user. A **404** on a tenant route means "not a member", and repeating the
+ * registry's wording would tell a stranger which of the two it was. Both belong
+ * on the unavailable side with everything else unrecognised.
+ *
+ * 403 "insufficient role" / "organisation is not verified", 409 "company
+ * already registered", 422 "the member's email is not a usable address" and
+ * 429's back-off are all written to be read. Add to this set only when the
+ * registry gains another status that carries a message worth showing.
+ */
+const RELAYABLE = new Set([403, 409, 422, 429, 503]);
+
+/** The registry's `{"detail": "..."}`, when it sent one we can show. */
+async function refusalDetail(response: Response): Promise<string | null> {
+  try {
+    const body: unknown = await response.json();
+    if (body !== null && typeof body === "object" && "detail" in body) {
+      const detail = (body as { detail: unknown }).detail;
+      // FastAPI's own 422 body is an array of per-field objects, which is not
+      // something to put in front of a person. Only a plain string is shown.
+      if (typeof detail === "string") return detail;
+    }
+  } catch {
+    // No JSON, or unreadable. The caller falls back to its own wording.
+  }
+  return null;
+}
+
+async function request(
+  path: string,
+  init?: { method: "POST" | "PATCH"; body: unknown },
+): Promise<unknown> {
   const session = await auth();
   // Absent covers both "not signed in" and "access token expired", which the
   // session callback collapses on purpose — neither can be fixed by retrying
@@ -117,7 +187,12 @@ async function get(path: string): Promise<unknown> {
   let response: Response;
   try {
     response = await fetch(new URL(path, baseUrl()), {
-      headers: { authorization: `Bearer ${session.accessToken}` },
+      method: init?.method ?? "GET",
+      headers: {
+        authorization: `Bearer ${session.accessToken}`,
+        ...(init && { "content-type": "application/json" }),
+      },
+      ...(init && { body: JSON.stringify(init.body) }),
       // Authority is re-read from the registry on every backend request, so a
       // cached response would reinstate exactly the staleness that reading it
       // per request exists to avoid.
@@ -136,11 +211,26 @@ async function get(path: string): Promise<unknown> {
 
   if (response.status === 401) throw new NotAuthenticatedError();
   if (!response.ok) {
+    const detail = RELAYABLE.has(response.status)
+      ? await refusalDetail(response)
+      : null;
+    // The status decides whose problem it is; the detail only decides how well
+    // we can describe it. A 4xx the caller can act on is a refusal; a 5xx stays
+    // an unavailability even when the registry told us exactly which subsystem
+    // is unconfigured.
+    if (detail !== null && response.status < 500) {
+      throw new RegistryRefusedError(response.status, detail);
+    }
     throw new RegistryUnavailableError(
       `registry answered ${response.status} for ${path}`,
+      detail !== null ? { detail } : undefined,
     );
   }
   return response.json();
+}
+
+async function get(path: string): Promise<unknown> {
+  return request(path);
 }
 
 /**
@@ -197,6 +287,149 @@ export async function identityAssurance(): Promise<IndividualAssuranceSummary> {
       reviewReason: record.review_reason,
     }),
   };
+}
+
+const createdOrganisationSchema = z.object({
+  organisation_id: z.uuid(),
+  org_ulid: z.string(),
+  verification_status: z.literal("pending"),
+});
+
+export type CreatedOrganisation = z.infer<typeof createdOrganisationSchema>;
+
+export type NewOrganisation = {
+  name: string;
+  /** ISO 3166-1 alpha-2, lowercase — the registry rejects anything else. */
+  jurisdiction: string;
+  registrationNumber: string;
+  address: string;
+  webUrl?: string;
+};
+
+/**
+ * `POST /orgs` — register a company. Anyone with a verified address may.
+ *
+ * The organisation is created `pending` and can do nothing until trust-ops
+ * confirms the registration number against the company register and the
+ * creator's authority to represent it out of band. That is why this needs no
+ * gate of its own beyond being signed in.
+ */
+export async function createOrganisation(
+  input: NewOrganisation,
+): Promise<CreatedOrganisation> {
+  return createdOrganisationSchema.parse(
+    await request("/orgs", {
+      method: "POST",
+      body: {
+        name: input.name,
+        jurisdiction: input.jurisdiction,
+        registration_number: input.registrationNumber,
+        address: input.address,
+        ...(input.webUrl && { web_url: input.webUrl }),
+      },
+    }),
+  );
+}
+
+const registeredAgentSchema = z.object({
+  agent_id: z.uuid(),
+  ain: z.string(),
+  status: z.literal("draft"),
+});
+
+export type RegisteredAgent = z.infer<typeof registeredAgentSchema>;
+
+/** `POST /orgs/{id}/agents` — mint an AIN and open a draft. */
+export async function registerAgent(
+  organisationId: string,
+  input: { name: string; role: string; riskClass: string },
+): Promise<RegisteredAgent> {
+  return registeredAgentSchema.parse(
+    await request(`/orgs/${encodeURIComponent(organisationId)}/agents`, {
+      method: "POST",
+      body: { name: input.name, role: input.role, risk_class: input.riskClass },
+    }),
+  );
+}
+
+export type AgentDraftPatch = {
+  scope: {
+    actionClasses: string[];
+    constraints: Record<string, Record<string, unknown>>;
+    riskLevel: string;
+    regulatoryMappings: string[];
+  };
+  accountability: {
+    roleTitle: string;
+    responsibilityArea: string;
+    regulatoryIdentifier: string;
+  };
+};
+
+/**
+ * `PATCH /orgs/{id}/agents/{ain}` — attach scope and named accountability.
+ *
+ * A scope write is a full supersede, so the caller states the whole scope. The
+ * registry has no defaults here on purpose: a partial scope would silently
+ * declare a deny-all one nobody wrote.
+ */
+export async function patchAgent(
+  organisationId: string,
+  ain: string,
+  patch: AgentDraftPatch,
+): Promise<void> {
+  await request(
+    `/orgs/${encodeURIComponent(organisationId)}/agents/${encodeURIComponent(ain)}`,
+    {
+      method: "PATCH",
+      body: {
+        scope: {
+          action_classes: patch.scope.actionClasses,
+          constraints: patch.scope.constraints,
+          risk_level: patch.scope.riskLevel,
+          regulatory_mappings: patch.scope.regulatoryMappings,
+        },
+        accountability: {
+          role_title: patch.accountability.roleTitle,
+          responsibility_area: patch.accountability.responsibilityArea,
+          regulatory_identifier: patch.accountability.regulatoryIdentifier,
+        },
+      },
+    },
+  );
+}
+
+const submittedAgentSchema = z.object({
+  ain: z.string(),
+  status: z.string(),
+  document_version: z.number().int(),
+  document_hash: z.string(),
+  kid: z.string(),
+  chain_head: z.string(),
+  resolver_url: z.string(),
+});
+
+export type SubmittedAgent = z.infer<typeof submittedAgentSchema>;
+
+/**
+ * `POST /orgs/{id}/agents/{ain}/submit` — sign the document and activate.
+ *
+ * The one write here that needs custody provisioned: it canonicalises the
+ * payload, has it signed, and appends the genesis lifecycle events in one
+ * transaction. Without Vault the registry refuses rather than issuing an agent
+ * under a development key, which is why a 503 from this call is configuration
+ * rather than a bug.
+ */
+export async function submitAgent(
+  organisationId: string,
+  ain: string,
+): Promise<SubmittedAgent> {
+  return submittedAgentSchema.parse(
+    await request(
+      `/orgs/${encodeURIComponent(organisationId)}/agents/${encodeURIComponent(ain)}/submit`,
+      { method: "POST", body: {} },
+    ),
+  );
 }
 
 function toSummary(organisation: RegistryOrganisation): OrganisationSummary {

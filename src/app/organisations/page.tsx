@@ -2,7 +2,8 @@ import { redirect } from "next/navigation";
 
 import { auth } from "@/auth";
 import { OrganisationsView } from "@/components/organisations-view";
-import { loadAccountWorkspace } from "@/lib/registry-api";
+import { WorkspaceUnavailable } from "@/components/workspace-unavailable";
+import { loadWorkspace } from "@/lib/workspace-page";
 
 export const dynamic = "force-dynamic";
 
@@ -20,13 +21,21 @@ export default async function OrganisationsPage({
   // organisation in the path; an ambient selection on the client would put
   // back exactly the implicit tenancy that removed.
   const selected = (await searchParams)["org"];
+  const workspace = await loadWorkspace(
+    typeof selected === "string" ? selected : null,
+  );
+  if (workspace.status === "unavailable") {
+    return (
+      <WorkspaceUnavailable
+        currentPath="/organisations"
+        detail={workspace.detail}
+        email={session.user.email}
+        workspaceLabel="Organisations"
+      />
+    );
+  }
 
   return (
-    <OrganisationsView
-      email={session.user.email}
-      state={await loadAccountWorkspace(
-        typeof selected === "string" ? selected : null,
-      )}
-    />
+    <OrganisationsView email={session.user.email} state={workspace.state} />
   );
 }

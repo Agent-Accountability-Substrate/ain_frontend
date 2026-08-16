@@ -1,6 +1,8 @@
 import { render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { appRouterStubs } from "@test/stubs/app-router";
+
 const { authMock, redirectMock } = vi.hoisted(() => ({
   authMock: vi.fn(),
   redirectMock: vi.fn(),
@@ -11,6 +13,7 @@ vi.mock("@/auth", () => ({
 }));
 
 vi.mock("next/navigation", () => ({
+  ...appRouterStubs,
   redirect: redirectMock,
 }));
 

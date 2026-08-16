@@ -1,8 +1,9 @@
 import { redirect } from "next/navigation";
 
-import { auth } from "@/auth";
 import { OrganisationCreationView } from "@/components/organisation-creation-view";
-import { loadAccountWorkspace } from "@/lib/registry-api";
+import { WorkspaceUnavailable } from "@/components/workspace-unavailable";
+import { auth } from "@/auth";
+import { loadWorkspace } from "@/lib/workspace-page";
 
 export const dynamic = "force-dynamic";
 
@@ -25,10 +26,22 @@ export default async function OrganisationCreationPage() {
   // stricter gate in a client duplicates an authorisation decision somewhere
   // it cannot be enforced. The suggested order still shows in the next-action
   // list, as guidance rather than a lock.
+  const workspace = await loadWorkspace();
+  if (workspace.status === "unavailable") {
+    return (
+      <WorkspaceUnavailable
+        currentPath="/organisations"
+        detail={workspace.detail}
+        email={session.user.email}
+        workspaceLabel="Create organisation"
+      />
+    );
+  }
+
   return (
     <OrganisationCreationView
       email={session.user.email}
-      state={await loadAccountWorkspace()}
+      state={workspace.state}
     />
   );
 }

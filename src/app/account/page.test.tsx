@@ -1,12 +1,14 @@
 import { render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { appRouterStubs } from "@test/stubs/app-router";
+
 import { initialAccountWorkspaceState } from "@/lib/account-workspace";
 
-const { authMock, redirectMock, loadAccountWorkspaceMock } = vi.hoisted(() => ({
+const { authMock, redirectMock, loadWorkspaceMock } = vi.hoisted(() => ({
   authMock: vi.fn(),
   redirectMock: vi.fn(),
-  loadAccountWorkspaceMock: vi.fn(),
+  loadWorkspaceMock: vi.fn(),
 }));
 
 vi.mock("@/auth", () => ({
@@ -16,11 +18,12 @@ vi.mock("@/auth", () => ({
 // The page now reads the registry. Mocked here so these stay tests of the
 // route's own behaviour — fail closed, render the right shell — rather than
 // of the DAL, which has its own.
-vi.mock("@/lib/registry-api", () => ({
-  loadAccountWorkspace: loadAccountWorkspaceMock,
+vi.mock("@/lib/workspace-page", () => ({
+  loadWorkspace: loadWorkspaceMock,
 }));
 
 vi.mock("next/navigation", () => ({
+  ...appRouterStubs,
   redirect: redirectMock,
 }));
 
@@ -34,8 +37,11 @@ describe("account page", () => {
   beforeEach(() => {
     authMock.mockReset();
     redirectMock.mockReset();
-    loadAccountWorkspaceMock.mockReset();
-    loadAccountWorkspaceMock.mockResolvedValue(initialAccountWorkspaceState);
+    loadWorkspaceMock.mockReset();
+    loadWorkspaceMock.mockResolvedValue({
+      status: "ready",
+      state: initialAccountWorkspaceState,
+    });
   });
 
   it("renders profile and assurance as separate account facts", async () => {

@@ -1,18 +1,23 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { appRouterStubs } from "@test/stubs/app-router";
+
 import { initialAccountWorkspaceState } from "@/lib/account-workspace";
 
-const { authMock, redirectMock, loadAccountWorkspaceMock } = vi.hoisted(() => ({
+const { authMock, redirectMock, loadWorkspaceMock } = vi.hoisted(() => ({
   authMock: vi.fn(),
   redirectMock: vi.fn(),
-  loadAccountWorkspaceMock: vi.fn(),
+  loadWorkspaceMock: vi.fn(),
 }));
 
 vi.mock("@/auth", () => ({ auth: authMock }));
-vi.mock("next/navigation", () => ({ redirect: redirectMock }));
+vi.mock("next/navigation", () => ({
+  ...appRouterStubs,
+  redirect: redirectMock,
+}));
 vi.mock("@/lib/auth-actions", () => ({ signOutAction: vi.fn() }));
-vi.mock("@/lib/registry-api", () => ({
-  loadAccountWorkspace: loadAccountWorkspaceMock,
+vi.mock("@/lib/workspace-page", () => ({
+  loadWorkspace: loadWorkspaceMock,
 }));
 
 import OrganisationCreationPage from "@/app/organisations/new/page";
@@ -21,8 +26,11 @@ describe("organisation creation page", () => {
   beforeEach(() => {
     authMock.mockReset();
     redirectMock.mockReset();
-    loadAccountWorkspaceMock.mockReset();
-    loadAccountWorkspaceMock.mockResolvedValue(initialAccountWorkspaceState);
+    loadWorkspaceMock.mockReset();
+    loadWorkspaceMock.mockResolvedValue({
+      status: "ready",
+      state: initialAccountWorkspaceState,
+    });
   });
 
   it("lets an unverified account reach the form", async () => {

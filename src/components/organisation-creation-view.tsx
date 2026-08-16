@@ -1,17 +1,22 @@
 "use client";
 
 import { ArrowRight, Building2, ShieldCheck } from "lucide-react";
-import { type FormEvent, useState } from "react";
+import { useActionState, useState } from "react";
 
-import { AgentCreationWizard } from "@/components/agent-creation-wizard";
 import { PrimaryNextActions } from "@/components/primary-next-actions";
 import { WorkspaceShell } from "@/components/workspace-shell";
 import {
   initialAccountWorkspaceState,
   type AccountWorkspaceState,
-  type OrganisationSummary,
 } from "@/lib/account-workspace";
+import { JURISDICTIONS } from "@/lib/jurisdictions";
+import {
+  createOrganisationAction,
+  type CreateOrganisationState,
+} from "@/lib/organisation-actions";
 import { userMenuItems } from "@/lib/workspace-navigation";
+
+const INITIAL: CreateOrganisationState = { status: "idle" };
 
 export function OrganisationCreationView({
   email,
@@ -20,42 +25,29 @@ export function OrganisationCreationView({
   email: string | null | undefined;
   state?: AccountWorkspaceState;
 }) {
+  const [result, formAction, pending] = useActionState(
+    createOrganisationAction,
+    INITIAL,
+  );
   const [step, setStep] = useState<1 | 2>(1);
-  const [organisationName, setOrganisationName] = useState("");
+  // Controlled, so a rejected submission keeps what was typed without the
+  // action having to carry every value back to the client.
+  const [name, setName] = useState("");
   const [registrationNumber, setRegistrationNumber] = useState("");
-  const [country, setCountry] = useState("United Kingdom");
-  const [authority, setAuthority] = useState("Director or equivalent");
+  // Widened from the literal union: the select's value is whatever the DOM
+  // reports, and the action re-validates it against the same list anyway.
+  const [jurisdiction, setJurisdiction] = useState<string>(
+    JURISDICTIONS[0].code,
+  );
+  const [address, setAddress] = useState("");
+  const [webUrl, setWebUrl] = useState("");
   const [authorityConfirmed, setAuthorityConfirmed] = useState(false);
-  const [createdOrganisation, setCreatedOrganisation] =
-    useState<OrganisationSummary | null>(null);
 
-  // One derived state for every child: the shell footer and the sidebar
-  // checklist both read from this, so they cannot disagree about whether the
-  // organisation exists.
-  const workspaceState: AccountWorkspaceState = createdOrganisation
-    ? {
-        ...state,
-        organisations: [createdOrganisation],
-        selectedOrganisationId: createdOrganisation.id,
-      }
-    : state;
-
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (step === 1) {
-      setStep(2);
-      return;
-    }
-
-    if (!authorityConfirmed) return;
-
-    setCreatedOrganisation({
-      id: "draft-organisation",
-      name: organisationName.trim(),
-      membershipRole: "owner",
-      verificationStatus: "pending",
-    });
-  }
+  const errors = result.status === "error" ? result.errors : {};
+  const created = result.status === "created";
+  const jurisdictionLabel =
+    JURISDICTIONS.find((entry) => entry.code === jurisdiction)?.label ??
+    jurisdiction;
 
   return (
     <WorkspaceShell
@@ -63,32 +55,46 @@ export function OrganisationCreationView({
       email={email}
       navigationItems={userMenuItems}
       navigationLabel="Account sections"
-      organisations={workspaceState.organisations}
-      selectedOrganisationId={workspaceState.selectedOrganisationId}
+      organisations={state.organisations}
+      selectedOrganisationId={state.selectedOrganisationId}
       showOrganisationSwitcher
-      signedInAs={createdOrganisation?.name ?? "No organisation selected"}
+      signedInAs={created ? name : "No organisation selected"}
       workspaceLabel="Create organisation"
     >
-      <div className="account-wizard-workspace">
-        <aside className="account-wizard-side">
-          <PrimaryNextActions state={workspaceState} />
-          <div className="wizard-side-note">
-            <ShieldCheck className="h-4 w-4" aria-hidden="true" />
-            <p>
-              Individual assurance, organisation legitimacy, and authority are
-              separate checks.
-            </p>
-          </div>
-        </aside>
-
-        <div className="account-wizard-main">
-          {createdOrganisation ? (
-            <AgentCreationWizard
-              organisationName={createdOrganisation.name}
-              onBack={() => setCreatedOrganisation(null)}
-            />
+      <div className="account-route-workspace">
+        <PrimaryNextActions state={state} />
+        <div className="wizard-panel">
+          {created ? (
+            <div className="wizard-form">
+              <div className="wizard-form-heading">
+                <span className="wizard-form-icon">
+                  <ShieldCheck className="h-5 w-5" aria-hidden="true" />
+                </span>
+                <div>
+                  <p className="dashboard-eyebrow">
+                    Submitted for verification
+                  </p>
+                  <h1>{name} is registered</h1>
+                  {/* Deliberately not a link into agent creation. The registry
+                      refuses agents in an unverified organisation, so offering
+                      it here would send someone straight into a refusal. */}
+                  <p>
+                    Trust operations will confirm the company number against
+                    Companies House and check your authority to act for it.
+                    Until that is done the organisation is inert — agents can be
+                    registered once it is verified.
+                  </p>
+                </div>
+              </div>
+              <div className="wizard-form-actions">
+                <a className="wizard-primary-action" href="/organisations">
+                  Back to organisations
+                  <ArrowRight className="h-4 w-4" aria-hidden="true" />
+                </a>
+              </div>
+            </div>
           ) : (
-            <form className="wizard-form" onSubmit={handleSubmit}>
+            <form className="wizard-form" action={formAction}>
               <div className="wizard-form-heading">
                 <span className="wizard-form-icon">
                   <Building2 className="h-5 w-5" aria-hidden="true" />
@@ -97,7 +103,7 @@ export function OrganisationCreationView({
                   <p className="dashboard-eyebrow">
                     Step {step} of 2 · Organisation setup
                   </p>
-                  <h1>Create your first organisation</h1>
+                  <h1>Create your organisation</h1>
                   <p>
                     Register the legal entity that will own and operate your
                     accountable agents.
@@ -119,46 +125,82 @@ export function OrganisationCreationView({
                 </li>
               </ol>
 
-              {step === 1 ? (
-                <div className="wizard-form-grid">
-                  <label>
-                    <span>Legal organisation name</span>
-                    <input
-                      required
-                      value={organisationName}
-                      onChange={(event) =>
-                        setOrganisationName(event.target.value)
-                      }
-                      placeholder="Example Holdings Ltd"
-                    />
-                  </label>
-                  <label>
-                    <span>Companies House number</span>
-                    <input
-                      required
-                      value={registrationNumber}
-                      onChange={(event) =>
-                        setRegistrationNumber(event.target.value.toUpperCase())
-                      }
-                      placeholder="01234567"
-                      inputMode="text"
-                    />
-                  </label>
-                  <label>
-                    <span>Registration jurisdiction</span>
-                    <select
-                      value={country}
-                      onChange={(event) => setCountry(event.target.value)}
-                    >
-                      <option>United Kingdom</option>
-                    </select>
-                  </label>
-                </div>
-              ) : (
+              {/* Every field stays mounted so the submitted FormData carries
+                  all of them; step 2 hides the inputs rather than unmounting. */}
+              <div className="wizard-form-grid" hidden={step !== 1}>
+                <label>
+                  <span>Legal organisation name</span>
+                  <input
+                    name="name"
+                    required
+                    value={name}
+                    onChange={(event) => setName(event.target.value)}
+                    placeholder="Example Holdings Ltd"
+                  />
+                  {errors["name"] ? (
+                    <small role="alert">{errors["name"]}</small>
+                  ) : null}
+                </label>
+                <label>
+                  <span>Companies House number</span>
+                  <input
+                    name="registrationNumber"
+                    required
+                    value={registrationNumber}
+                    onChange={(event) =>
+                      setRegistrationNumber(event.target.value.toUpperCase())
+                    }
+                    placeholder="01234567"
+                    inputMode="text"
+                  />
+                  {errors["registrationNumber"] ? (
+                    <small role="alert">{errors["registrationNumber"]}</small>
+                  ) : null}
+                </label>
+                <label>
+                  <span>Registration jurisdiction</span>
+                  <select
+                    name="jurisdiction"
+                    value={jurisdiction}
+                    onChange={(event) => setJurisdiction(event.target.value)}
+                  >
+                    {JURISDICTIONS.map((entry) => (
+                      <option key={entry.code} value={entry.code}>
+                        {entry.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label>
+                  <span>Registered office address</span>
+                  <textarea
+                    name="address"
+                    required
+                    rows={3}
+                    value={address}
+                    onChange={(event) => setAddress(event.target.value)}
+                    placeholder="1 Example Street, London, EC1A 1AA"
+                  />
+                  {errors["address"] ? (
+                    <small role="alert">{errors["address"]}</small>
+                  ) : null}
+                </label>
+                <label>
+                  <span>Website (optional)</span>
+                  <input
+                    name="webUrl"
+                    value={webUrl}
+                    onChange={(event) => setWebUrl(event.target.value)}
+                    placeholder="https://example.com"
+                  />
+                </label>
+              </div>
+
+              {step === 2 ? (
                 <div className="wizard-review">
                   <div>
                     <span>Organisation</span>
-                    <strong>{organisationName}</strong>
+                    <strong>{name}</strong>
                   </div>
                   <div>
                     <span>Companies House number</span>
@@ -166,8 +208,15 @@ export function OrganisationCreationView({
                   </div>
                   <div>
                     <span>Jurisdiction</span>
-                    <strong>{country}</strong>
+                    <strong>{jurisdictionLabel}</strong>
                   </div>
+                  <div>
+                    <span>Registered office</span>
+                    <strong>{address}</strong>
+                  </div>
+                  {/* An attestation, not a stored field. The registry has
+                      nowhere to put a claimed relationship today, and a form
+                      that asks and discards would be worse than not asking. */}
                   <label className="wizard-checkbox">
                     <input
                       type="checkbox"
@@ -182,25 +231,20 @@ export function OrganisationCreationView({
                       verification.
                     </span>
                   </label>
-                  <label>
-                    <span>Your relationship to the organisation</span>
-                    <select
-                      value={authority}
-                      onChange={(event) => setAuthority(event.target.value)}
-                    >
-                      <option>Director or equivalent</option>
-                      <option>Authorised company representative</option>
-                      <option>Professional adviser with authority</option>
-                    </select>
-                  </label>
+                </div>
+              ) : null}
+
+              {result.status === "error" ? (
+                <p className="wizard-form-note" role="alert">
+                  {result.message}
+                </p>
+              ) : (
+                <div className="wizard-form-note">
+                  The organisation is created pending verification. Trust
+                  operations check the company number and your authority to act
+                  for it before it can do anything.
                 </div>
               )}
-
-              <div className="wizard-form-note">
-                This prototype stages the flow locally. A future API will
-                validate Companies House details, evidence authority, and
-                persist the organisation record.
-              </div>
 
               <div className="wizard-form-actions">
                 {step === 2 ? (
@@ -216,12 +260,26 @@ export function OrganisationCreationView({
                     Save and return
                   </a>
                 )}
-                <button type="submit" className="wizard-primary-action">
-                  {step === 1
-                    ? "Continue to authority"
-                    : "Complete organisation setup"}
-                  <ArrowRight className="h-4 w-4" aria-hidden="true" />
-                </button>
+                {step === 1 ? (
+                  <button
+                    type="button"
+                    className="wizard-primary-action"
+                    onClick={() => setStep(2)}
+                    disabled={!name || !registrationNumber || !address}
+                  >
+                    Continue to authority
+                    <ArrowRight className="h-4 w-4" aria-hidden="true" />
+                  </button>
+                ) : (
+                  <button
+                    type="submit"
+                    className="wizard-primary-action"
+                    disabled={pending || !authorityConfirmed}
+                  >
+                    {pending ? "Submitting…" : "Complete organisation setup"}
+                    <ArrowRight className="h-4 w-4" aria-hidden="true" />
+                  </button>
+                )}
               </div>
             </form>
           )}

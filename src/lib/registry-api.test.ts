@@ -385,4 +385,52 @@ describe("registry api", () => {
       loadAccountWorkspace("99999999-0d3f-4c86-9a53-8c8f7a1e2b4d"),
     ).resolves.toMatchObject({ selectedOrganisationId: null });
   });
+
+  it("does not relay a 405 as if the person could fix it", async () => {
+    // Found live: pointed at a backend running older code, GET /orgs answered
+    // 405 and the workspace rendered "Method Not Allowed" to the user. A
+    // version skew between client and server is never theirs to act on.
+    vi.stubGlobal(
+      "fetch",
+      vi
+        .fn()
+        .mockResolvedValue(jsonResponse({ detail: "Method Not Allowed" }, 405)),
+    );
+
+    await expect(listOrganisations()).rejects.toBeInstanceOf(
+      RegistryUnavailableError,
+    );
+  });
+
+  it("carries a 503 explanation rather than advising a pointless retry", async () => {
+    // Also found live. "issuance signing is not configured" and "storage is
+    // temporarily unavailable" are both 503, and retrying helps with exactly
+    // one of them. It stays an unavailability -- the fault is ours -- but the
+    // caller can now say which.
+    vi.stubGlobal(
+      "fetch",
+      vi
+        .fn()
+        .mockResolvedValue(
+          jsonResponse({ detail: "issuance signing is not configured" }, 503),
+        ),
+    );
+
+    await expect(listOrganisations()).rejects.toMatchObject({
+      detail: "issuance signing is not configured",
+    });
+  });
+
+  it("keeps a 404 opaque, because on a tenant route it means not-a-member", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi
+        .fn()
+        .mockResolvedValue(jsonResponse({ detail: "agent not found" }, 404)),
+    );
+
+    const error = await listOrganisations().catch((cause: unknown) => cause);
+    expect(error).toBeInstanceOf(RegistryUnavailableError);
+    expect(JSON.stringify(error)).not.toContain("agent not found");
+  });
 });
