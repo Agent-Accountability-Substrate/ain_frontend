@@ -6,29 +6,33 @@ import type {
 /**
  * The registry's own vocabulary, unrenamed.
  *
- * This union used to end in `needs_attention`, which reads as a work item —
- * something the holder can put right. `rejected` is the opposite: trust-ops
- * has decided, `verify` refuses anything that is not `pending`, membership
- * routes treat a rejected organisation as non-existent, and the partial unique
- * on the registration number exists so the *retry* is a new organisation
- * rather than a repair of this one. Calling it "needs attention" in the type
- * would send that promise into every `filter` and counter downstream.
+ * Four values, and `needs_attention` is one of them rather than a friendlier
+ * spelling of `rejected`. The two are opposites: `rejected` is a decision
+ * already taken — terminal, and it frees the registration number, so the way
+ * forward is a fresh registration — while `needs_attention` means the
+ * registration is still live and somebody is waiting on *you*. Mapping one
+ * onto the other, as an earlier plan had it, would have put "go fix this" on
+ * screen for a row with nothing to fix.
  *
- * Softer wording belongs on the rendered label, not here — see the status
- * labels in `organisations-view`.
- *
- * A genuine "we need more from you, and your registration is still alive"
- * state is missing from the schema and belongs with the reject flow
- * (`DECISIONS.md`, 2026-08-16).
+ * Names are the registry's throughout. Softer wording belongs on the rendered
+ * label — see the status labels in `organisations-view` — because a rename
+ * inside the type travels into every `filter` and counter downstream, where
+ * it stops being cosmetic.
  */
 export type OrganisationVerificationStatus =
-  "pending" | "verified" | "rejected";
+  "pending" | "needs_attention" | "verified" | "rejected";
 
 export type OrganisationSummary = {
   id: string;
   name: string;
   membershipRole: "owner" | "member";
   verificationStatus: OrganisationVerificationStatus;
+  /**
+   * What trust operations said, for the two outcomes that need explaining.
+   * Absent while pending and after a clean verification — neither has anything
+   * to explain.
+   */
+  reviewReason?: string;
 };
 
 export type OrganisationActivity = {
@@ -96,12 +100,11 @@ export function getAccountOverviewStats(
     organisationsPendingVerification: state.organisations.filter(
       (organisation) => organisation.verificationStatus === "pending",
     ).length,
-    // A rejected registration does warrant the holder's notice — they should
-    // know it will never verify. What it does not warrant is a prompt to fix
-    // it, because there is nothing to fix: the next step is a fresh
-    // registration, not an edit.
+    // Only `needs_attention`. A rejected registration is finished — the holder
+    // should know, but there is nothing for them to do about *that* row, so
+    // counting it here would put work in a queue that cannot be worked.
     organisationsRequiringAttention: state.organisations.filter(
-      (organisation) => organisation.verificationStatus === "rejected",
+      (organisation) => organisation.verificationStatus === "needs_attention",
     ).length,
     totalAccessibleAgents: state.totalAccessibleAgents,
   };

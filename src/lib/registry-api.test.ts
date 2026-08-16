@@ -33,6 +33,7 @@ const ORGANISATION = {
   registration_number: "12345678",
   web_url: "https://acme.example.com",
   verification_status: "verified",
+  review_reason: null,
   verified_at: "2026-08-01T10:00:00Z",
   roles: ["org_admin"],
   is_owner: true,
@@ -202,22 +203,68 @@ describe("registry api", () => {
     });
   });
 
-  it("lists organisations and keeps the registry's own status word", async () => {
+  it("keeps needs_attention and rejected distinct, not collapsed", async () => {
+    // They mean opposite things: one is a live registration waiting on the
+    // holder, the other is finished. An earlier plan mapped rejected onto the
+    // friendlier name, which would have promised a repair no endpoint offers.
     vi.stubGlobal(
       "fetch",
       vi.fn().mockResolvedValue(
         jsonResponse({
-          organisations: [{ ...ORGANISATION, verification_status: "rejected" }],
+          organisations: [
+            { ...ORGANISATION, verification_status: "rejected" },
+            {
+              ...ORGANISATION,
+              organisation_id: "1a1f6f38-0d3f-4c86-9a53-8c8f7a1e2b4d",
+              verification_status: "needs_attention",
+              review_reason: "Send a director's proof of address.",
+            },
+          ],
         }),
       ),
     );
 
-    const [organisation] = await listOrganisations();
+    const listed = await listOrganisations();
 
-    // Not renamed to something softer on the way through. `rejected` is
-    // terminal, and a friendlier word in the type would promise a repair that
-    // no endpoint offers.
-    expect(organisation!.verification_status).toBe("rejected");
+    expect(listed.map((o) => o.verification_status)).toEqual([
+      "rejected",
+      "needs_attention",
+    ]);
+    expect(listed[1]!.review_reason).toBe(
+      "Send a director's proof of address.",
+    );
+  });
+
+  it("carries the review reason into the workspace summary", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockImplementation((url: URL) => {
+        if (url.pathname === "/orgs") {
+          return Promise.resolve(
+            jsonResponse({
+              organisations: [
+                {
+                  ...ORGANISATION,
+                  verification_status: "needs_attention",
+                  review_reason: "Send a director's proof of address.",
+                },
+              ],
+            }),
+          );
+        }
+        if (url.pathname === "/identity/assurance") {
+          return Promise.resolve(jsonResponse(NOT_STARTED));
+        }
+        return Promise.resolve(jsonResponse({ agents: [] }));
+      }),
+    );
+
+    const state = await loadAccountWorkspace();
+
+    expect(state.organisations[0]).toMatchObject({
+      verificationStatus: "needs_attention",
+      reviewReason: "Send a director's proof of address.",
+    });
   });
 
   it("refuses a verification status the contract does not define", async () => {
@@ -226,7 +273,7 @@ describe("registry api", () => {
       vi.fn().mockResolvedValue(
         jsonResponse({
           organisations: [
-            { ...ORGANISATION, verification_status: "needs_attention" },
+            { ...ORGANISATION, verification_status: "requires_input" },
           ],
         }),
       ),

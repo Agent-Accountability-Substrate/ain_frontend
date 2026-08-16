@@ -46,8 +46,8 @@ Login is **Auth0 via Auth.js** (generic OIDC — no provider-specific SDK, so th
 - `AUTH_AUTH0_ISSUER` — `https://<your-auth0-domain>` (e.g. `https://your-tenant.uk.auth0.com`).
 - `AUTH_SECRET` — session-cookie secret; generate with `openssl rand -hex 32`.
 
-In the Auth0 application settings, set **Allowed Callback URLs** to `http://localhost:3000/api/auth/callback/auth0` and **Allowed Logout URLs** to `http://localhost:3000`. Sign-ups are disabled (invite-only): users are created by an admin in the Auth0 dashboard. `.env.local` is git-ignored — never commit real values.
+In the Auth0 application settings, set **Allowed Callback URLs** to `http://localhost:3000/api/auth/callback/auth0` and **Allowed Logout URLs** to `http://localhost:3000`. Sign-ups are open: anyone may create an account, and the trust gate sits at trust-ops verifying the company registration rather than at the door (`ain_docs` DECISIONS.md, 2026-08-15). `.env.local` is git-ignored — never commit real values.
 
 ### Phase 0 status
 
-Phase 0 ships a **public landing page** and an **Auth0 login** guarding an otherwise-empty `/dashboard` (the "invited user logs in" exit test). The typed API client for `ain_backend_api` and the three product surfaces — web app, trust-ops console, public resolver view — arrive in later phases per the `ain_docs` build plan.
+Phase 0 shipped a **public landing page** and an **Auth0 login** guarding `/dashboard`. The authenticated workspace now reads the registry and writes to it — organisation registration and agent declaration both go through `ain_backend_api`. The typed API client for `ain_backend_api` and the three product surfaces — web app, trust-ops console, public resolver view — arrive in later phases per the `ain_docs` build plan.

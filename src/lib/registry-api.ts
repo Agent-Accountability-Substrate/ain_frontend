@@ -90,10 +90,17 @@ const organisationSchema = z.object({
   org_ulid: z.string(),
   registration_number: z.string(),
   web_url: z.string().nullable(),
-  // Parsed as the enum the registry actually returns. Not coerced into a
-  // friendlier vocabulary here: `rejected` is terminal, and a name that
-  // implied otherwise would travel into every filter downstream.
-  verification_status: z.enum(["pending", "verified", "rejected"]),
+  // Parsed as the enum the registry actually returns, all four values. Not
+  // coerced into a friendlier vocabulary here: `needs_attention` and
+  // `rejected` mean opposite things to a reader, and collapsing them would
+  // travel into every filter downstream.
+  verification_status: z.enum([
+    "pending",
+    "needs_attention",
+    "verified",
+    "rejected",
+  ]),
+  review_reason: z.string().nullable(),
   verified_at: z.iso.datetime().nullable(),
   roles: z.array(z.string()),
   is_owner: z.boolean(),
@@ -440,6 +447,10 @@ function toSummary(organisation: RegistryOrganisation): OrganisationSummary {
     // organisation may have several admins and exactly one owner.
     membershipRole: organisation.is_owner ? "owner" : "member",
     verificationStatus: organisation.verification_status,
+    // Optional-and-absent rather than null, matching the frontend type.
+    ...(organisation.review_reason !== null && {
+      reviewReason: organisation.review_reason,
+    }),
   };
 }
 
