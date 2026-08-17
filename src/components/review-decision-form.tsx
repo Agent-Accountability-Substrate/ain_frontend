@@ -83,6 +83,9 @@ export function ReviewDecisionForm({
           </strong>
           . Its members see this, and the reason with it.
         </p>
+        <div className="wizard-complete-actions">
+          <a href="/operations">Back to the review queue</a>
+        </div>
       </section>
     );
   }

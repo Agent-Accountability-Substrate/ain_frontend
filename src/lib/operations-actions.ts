@@ -1,6 +1,5 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
 import { logger } from "@/lib/logger";
@@ -102,12 +101,27 @@ export async function recordDecisionAction(
     logger.info("operations.decision_recorded", {
       outcome: parsed.data.outcome,
     });
-    // The queue is server-rendered per request, and this organisation has just
-    // left it (or changed within it), so without this the operator is looking
-    // at work they have already done.
-    revalidatePath("/operations");
-    revalidatePath("/organisations");
-    revalidatePath("/dashboard");
+    // No revalidation here at all, and the omission is the fix.
+    //
+    // Every page this action touches is `force-dynamic`, so none of them has a
+    // cached payload to invalidate — the calls could only ever have had one
+    // observable effect. `revalidatePath` in Next 16.3 does not scope anything
+    // to the path it is given: it sets a single `store.pathWasRevalidated`
+    // flag, carrying its own `// TODO: only revalidate if the path matches`.
+    // That flag makes the client discard its router cache and refetch the
+    // *current* route.
+    //
+    // Refetching /operations drops the just-decided organisation out of the
+    // review queue, and `selected` derives from the queue — so the pane swaps
+    // from the decision form to "Choose a company to review", unmounting the
+    // subtree and discarding the `useActionState` result before the operator
+    // can read what was recorded. `verified` and `rejected` both leave the
+    // queue, so two of the three outcomes silently showed nothing on the most
+    // consequential write in the product. Naming only the other two paths does
+    // not help, because the flag is global.
+    //
+    // The confirmation panel links back to the queue, and that navigation
+    // fetches it fresh — which is all a `force-dynamic` page ever needed.
     return { status: "recorded", outcome: parsed.data.outcome };
   } catch (error) {
     if (error instanceof NotAuthenticatedError) {

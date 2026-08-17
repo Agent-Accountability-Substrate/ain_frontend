@@ -45,6 +45,25 @@ export function OrganisationCreationView({
 
   const errors = result.status === "error" ? result.errors : {};
   const created = result.status === "created";
+  // Step 1's fields live in a `hidden` container so the submitted FormData
+  // carries all of them, and Tailwind's preflight makes `[hidden]` a hard
+  // `display: none`. The form only submits from step 2, so a refusal about a
+  // step-1 field rendered "Check the highlighted fields" with every message
+  // invisible and no way back except guessing at "Back". Showing the step that
+  // owns the complaint is the fix; `step` is state, so this is just where it
+  // should be looking.
+  const stepOneFields = [
+    "name",
+    "registrationNumber",
+    "jurisdiction",
+    "address",
+    "webUrl",
+  ];
+  const shownStep =
+    result.status === "error" &&
+    stepOneFields.some((field) => errors[field] !== undefined)
+      ? 1
+      : step;
   const jurisdictionLabel =
     JURISDICTIONS.find((entry) => entry.code === jurisdiction)?.label ??
     jurisdiction;
@@ -101,7 +120,7 @@ export function OrganisationCreationView({
                 </span>
                 <div>
                   <p className="dashboard-eyebrow">
-                    Step {step} of 2 · Organisation setup
+                    Step {shownStep} of 2 · Organisation setup
                   </p>
                   <h1>Create your organisation</h1>
                   <p>
@@ -115,11 +134,11 @@ export function OrganisationCreationView({
                 className="wizard-progress"
                 aria-label="Organisation setup steps"
               >
-                <li data-current={step === 1}>
+                <li data-current={shownStep === 1}>
                   <span>1</span>
                   Organisation details
                 </li>
-                <li data-current={step === 2}>
+                <li data-current={shownStep === 2}>
                   <span>2</span>
                   Authority and review
                 </li>
@@ -127,7 +146,7 @@ export function OrganisationCreationView({
 
               {/* Every field stays mounted so the submitted FormData carries
                   all of them; step 2 hides the inputs rather than unmounting. */}
-              <div className="wizard-form-grid" hidden={step !== 1}>
+              <div className="wizard-form-grid" hidden={shownStep !== 1}>
                 <label>
                   <span>Legal organisation name</span>
                   <input
@@ -196,7 +215,7 @@ export function OrganisationCreationView({
                 </label>
               </div>
 
-              {step === 2 ? (
+              {shownStep === 2 ? (
                 <div className="wizard-review">
                   <div>
                     <span>Organisation</span>
@@ -247,7 +266,7 @@ export function OrganisationCreationView({
               )}
 
               <div className="wizard-form-actions">
-                {step === 2 ? (
+                {shownStep === 2 ? (
                   <button
                     type="button"
                     className="wizard-secondary-action"

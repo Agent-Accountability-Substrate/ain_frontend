@@ -43,7 +43,7 @@ describe("organisation creation page", () => {
     // meant nobody could ever register a company.
     authMock.mockResolvedValue({ user: { email: "owner@example.com" } });
 
-    await OrganisationCreationPage();
+    await OrganisationCreationPage({ searchParams: Promise.resolve({}) });
 
     expect(redirectMock).not.toHaveBeenCalled();
   });
@@ -53,7 +53,9 @@ describe("organisation creation page", () => {
     redirectMock.mockImplementation(() => {
       throw new Error("NEXT_REDIRECT");
     });
-    await expect(OrganisationCreationPage()).rejects.toThrow("NEXT_REDIRECT");
+    await expect(
+      OrganisationCreationPage({ searchParams: Promise.resolve({}) }),
+    ).rejects.toThrow("NEXT_REDIRECT");
     expect(redirectMock).toHaveBeenCalledWith("/");
   });
 
@@ -66,7 +68,9 @@ describe("organisation creation page", () => {
       detail: "storage is temporarily unavailable",
     });
 
-    render(await OrganisationCreationPage());
+    render(
+      await OrganisationCreationPage({ searchParams: Promise.resolve({}) }),
+    );
 
     expect(screen.getByRole("alert").textContent).toBe(
       "storage is temporarily unavailable",

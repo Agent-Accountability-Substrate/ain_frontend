@@ -7,7 +7,11 @@ import { loadWorkspace } from "@/lib/workspace-page";
 
 export const dynamic = "force-dynamic";
 
-export default async function OrganisationCreationPage() {
+export default async function OrganisationCreationPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
   const session = await auth();
 
   if (!session?.user) redirect("/");
@@ -26,7 +30,15 @@ export default async function OrganisationCreationPage() {
   // stricter gate in a client duplicates an authorisation decision somewhere
   // it cannot be enforced. The suggested order still shows in the next-action
   // list, as guidance rather than a lock.
-  const workspace = await loadWorkspace();
+  // The selection lives in the URL, so this page has to read it. Rendering the
+  // switcher while ignoring `?org=` made the control snap back to "Select an
+  // organisation" the moment it was used -- multi-organisation membership is
+  // the headline capability here, and it was unusable from the page a user
+  // lands on first.
+  const selected = (await searchParams)["org"];
+  const workspace = await loadWorkspace(
+    typeof selected === "string" ? selected : null,
+  );
   if (workspace.status === "unavailable") {
     return (
       <WorkspaceUnavailable

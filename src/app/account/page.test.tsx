@@ -49,7 +49,7 @@ describe("account page", () => {
       user: { email: "creator@example.com", name: "Casey Morgan" },
     });
 
-    render(await AccountPage());
+    render(await AccountPage({ searchParams: Promise.resolve({}) }));
 
     expect(
       screen.getByRole("heading", { name: "Account & Security" }),
@@ -65,7 +65,9 @@ describe("account page", () => {
       throw new Error("NEXT_REDIRECT");
     });
 
-    await expect(AccountPage()).rejects.toThrow("NEXT_REDIRECT");
+    await expect(
+      AccountPage({ searchParams: Promise.resolve({}) }),
+    ).rejects.toThrow("NEXT_REDIRECT");
     expect(redirectMock).toHaveBeenCalledWith("/");
   });
 
@@ -78,7 +80,7 @@ describe("account page", () => {
       detail: "storage is temporarily unavailable",
     });
 
-    render(await AccountPage());
+    render(await AccountPage({ searchParams: Promise.resolve({}) }));
 
     expect(screen.getByRole("alert").textContent).toBe(
       "storage is temporarily unavailable",

@@ -40,6 +40,26 @@ function Refusal({ message }: { message: string }) {
   );
 }
 
+/**
+ * The message for one field, or nothing.
+ *
+ * "Check the highlighted fields" is only true if the fields say anything. This
+ * wizard built an `errors` map server-side and rendered none of it, so the one
+ * sentence telling someone what to do — "Declare at least one action class, or
+ * state a deny-all scope explicitly" — was discarded, and a single space typed
+ * into a required input produced a refusal with nothing highlighted.
+ */
+function FieldError({
+  errors,
+  field,
+}: {
+  errors: Partial<Record<string, string>>;
+  field: string;
+}) {
+  const message = errors[field];
+  return message === undefined ? null : <small role="alert">{message}</small>;
+}
+
 export function AgentCreationWizard({
   organisationId,
   organisationName,
@@ -167,6 +187,8 @@ export function AgentCreationWizard({
     );
   }
 
+  const identityErrors = registered.status === "error" ? registered.errors : {};
+  const declarationErrors = declared.status === "error" ? declared.errors : {};
   const ain = registered.status === "done" ? registered.ain : null;
   const declarationAttached = declared.status === "done";
 
@@ -216,6 +238,7 @@ export function AgentCreationWizard({
                   setIdentity({ ...identity, name: event.target.value })
                 }
               />
+              <FieldError errors={identityErrors} field="name" />
             </label>
             <label>
               <span>What it does</span>
@@ -228,6 +251,7 @@ export function AgentCreationWizard({
                   setIdentity({ ...identity, role: event.target.value })
                 }
               />
+              <FieldError errors={identityErrors} field="role" />
             </label>
             <label>
               <span>Risk class</span>
@@ -305,6 +329,7 @@ export function AgentCreationWizard({
                 One per line. Anything not declared is unauthorised — unknown
                 never means allowed.
               </small>
+              <FieldError errors={declarationErrors} field="actionClasses" />
             </label>
             <label>
               <span>Operational risk level</span>
@@ -354,6 +379,7 @@ export function AgentCreationWizard({
                   })
                 }
               />
+              <FieldError errors={declarationErrors} field="roleTitle" />
             </label>
             <label>
               <span>Responsibility area</span>
@@ -368,6 +394,10 @@ export function AgentCreationWizard({
                     responsibilityArea: event.target.value,
                   })
                 }
+              />
+              <FieldError
+                errors={declarationErrors}
+                field="responsibilityArea"
               />
             </label>
             <label>
@@ -388,6 +418,10 @@ export function AgentCreationWizard({
                 The registration of the person accountable for this agent. It is
                 bound into the signed document.
               </small>
+              <FieldError
+                errors={declarationErrors}
+                field="regulatoryIdentifier"
+              />
             </label>
           </div>
           {declared.status === "error" ? (

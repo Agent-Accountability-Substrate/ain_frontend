@@ -240,3 +240,61 @@ describe("AgentCreationWizard", () => {
     expect(screen.getByRole("link", { name: /leave as draft/i })).toBeDefined();
   });
 });
+
+describe("field-level refusals", () => {
+  it("shows the message for the field that caused it", async () => {
+    // "Check the highlighted fields" is only true if the fields say anything.
+    // The errors map was built server-side and rendered nowhere, so the one
+    // sentence telling someone what to do was discarded.
+    registerMock.mockResolvedValue({
+      status: "error",
+      message: "Check the highlighted fields.",
+      errors: { name: "Name the agent" },
+    });
+    renderWizard();
+    fillIdentity();
+    fireEvent.click(screen.getByRole("button", { name: /mint identifier/i }));
+
+    const alerts = await screen.findAllByRole("alert");
+    expect(alerts.map((node) => node.textContent)).toContain("Name the agent");
+  });
+
+  it("shows the scope message, which is the one that says what to do", async () => {
+    registerMock.mockResolvedValue({ status: "done", ain: AIN });
+    renderWizard();
+    fillIdentity();
+    fireEvent.click(screen.getByRole("button", { name: /mint identifier/i }));
+    await screen.findByLabelText(/authorised action classes/i);
+
+    patchMock.mockResolvedValue({
+      status: "error",
+      message: "Check the highlighted fields.",
+      errors: {
+        actionClasses:
+          "Declare at least one action class, or state a deny-all scope explicitly",
+      },
+    });
+    fillDeclaration();
+    fireEvent.click(
+      screen.getByRole("button", { name: /attach declaration/i }),
+    );
+
+    expect(await screen.findByText(/deny-all scope explicitly/i)).toBeDefined();
+  });
+
+  it("says nothing per-field when the refusal is not about a field", async () => {
+    registerMock.mockResolvedValue({
+      status: "error",
+      message: "organisation is not verified",
+      errors: {},
+    });
+    renderWizard();
+    fillIdentity();
+    fireEvent.click(screen.getByRole("button", { name: /mint identifier/i }));
+
+    const alerts = await screen.findAllByRole("alert");
+    expect(alerts.map((node) => node.textContent)).toEqual([
+      "organisation is not verified",
+    ]);
+  });
+});

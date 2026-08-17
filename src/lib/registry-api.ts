@@ -101,7 +101,7 @@ const organisationSchema = z.object({
     "rejected",
   ]),
   review_reason: z.string().nullable(),
-  verified_at: z.iso.datetime().nullable(),
+  verified_at: z.iso.datetime({ offset: true }).nullable(),
   roles: z.array(z.string()),
   is_owner: z.boolean(),
 });
@@ -119,8 +119,8 @@ const agentSchema = z.object({
   role: z.string(),
   status: z.string(),
   risk_class: z.string(),
-  valid_from: z.iso.datetime().nullable(),
-  created_at: z.iso.datetime(),
+  valid_from: z.iso.datetime({ offset: true }).nullable(),
+  created_at: z.iso.datetime({ offset: true }),
 });
 
 const agentListSchema = z.object({ agents: z.array(agentSchema) });
@@ -138,8 +138,8 @@ const assuranceSchema = z.object({
   ]),
   assurance_profile: z.string().nullable(),
   provider_reference: z.string().nullable(),
-  checked_at: z.iso.datetime().nullable(),
-  expires_at: z.iso.datetime().nullable(),
+  checked_at: z.iso.datetime({ offset: true }).nullable(),
+  expires_at: z.iso.datetime({ offset: true }).nullable(),
   review_reason: z.string().nullable(),
 });
 
@@ -448,7 +448,7 @@ const reviewItemSchema = z.object({
   address: z.string(),
   verification_status: z.enum(["pending", "needs_attention"]),
   review_reason: z.string().nullable(),
-  created_at: z.iso.datetime(),
+  created_at: z.iso.datetime({ offset: true }),
 });
 
 const reviewQueueSchema = z.object({
@@ -510,7 +510,7 @@ const verificationDecisionSchema = z.object({
   organisation_id: z.uuid(),
   verification_status: z.string(),
   review_reason: z.string().nullable(),
-  verified_at: z.iso.datetime().nullable(),
+  verified_at: z.iso.datetime({ offset: true }).nullable(),
 });
 
 export type VerificationOutcome = "verified" | "needs_attention" | "rejected";
@@ -570,12 +570,21 @@ export async function loadAccountWorkspace(
     listOrganisations(),
     identityAssurance(),
   ]);
-  const agentCounts = await Promise.all(
-    organisations.map(
-      async (organisation) =>
-        (await listAgents(organisation.organisation_id)).length,
-    ),
-  );
+  // allSettled, not all: this fan-out exists to sum one number for one stat
+  // tile and one checklist tick, and Promise.all rejects on the first
+  // rejection -- so a single organisation's agent list failing threw away the
+  // organisations, names, statuses, review reasons, isOperator and assurance
+  // that had already been fetched successfully, and the user got the full-page
+  // outage screen. Nothing authorisation- or correctness-bearing reads the
+  // count, so an undercount on a card is the right way to degrade.
+  const agentCounts = (
+    await Promise.allSettled(
+      organisations.map(
+        async (organisation) =>
+          (await listAgents(organisation.organisation_id)).length,
+      ),
+    )
+  ).map((result) => (result.status === "fulfilled" ? result.value : 0));
 
   const summaries = organisations.map(toSummary);
   // Read off the raw roles before `toSummary` drops them. The console's

@@ -49,7 +49,7 @@ describe("dashboard page", () => {
       user: { email: "creator@example.com", name: "Casey Morgan" },
     });
 
-    render(await DashboardPage());
+    render(await DashboardPage({ searchParams: Promise.resolve({}) }));
 
     expect(screen.getByRole("heading", { name: "Overview" })).toBeDefined();
     expect(
@@ -66,7 +66,9 @@ describe("dashboard page", () => {
       throw new Error("NEXT_REDIRECT");
     });
 
-    await expect(DashboardPage()).rejects.toThrow("NEXT_REDIRECT");
+    await expect(
+      DashboardPage({ searchParams: Promise.resolve({}) }),
+    ).rejects.toThrow("NEXT_REDIRECT");
     expect(redirectMock).toHaveBeenCalledWith("/");
   });
 
@@ -79,7 +81,7 @@ describe("dashboard page", () => {
       detail: "storage is temporarily unavailable",
     });
 
-    render(await DashboardPage());
+    render(await DashboardPage({ searchParams: Promise.resolve({}) }));
 
     expect(screen.getByRole("alert").textContent).toBe(
       "storage is temporarily unavailable",

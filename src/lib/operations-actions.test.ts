@@ -142,11 +142,18 @@ describe("recordDecisionAction", () => {
     );
   });
 
-  it("refreshes every page that renders the outcome", async () => {
+  it("revalidates nothing, because the flag is global and unmounts the form", async () => {
+    // `revalidatePath` does not scope to its argument in Next 16.3: it sets one
+    // `store.pathWasRevalidated` flag — its own source carries the comment
+    // "TODO: only revalidate if the path matches" — which makes the client
+    // refetch the CURRENT route whatever path was named. Refetching
+    // /operations drops the just-decided organisation from the queue, and
+    // `selected` derives from the queue, so the decision form unmounts and its
+    // confirmation is discarded. Naming only the other two paths does not help.
+    // Every page here is force-dynamic, so nothing was cached to invalidate.
     await recordDecisionAction({ status: "idle" }, form());
 
-    expect(revalidatePathMock).toHaveBeenCalledWith("/operations");
-    expect(revalidatePathMock).toHaveBeenCalledWith("/organisations");
+    expect(revalidatePathMock).not.toHaveBeenCalled();
   });
 
   it("relays a conflict, because somebody else decided first", async () => {
