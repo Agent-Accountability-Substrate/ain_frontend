@@ -9,7 +9,12 @@ vi.mock("@/auth", () => ({ auth: authMock }));
 vi.mock("@/lib/server-env", () => ({ getServerEnv: getServerEnvMock }));
 
 import {
+  checkRegistration,
+  createOrganisation,
   identityAssurance,
+  listReviewQueue,
+  recordVerification,
+  submitAgent,
   listAgents,
   listOrganisations,
   loadAccountWorkspace,
@@ -479,5 +484,104 @@ describe("registry api", () => {
     const error = await listOrganisations().catch((cause: unknown) => cause);
     expect(error).toBeInstanceOf(RegistryUnavailableError);
     expect(JSON.stringify(error)).not.toContain("agent not found");
+  });
+});
+
+describe("registry writes", () => {
+  it("sends the field names the registry expects when creating a company", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      jsonResponse({
+        organisation_id: ORG_ID,
+        org_ulid: "01ARZ3NDEKTSV4RRFFQ69G5FAV",
+        verification_status: "pending",
+      }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    await createOrganisation({
+      name: "Acme Ltd",
+      jurisdiction: "gb",
+      registrationNumber: "01234567",
+      address: "1 Test Street",
+    });
+
+    const [url, init] = fetchMock.mock.calls[0] as [URL, RequestInit];
+    expect(url.pathname).toBe("/orgs");
+    expect(init.method).toBe("POST");
+    // web_url is omitted, not sent as null: it is optional and absent.
+    expect(JSON.parse(String(init.body))).toEqual({
+      name: "Acme Ltd",
+      jurisdiction: "gb",
+      registration_number: "01234567",
+      address: "1 Test Street",
+    });
+  });
+
+  it("omits a null reason so an approval carries none", async () => {
+    // The registry refuses a reason on `verified` rather than ignoring one, so
+    // sending an explicit null would be a 422 instead of an approval.
+    const fetchMock = vi.fn().mockResolvedValue(
+      jsonResponse({
+        organisation_id: ORG_ID,
+        verification_status: "verified",
+        review_reason: null,
+        verified_at: "2026-08-16T12:00:00Z",
+      }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    await recordVerification(ORG_ID, "verified", null);
+
+    const [, init] = fetchMock.mock.calls[0] as [URL, RequestInit];
+    expect(JSON.parse(String(init.body))).toEqual({ outcome: "verified" });
+  });
+
+  it("escapes the AIN into the submit path", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      jsonResponse({
+        ain: AGENT.ain,
+        status: "active",
+        document_version: 1,
+        document_hash: "a".repeat(64),
+        kid: "kid-1",
+        chain_head: "b".repeat(64),
+        resolver_url: "https://resolve.test/x",
+      }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    await submitAgent(ORG_ID, AGENT.ain);
+
+    const [url] = fetchMock.mock.calls[0] as [URL];
+    // An AIN carries colons; they must survive as one path segment.
+    expect(url.pathname).toContain(encodeURIComponent(AGENT.ain));
+    expect(url.pathname.endsWith("/submit")).toBe(true);
+  });
+
+  it("parses the review queue and refuses a decided organisation in it", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        jsonResponse({
+          organisations: [
+            {
+              organisation_id: ORG_ID,
+              name: "Acme Ltd",
+              jurisdiction: "gb",
+              registration_number: "01234567",
+              web_url: null,
+              address: "1 Test Street",
+              verification_status: "verified",
+              review_reason: null,
+              created_at: "2026-08-16T10:00:00Z",
+            },
+          ],
+        }),
+      ),
+    );
+
+    // The queue is what is *outstanding*; a decided row appearing in it is a
+    // contract break worth failing on rather than rendering.
+    await expect(listReviewQueue()).rejects.toThrow();
   });
 });

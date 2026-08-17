@@ -69,4 +69,21 @@ describe("dashboard page", () => {
     await expect(DashboardPage()).rejects.toThrow("NEXT_REDIRECT");
     expect(redirectMock).toHaveBeenCalledWith("/");
   });
+
+  it("renders the registry as unavailable rather than crashing", async () => {
+    // The branch every page carries and nothing exercised: an outage keeps the
+    // shell, its navigation and sign-out, instead of a dead end.
+    authMock.mockResolvedValue({ user: { email: "owner@example.com" } });
+    loadWorkspaceMock.mockResolvedValue({
+      status: "unavailable",
+      detail: "storage is temporarily unavailable",
+    });
+
+    render(await DashboardPage());
+
+    expect(screen.getByRole("alert").textContent).toBe(
+      "storage is temporarily unavailable",
+    );
+    expect(redirectMock).not.toHaveBeenCalled();
+  });
 });

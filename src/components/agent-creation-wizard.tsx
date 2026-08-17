@@ -65,7 +65,24 @@ export function AgentCreationWizard({
     FormData
   >(submitAgentAction, { status: "idle" });
 
-  const [riskClass, setRiskClass] = useState<string>("high");
+  // Both forms are controlled, and that is load-bearing rather than stylistic:
+  // React resets an uncontrolled form once its action resolves, so a refusal
+  // would hand back the reason with the fields already wiped. The declaration
+  // step is six fields including the SMCR reference — retyping them to read an
+  // error is not a reasonable thing to ask.
+  const [identity, setIdentity] = useState({
+    name: "",
+    role: "",
+    riskClass: "high",
+  });
+  const [declaration, setDeclaration] = useState({
+    actionClasses: "",
+    riskLevel: "high",
+    regulatoryMappings: "",
+    roleTitle: "",
+    responsibilityArea: "",
+    regulatoryIdentifier: "",
+  });
 
   // An agent record is always owned by an organisation, so with none selected
   // there is no form to submit — rendering one would stage a record against an
@@ -194,6 +211,10 @@ export function AgentCreationWizard({
                 name="name"
                 required
                 placeholder="Payments Operations Agent"
+                value={identity.name}
+                onChange={(event) =>
+                  setIdentity({ ...identity, name: event.target.value })
+                }
               />
             </label>
             <label>
@@ -202,14 +223,20 @@ export function AgentCreationWizard({
                 name="role"
                 required
                 placeholder="Initiates and reconciles supplier payments"
+                value={identity.role}
+                onChange={(event) =>
+                  setIdentity({ ...identity, role: event.target.value })
+                }
               />
             </label>
             <label>
               <span>Risk class</span>
               <select
                 name="riskClass"
-                value={riskClass}
-                onChange={(event) => setRiskClass(event.target.value)}
+                value={identity.riskClass}
+                onChange={(event) =>
+                  setIdentity({ ...identity, riskClass: event.target.value })
+                }
               >
                 {RISK_CLASSES.map((value) => (
                   <option key={value} value={value}>
@@ -266,6 +293,13 @@ export function AgentCreationWizard({
                 required
                 rows={3}
                 placeholder={"payments.initiate\ncustomer_comms.send"}
+                value={declaration.actionClasses}
+                onChange={(event) =>
+                  setDeclaration({
+                    ...declaration,
+                    actionClasses: event.target.value,
+                  })
+                }
               />
               <small>
                 One per line. Anything not declared is unauthorised — unknown
@@ -274,7 +308,16 @@ export function AgentCreationWizard({
             </label>
             <label>
               <span>Operational risk level</span>
-              <select name="riskLevel" defaultValue="high">
+              <select
+                name="riskLevel"
+                value={declaration.riskLevel}
+                onChange={(event) =>
+                  setDeclaration({
+                    ...declaration,
+                    riskLevel: event.target.value,
+                  })
+                }
+              >
                 {RISK_CLASSES.map((value) => (
                   <option key={value} value={value}>
                     {value}
@@ -288,6 +331,13 @@ export function AgentCreationWizard({
                 name="regulatoryMappings"
                 rows={2}
                 placeholder="FCA CONC 7"
+                value={declaration.regulatoryMappings}
+                onChange={(event) =>
+                  setDeclaration({
+                    ...declaration,
+                    regulatoryMappings: event.target.value,
+                  })
+                }
               />
             </label>
             <label>
@@ -296,6 +346,13 @@ export function AgentCreationWizard({
                 name="roleTitle"
                 required
                 placeholder="Head of Collections"
+                value={declaration.roleTitle}
+                onChange={(event) =>
+                  setDeclaration({
+                    ...declaration,
+                    roleTitle: event.target.value,
+                  })
+                }
               />
             </label>
             <label>
@@ -304,6 +361,13 @@ export function AgentCreationWizard({
                 name="responsibilityArea"
                 required
                 placeholder="collections"
+                value={declaration.responsibilityArea}
+                onChange={(event) =>
+                  setDeclaration({
+                    ...declaration,
+                    responsibilityArea: event.target.value,
+                  })
+                }
               />
             </label>
             <label>
@@ -312,6 +376,13 @@ export function AgentCreationWizard({
                 name="regulatoryIdentifier"
                 required
                 placeholder="SMF24-000123"
+                value={declaration.regulatoryIdentifier}
+                onChange={(event) =>
+                  setDeclaration({
+                    ...declaration,
+                    regulatoryIdentifier: event.target.value,
+                  })
+                }
               />
               <small>
                 The registration of the person accountable for this agent. It is

@@ -1,3 +1,4 @@
+import { render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { appRouterStubs } from "@test/stubs/app-router";
@@ -54,5 +55,22 @@ describe("organisation creation page", () => {
     });
     await expect(OrganisationCreationPage()).rejects.toThrow("NEXT_REDIRECT");
     expect(redirectMock).toHaveBeenCalledWith("/");
+  });
+
+  it("renders the registry as unavailable rather than crashing", async () => {
+    // The branch every page carries and nothing exercised: an outage keeps the
+    // shell, its navigation and sign-out, instead of a dead end.
+    authMock.mockResolvedValue({ user: { email: "owner@example.com" } });
+    loadWorkspaceMock.mockResolvedValue({
+      status: "unavailable",
+      detail: "storage is temporarily unavailable",
+    });
+
+    render(await OrganisationCreationPage());
+
+    expect(screen.getByRole("alert").textContent).toBe(
+      "storage is temporarily unavailable",
+    );
+    expect(redirectMock).not.toHaveBeenCalled();
   });
 });

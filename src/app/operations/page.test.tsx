@@ -14,13 +14,24 @@ const {
   loadWorkspaceMock,
   listReviewQueueMock,
   checkRegistrationMock,
+  NotAuthenticatedError,
+  RegistryRefusedError,
   RegistryUnavailableError,
 } = vi.hoisted(() => {
+  class NotAuthenticatedError extends Error {}
   class RegistryUnavailableError extends Error {
     readonly detail: string | undefined;
     constructor(message: string, options?: { detail?: string }) {
       super(message);
       this.detail = options?.detail;
+    }
+  }
+  class RegistryRefusedError extends Error {
+    constructor(
+      readonly status: number,
+      readonly detail: string,
+    ) {
+      super(detail);
     }
   }
   return {
@@ -29,6 +40,8 @@ const {
     loadWorkspaceMock: vi.fn(),
     listReviewQueueMock: vi.fn(),
     checkRegistrationMock: vi.fn(),
+    NotAuthenticatedError,
+    RegistryRefusedError,
     RegistryUnavailableError,
   };
 });
@@ -44,8 +57,8 @@ vi.mock("@/lib/operations-actions", () => ({ recordDecisionAction: vi.fn() }));
 vi.mock("@/lib/registry-api", () => ({
   listReviewQueue: listReviewQueueMock,
   checkRegistration: checkRegistrationMock,
-  NotAuthenticatedError: class extends Error {},
-  RegistryRefusedError: class extends Error {},
+  NotAuthenticatedError,
+  RegistryRefusedError,
   RegistryUnavailableError,
 }));
 
@@ -213,5 +226,132 @@ describe("operations console", () => {
       screen.getByRole("heading", { name: "Choose a company to review" }),
     ).toBeDefined();
     expect(checkRegistrationMock).not.toHaveBeenCalled();
+  });
+
+  it("says the workspace is unreachable rather than rendering an empty console", async () => {
+    loadWorkspaceMock.mockResolvedValue({
+      status: "unavailable",
+      detail: "organisation storage is not configured",
+    });
+
+    render(await OperationsPage(noSearchParams));
+
+    expect(
+      screen.getByText(/organisation storage is not configured/i),
+    ).toBeDefined();
+    expect(listReviewQueueMock).not.toHaveBeenCalled();
+  });
+
+  it("sends an expired session to sign in again", async () => {
+    listReviewQueueMock.mockRejectedValue(new NotAuthenticatedError());
+    redirectMock.mockImplementation(() => {
+      throw new Error("NEXT_REDIRECT");
+    });
+
+    await expect(OperationsPage(noSearchParams)).rejects.toThrow(
+      "NEXT_REDIRECT",
+    );
+    expect(redirectMock).toHaveBeenCalledWith("/api/auth/signin");
+  });
+
+  it("reports why the queue could not be read", async () => {
+    listReviewQueueMock.mockRejectedValue(
+      new RegistryUnavailableError("boom", {
+        detail: "the registry is not reachable",
+      }),
+    );
+
+    render(await OperationsPage(noSearchParams));
+
+    expect(screen.getByText(/the registry is not reachable/i)).toBeDefined();
+  });
+
+  it("falls back to plain words when the failure carries no detail", async () => {
+    listReviewQueueMock.mockRejectedValue(new RegistryUnavailableError("boom"));
+
+    render(await OperationsPage(noSearchParams));
+
+    expect(screen.getByText(/review queue could not be read/i)).toBeDefined();
+  });
+
+  it("lets an unexpected queue failure reach the error boundary", async () => {
+    // Only the two known failures are handled. Anything else is a defect, and
+    // swallowing it here would turn it into a silently empty console.
+    listReviewQueueMock.mockRejectedValue(new TypeError("undefined is not a"));
+
+    await expect(OperationsPage(noSearchParams)).rejects.toThrow(TypeError);
+  });
+
+  it("relays a refused register lookup without losing the queue", async () => {
+    checkRegistrationMock.mockRejectedValue(
+      new RegistryRefusedError(429, "companies house rate limit reached"),
+    );
+
+    render(
+      await OperationsPage({ searchParams: Promise.resolve({ org: ORG_ID }) }),
+    );
+
+    expect(
+      screen.getByText(/companies house rate limit reached/i),
+    ).toBeDefined();
+    expect(
+      screen.getByRole("heading", { name: "What did you find?" }),
+    ).toBeDefined();
+  });
+
+  it("names Companies House when the lookup fails without a detail", async () => {
+    checkRegistrationMock.mockRejectedValue(
+      new RegistryUnavailableError("boom"),
+    );
+
+    render(
+      await OperationsPage({ searchParams: Promise.resolve({ org: ORG_ID }) }),
+    );
+
+    expect(
+      screen.getByText(/companies house could not be reached/i),
+    ).toBeDefined();
+  });
+
+  it("lets an unexpected lookup failure reach the error boundary", async () => {
+    checkRegistrationMock.mockRejectedValue(
+      new TypeError("undefined is not a"),
+    );
+
+    await expect(
+      OperationsPage({ searchParams: Promise.resolve({ org: ORG_ID }) }),
+    ).rejects.toThrow(TypeError);
+  });
+
+  it("says the queue is empty rather than showing an empty list", async () => {
+    listReviewQueueMock.mockResolvedValue([]);
+
+    render(await OperationsPage(noSearchParams));
+
+    expect(
+      screen.getByRole("heading", { name: /nothing waiting/i }),
+    ).toBeDefined();
+    expect(screen.getByText(/appear here as they arrive/i)).toBeDefined();
+  });
+
+  it("shows what was previously asked for on a returned application", async () => {
+    // A company sent back for more comes round again, and the operator needs
+    // to see what was asked before judging whether it arrived.
+    listReviewQueueMock.mockResolvedValue([
+      {
+        ...QUEUE_ITEM,
+        verification_status: "needs_attention" as const,
+        review_reason: "Send the certificate of incorporation.",
+        web_url: null,
+      },
+    ]);
+
+    render(
+      await OperationsPage({ searchParams: Promise.resolve({ org: ORG_ID }) }),
+    );
+
+    expect(screen.getByText(/certificate of incorporation/i)).toBeDefined();
+    // Nothing was claimed, so nothing is offered as worth opening.
+    expect(screen.queryByText(/claimed website/i)).toBeNull();
   });
 });
