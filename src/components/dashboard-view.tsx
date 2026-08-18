@@ -17,7 +17,7 @@ import {
   initialAccountWorkspaceState,
   type AccountWorkspaceState,
 } from "@/lib/account-workspace";
-import { userMenuItems } from "@/lib/workspace-navigation";
+import { menuItemsFor } from "@/lib/workspace-navigation";
 
 const metricIcons = [
   ShieldCheck,
@@ -90,7 +90,7 @@ export function DashboardView({
       assuranceStatus={state.individualAssurance.status}
       currentPath="/dashboard"
       email={email}
-      navigationItems={userMenuItems}
+      navigationItems={menuItemsFor(state.isOperator)}
       navigationLabel="Account sections"
       organisations={state.organisations}
       selectedOrganisationId={state.selectedOrganisationId}

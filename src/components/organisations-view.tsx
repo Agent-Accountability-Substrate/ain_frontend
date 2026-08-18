@@ -7,12 +7,19 @@ import {
   initialAccountWorkspaceState,
   type AccountWorkspaceState,
 } from "@/lib/account-workspace";
-import { userMenuItems } from "@/lib/workspace-navigation";
+import { menuItemsFor } from "@/lib/workspace-navigation";
 
+// Where the tone lives. The union keeps the registry's own words so the meaning
+// survives a filter; these soften them for a reader. The two that are not
+// "pending" or "verified" are deliberately worded as opposites: one is a task,
+// the other is finished. "Not approved" rather than "Rejected", because a
+// refusal is not an accusation — and phrased as done, because that row cannot
+// be repaired; the way forward is a fresh registration.
 const organisationStatusLabel = {
   pending: "Verification pending",
+  needs_attention: "More information needed",
   verified: "Verified",
-  needs_attention: "Needs attention",
+  rejected: "Not approved",
 } as const;
 
 export function OrganisationsView({
@@ -29,7 +36,7 @@ export function OrganisationsView({
       assuranceStatus={state.individualAssurance.status}
       currentPath="/organisations"
       email={email}
-      navigationItems={userMenuItems}
+      navigationItems={menuItemsFor(state.isOperator)}
       navigationLabel="Account sections"
       organisations={state.organisations}
       selectedOrganisationId={state.selectedOrganisationId}
@@ -71,6 +78,14 @@ export function OrganisationsView({
                       {" · "}
                       {organisationStatusLabel[organisation.verificationStatus]}
                     </span>
+                    {/* The label alone says a decision was made; only the
+                        reason says what to do about it. Rendering one without
+                        the other is what makes a status feel like a dead end. */}
+                    {organisation.reviewReason ? (
+                      <span className="organisation-list-meta">
+                        {organisation.reviewReason}
+                      </span>
+                    ) : null}
                     {organisation.id === state.selectedOrganisationId ? (
                       <span className="organisation-list-current">
                         Selected

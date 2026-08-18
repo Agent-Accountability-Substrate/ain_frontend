@@ -3,14 +3,36 @@ import type {
   IndividualAssuranceSummary,
 } from "@/lib/identity-assurance";
 
+/**
+ * The registry's own vocabulary, unrenamed.
+ *
+ * Four values, and `needs_attention` is one of them rather than a friendlier
+ * spelling of `rejected`. The two are opposites: `rejected` is a decision
+ * already taken — terminal, and it frees the registration number, so the way
+ * forward is a fresh registration — while `needs_attention` means the
+ * registration is still live and somebody is waiting on *you*. Mapping one
+ * onto the other, as an earlier plan had it, would have put "go fix this" on
+ * screen for a row with nothing to fix.
+ *
+ * Names are the registry's throughout. Softer wording belongs on the rendered
+ * label — see the status labels in `organisations-view` — because a rename
+ * inside the type travels into every `filter` and counter downstream, where
+ * it stops being cosmetic.
+ */
 export type OrganisationVerificationStatus =
-  "pending" | "verified" | "needs_attention";
+  "pending" | "needs_attention" | "verified" | "rejected";
 
 export type OrganisationSummary = {
   id: string;
   name: string;
   membershipRole: "owner" | "member";
   verificationStatus: OrganisationVerificationStatus;
+  /**
+   * What trust operations said, for the two outcomes that need explaining.
+   * Absent while pending and after a clean verification — neither has anything
+   * to explain.
+   */
+  reviewReason?: string;
 };
 
 export type OrganisationActivity = {
@@ -22,6 +44,13 @@ export type OrganisationActivity = {
 
 export type AccountWorkspaceState = {
   individualAssurance: IndividualAssuranceSummary;
+  /**
+   * Whether this person holds `trust_ops`, which the schema confines to the
+   * platform organisation. Decides whether the console is *offered* in the
+   * navigation — never whether it is permitted, which the registry settles on
+   * every request.
+   */
+  isOperator: boolean;
   organisations: readonly OrganisationSummary[];
   selectedOrganisationId: string | null;
   totalAccessibleAgents: number;
@@ -46,6 +75,7 @@ export type PrimaryNextAction = {
 
 export const initialAccountWorkspaceState: AccountWorkspaceState = {
   individualAssurance: { status: "not_started" },
+  isOperator: false,
   organisations: [],
   selectedOrganisationId: null,
   totalAccessibleAgents: 0,
@@ -78,6 +108,9 @@ export function getAccountOverviewStats(
     organisationsPendingVerification: state.organisations.filter(
       (organisation) => organisation.verificationStatus === "pending",
     ).length,
+    // Only `needs_attention`. A rejected registration is finished — the holder
+    // should know, but there is nothing for them to do about *that* row, so
+    // counting it here would put work in a queue that cannot be worked.
     organisationsRequiringAttention: state.organisations.filter(
       (organisation) => organisation.verificationStatus === "needs_attention",
     ).length,

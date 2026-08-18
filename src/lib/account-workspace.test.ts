@@ -130,6 +130,15 @@ describe("account workspace state", () => {
           membershipRole: "member",
           verificationStatus: "needs_attention",
         },
+        // Rejected is finished, so it is deliberately absent from the
+        // attention count below: there is nothing for the holder to do about
+        // that row, and a queue that cannot be worked is not a queue.
+        {
+          id: "org-refused",
+          name: "Refused org",
+          membershipRole: "member",
+          verificationStatus: "rejected",
+        },
       ],
       selectedOrganisationId: "org-member",
       totalAccessibleAgents: 2,
@@ -138,7 +147,7 @@ describe("account workspace state", () => {
     expect(getAccountOverviewStats(state)).toEqual({
       verificationStatus: "not_started",
       organisationsOwned: 1,
-      organisationsJoined: 1,
+      organisationsJoined: 2,
       organisationsPendingVerification: 1,
       organisationsRequiringAttention: 1,
       totalAccessibleAgents: 2,

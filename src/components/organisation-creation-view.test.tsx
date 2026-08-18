@@ -1,85 +1,106 @@
 import { fireEvent, render, screen, within } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { OrganisationCreationView } from "@/components/organisation-creation-view";
+import type { CreateOrganisationState } from "@/lib/organisation-actions";
 
 vi.mock("@/lib/auth-actions", () => ({
   signInAction: vi.fn(),
   signOutAction: vi.fn(),
 }));
 
+// The action reaches the registry, which reaches next-auth. Mocked so this
+// stays a test of the form — what it collects, what it refuses to submit, and
+// what it says afterwards — rather than of the network path underneath it.
+const { createOrganisationActionMock } = vi.hoisted(() => ({
+  createOrganisationActionMock: vi.fn(),
+}));
+
+// Only the action is mocked. JURISDICTIONS deliberately is not: it lives in
+// its own module because a "use server" file may export only async functions,
+// and mocking it here would hide a regression that reaching for it again.
+vi.mock("@/lib/organisation-actions", () => ({
+  createOrganisationAction: createOrganisationActionMock,
+}));
+
+function fillDetails(): void {
+  fireEvent.change(screen.getByLabelText("Legal organisation name"), {
+    target: { value: "Example Holdings Ltd" },
+  });
+  fireEvent.change(screen.getByLabelText("Companies House number"), {
+    target: { value: "01234567" },
+  });
+  fireEvent.change(screen.getByLabelText("Registered office address"), {
+    target: { value: "1 Example Street, London, EC1A 1AA" },
+  });
+}
+
 describe("OrganisationCreationView", () => {
-  it("moves from organisation details into the agent wizard", () => {
-    render(<OrganisationCreationView email="owner@example.com" />);
-
-    expect(
-      screen.getByRole("heading", { name: "Create your first organisation" }),
-    ).toBeDefined();
-    expect(
-      screen.getByRole("combobox", { name: "Organisation switcher" }),
-    ).toHaveProperty("disabled", true);
-    expect(
-      within(screen.getByRole("contentinfo")).getByText(
-        "No organisation selected",
-      ),
-    ).toBeDefined();
-
-    fireEvent.change(screen.getByLabelText("Legal organisation name"), {
-      target: { value: "Example Holdings Ltd" },
-    });
-    fireEvent.change(screen.getByLabelText("Companies House number"), {
-      target: { value: "01234567" },
-    });
-    fireEvent.click(
-      screen.getByRole("button", { name: /continue to authority/i }),
+  beforeEach(() => {
+    createOrganisationActionMock.mockReset();
+    createOrganisationActionMock.mockImplementation(
+      (): CreateOrganisationState => ({ status: "idle" }),
     );
-
-    expect(screen.getByText("Authority and review")).toBeDefined();
-    fireEvent.click(
-      screen.getByLabelText(
-        /I confirm I am authorised to submit this organisation/i,
-      ),
-    );
-    fireEvent.click(
-      screen.getByRole("button", { name: /complete organisation setup/i }),
-    );
-
-    expect(
-      screen.getByRole("heading", { name: "Create your first agent" }),
-    ).toBeDefined();
-    expect(screen.getAllByText("Example Holdings Ltd")).toHaveLength(2);
-    expect(
-      within(screen.getByRole("contentinfo")).getByRole("combobox", {
-        name: "Organisation switcher",
-      }),
-    ).toHaveProperty("disabled", false);
-
-    // The wizard is submittable here because a real organisation now exists.
-    fireEvent.change(screen.getByLabelText("Agent name"), {
-      target: { value: "Payments Operations Agent" },
-    });
-    fireEvent.change(screen.getByLabelText("Accountable owner"), {
-      target: { value: "Payments Operations" },
-    });
-    fireEvent.click(
-      screen.getByRole("button", { name: /prepare agent record/i }),
-    );
-
-    const complete = screen.getByRole("region", {
-      name: "Your first agent is ready to review",
-    });
-    expect(within(complete).getByText("Example Holdings Ltd")).toBeDefined();
   });
 
-  it("returns from the agent wizard to the organisation form", () => {
+  it("collects everything the registry requires", () => {
+    // The address is the one that matters here: the column is NOT NULL, and
+    // this form used to have no field for it at all, so every submission it
+    // could have made would have been a 422.
     render(<OrganisationCreationView email="owner@example.com" />);
 
-    fireEvent.change(screen.getByLabelText("Legal organisation name"), {
-      target: { value: "Example Holdings Ltd" },
+    expect(screen.getByLabelText("Legal organisation name")).toBeDefined();
+    expect(screen.getByLabelText("Companies House number")).toBeDefined();
+    expect(screen.getByLabelText("Registered office address")).toBeDefined();
+    expect(screen.getByLabelText("Website (optional)")).toBeDefined();
+  });
+
+  it("submits the jurisdiction as a code, not as a country name", () => {
+    // The registry takes ISO 3166-1 alpha-2 lowercase. The select used to
+    // carry the display name, which no amount of backend validation could fix.
+    render(<OrganisationCreationView email="owner@example.com" />);
+
+    const select = screen.getByLabelText("Registration jurisdiction");
+    expect(select).toHaveProperty("value", "gb");
+    expect(within(select as HTMLElement).getByRole("option")).toHaveProperty(
+      "text",
+      "United Kingdom",
+    );
+  });
+
+  it("will not submit until authority is attested", () => {
+    render(<OrganisationCreationView email="owner@example.com" />);
+    fillDetails();
+    fireEvent.click(
+      screen.getByRole("button", { name: /continue to authority/i }),
+    );
+
+    const submit = screen.getByRole("button", {
+      name: /complete organisation setup/i,
     });
-    fireEvent.change(screen.getByLabelText("Companies House number"), {
-      target: { value: "01234567" },
-    });
+    expect(submit).toHaveProperty("disabled", true);
+
+    fireEvent.click(
+      screen.getByLabelText(
+        /I confirm I am authorised to submit this organisation/i,
+      ),
+    );
+
+    expect(submit).toHaveProperty("disabled", false);
+  });
+
+  it("shows what happens next, and does not offer agent creation", async () => {
+    // The registry refuses agents in an unverified organisation (403), so a
+    // link into the agent wizard here would walk someone into a refusal. This
+    // screen used to do exactly that.
+    createOrganisationActionMock.mockImplementation(
+      (): CreateOrganisationState => ({
+        status: "created",
+        organisationId: "6a1f6f38-0d3f-4c86-9a53-8c8f7a1e2b4d",
+      }),
+    );
+    render(<OrganisationCreationView email="owner@example.com" />);
+    fillDetails();
     fireEvent.click(
       screen.getByRole("button", { name: /continue to authority/i }),
     );
@@ -92,12 +113,51 @@ describe("OrganisationCreationView", () => {
       screen.getByRole("button", { name: /complete organisation setup/i }),
     );
 
+    expect(
+      await screen.findByRole("heading", {
+        name: "Example Holdings Ltd is registered",
+      }),
+    ).toBeDefined();
+    expect(screen.queryByText(/create your first agent/i)).toBeNull();
+    expect(
+      screen.getByText(/agents can be registered once it is verified/i),
+    ).toBeDefined();
+  });
+
+  it("puts the registry's refusal beside the field at fault", async () => {
+    createOrganisationActionMock.mockImplementation(
+      (): CreateOrganisationState => ({
+        status: "error",
+        message: "company already registered",
+        errors: { registrationNumber: "company already registered" },
+      }),
+    );
+    render(<OrganisationCreationView email="owner@example.com" />);
+    fillDetails();
     fireEvent.click(
-      screen.getByRole("button", { name: /back to organisation/i }),
+      screen.getByRole("button", { name: /continue to authority/i }),
+    );
+    fireEvent.click(
+      screen.getByLabelText(
+        /I confirm I am authorised to submit this organisation/i,
+      ),
+    );
+    fireEvent.click(
+      screen.getByRole("button", { name: /complete organisation setup/i }),
     );
 
+    const alerts = await screen.findAllByRole("alert");
     expect(
-      screen.getByRole("heading", { name: "Create your first organisation" }),
-    ).toBeDefined();
+      alerts.some((node) => node.textContent === "company already registered"),
+    ).toBe(true);
+    // And what was typed is still there. Queried by form-control name rather
+    // than by label, because on the review step the details are hidden — the
+    // point is that the value is still in the form, ready to resubmit, not
+    // that it is on screen.
+    expect(
+      document.querySelector<HTMLInputElement>(
+        'input[name="registrationNumber"]',
+      )?.value,
+    ).toBe("01234567");
   });
 });

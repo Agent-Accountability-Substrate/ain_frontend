@@ -6,7 +6,7 @@ import {
   initialAccountWorkspaceState,
   type AccountWorkspaceState,
 } from "@/lib/account-workspace";
-import { userMenuItems } from "@/lib/workspace-navigation";
+import { menuItemsFor } from "@/lib/workspace-navigation";
 
 function assuranceLabel(
   status: AccountWorkspaceState["individualAssurance"]["status"],
@@ -35,7 +35,7 @@ export function AccountSecurityView({
       assuranceStatus={state.individualAssurance.status}
       currentPath="/account"
       email={email}
-      navigationItems={userMenuItems}
+      navigationItems={menuItemsFor(state.isOperator)}
       navigationLabel="Account sections"
       organisations={state.organisations}
       selectedOrganisationId={state.selectedOrganisationId}
