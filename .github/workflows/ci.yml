@@ -23,6 +23,8 @@ jobs:
         run: pnpm install --frozen-lockfile
       - name: Lint
         run: pnpm lint
+      - name: Format check
+        run: pnpm format:check
       - name: Type check
         run: pnpm typecheck
       - name: Tests (90% coverage thresholds)

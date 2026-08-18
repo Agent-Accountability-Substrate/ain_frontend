@@ -1,0 +1,8 @@
+# Owned by another tool, which rewrites them on its next run. Formatting them
+# here only produces a diff that comes back.
+pnpm-lock.yaml
+pnpm-workspace.yaml
+
+# Carries the `nextjs-agent-rules` block that `next dev` regenerates — see the
+# note inside the file. Reformatting it fights the generator.
+AGENTS.md
