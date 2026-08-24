@@ -6,7 +6,7 @@ import { appRouterStubs } from "@test/stubs/app-router";
 import {
   initialAccountWorkspaceState,
   type AccountWorkspaceState,
-} from "@/lib/account-workspace";
+} from "@/domains/workspace/account-workspace";
 
 const { authMock, redirectMock, loadWorkspaceMock } = vi.hoisted(() => ({
   authMock: vi.fn(),
@@ -19,11 +19,11 @@ vi.mock("next/navigation", () => ({
   ...appRouterStubs,
   redirect: redirectMock,
 }));
-vi.mock("@/lib/auth-actions", () => ({ signOutAction: vi.fn() }));
-vi.mock("@/lib/workspace-page", () => ({
+vi.mock("@/domains/auth/auth-actions", () => ({ signOutAction: vi.fn() }));
+vi.mock("@/domains/workspace/workspace-page", () => ({
   loadWorkspace: loadWorkspaceMock,
 }));
-vi.mock("@/lib/agent-actions", () => ({
+vi.mock("@/domains/agents/agent-actions", () => ({
   registerAgentAction: vi.fn(),
   patchAgentAction: vi.fn(),
   submitAgentAction: vi.fn(),

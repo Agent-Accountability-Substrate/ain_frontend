@@ -30,6 +30,29 @@ vi.mock("next/navigation", async (importOriginal) => {
   };
 });
 
+/**
+ * `matchMedia`, which jsdom does not implement at all.
+ *
+ * Every caller under test asks the same question — whether the visitor has
+ * asked for less motion — so the default answer is "no preference", the same
+ * as a browser with the setting untouched. It is a real `EventTarget`, because
+ * a component that subscribes to the setting changing has to be able to.
+ * A test that needs the preference set replaces `window.matchMedia` itself.
+ */
+class MatchMediaStub extends EventTarget implements MediaQueryList {
+  readonly matches = false;
+  onchange: MediaQueryList["onchange"] = null;
+
+  constructor(readonly media: string) {
+    super();
+  }
+
+  addListener(): void {}
+  removeListener(): void {}
+}
+
+window.matchMedia = (media: string) => new MatchMediaStub(media);
+
 afterEach(() => {
   cleanup();
 });

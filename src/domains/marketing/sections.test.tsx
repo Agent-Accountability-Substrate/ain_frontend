@@ -1,0 +1,188 @@
+import { render, screen } from "@testing-library/react";
+import { describe, expect, it } from "vitest";
+
+import { CtaBand } from "@/domains/marketing/cta-band";
+import { IntegrityChain } from "@/domains/marketing/integrity-chain";
+import { RecordBand } from "@/domains/marketing/record-band";
+import { ScopeArtifact } from "@/domains/marketing/scope-artifact";
+import { SiteFooter } from "@/domains/marketing/site-footer";
+import { SiteHero } from "@/domains/marketing/site-hero";
+import {
+  CHAIN_ENTRIES,
+  SCOPE_DIFF,
+  SECTION_LINKS,
+} from "@/domains/marketing/landing-content";
+
+describe("SiteHero", () => {
+  it("leads with the claim the whole page rests on", () => {
+    render(<SiteHero />);
+
+    expect(screen.getByRole("heading", { level: 1 }).textContent).toBe(
+      "The accountability register for autonomous agents.",
+    );
+  });
+
+  it("offers the primary action and the way to read on", () => {
+    render(<SiteHero />);
+
+    expect(screen.getByRole("link", { name: "Book a demo" })).toBeDefined();
+    expect(
+      screen.getByRole("link", { name: "See what a record contains" }),
+    ).toBeDefined();
+  });
+
+  it("states the three commitments a regulated buyer checks first", () => {
+    render(<SiteHero />);
+
+    expect(screen.getByText("UK / EU data residency")).toBeDefined();
+    expect(
+      screen.getByText("Never in your agents’ runtime path"),
+    ).toBeDefined();
+    expect(
+      screen.getByText("Signed, versioned, permanently held"),
+    ).toBeDefined();
+  });
+});
+
+describe("RecordBand", () => {
+  it("is addressable from the navigation", () => {
+    const { container } = render(<RecordBand />);
+    expect(container.querySelector("#record")).not.toBeNull();
+  });
+
+  it("says what the deck below it is showing", () => {
+    render(<RecordBand />);
+
+    expect(screen.getByRole("heading", { level: 2 }).textContent).toBe(
+      "Every version it has ever had.",
+    );
+    expect(screen.getByText("One identifier")).toBeDefined();
+    expect(screen.getByText("Three signed versions")).toBeDefined();
+  });
+});
+
+describe("ScopeArtifact", () => {
+  it("renders every line of the diff", () => {
+    const { container } = render(<ScopeArtifact />);
+    expect(container.querySelectorAll("ol li").length).toBe(SCOPE_DIFF.length);
+  });
+
+  it("carries the sign as a character, not only as a colour", () => {
+    const { container } = render(<ScopeArtifact />);
+    const signs = Array.from(
+      container.querySelectorAll("ol li > span:first-child"),
+    )
+      .map((node) => node.textContent)
+      .filter((sign) => sign !== " ");
+
+    // The diff has to survive being pasted into a compliance questionnaire in
+    // black and white, which is where a document like this usually ends up.
+    expect(signs).toContain("+");
+    expect(signs).toContain("−");
+  });
+
+  it("names who is accountable for the change and what it did to the risk class", () => {
+    render(<ScopeArtifact />);
+
+    expect(screen.getByText("Head of Collections")).toBeDefined();
+    expect(
+      screen.getByText("SMF24-000123 · collections operations"),
+    ).toBeDefined();
+    expect(screen.getByText("high")).toBeDefined();
+  });
+
+  it("says the superseded version is kept", () => {
+    render(<ScopeArtifact />);
+    // The claim the section exists to make: nothing is edited in place.
+    expect(screen.getByText("v8, retained in full")).toBeDefined();
+  });
+
+  it("sends the reader to the demo, not to a sign-up they are told to skip", () => {
+    render(<ScopeArtifact />);
+
+    // The sign-up screen tells firms to book a demo first, so offering
+    // "Create your account" here would point at a door its own page closes.
+    expect(
+      screen.getByRole("link", { name: /Book a demo/ }).getAttribute("href"),
+    ).toBe("#request");
+    expect(screen.queryByText(/Create your account/)).toBeNull();
+  });
+});
+
+describe("IntegrityChain", () => {
+  it("renders one row per entry", () => {
+    const { container } = render(<IntegrityChain />);
+    expect(container.querySelectorAll("tbody tr").length).toBe(
+      CHAIN_ENTRIES.length,
+    );
+  });
+
+  it("shows the break propagating from the edited entry", () => {
+    render(<IntegrityChain />);
+
+    // One edit, and everything chained after it fails with it — the only
+    // thing this table is here to demonstrate.
+    expect(screen.getByText("Altered")).toBeDefined();
+    expect(screen.getAllByText("Broken").length).toBe(2);
+    expect(screen.getByText("Verified")).toBeDefined();
+  });
+
+  it("spells out the consequence in words as well as in the table", () => {
+    render(<IntegrityChain />);
+
+    expect(
+      screen.getByText(/2 entries after it fail\s+verification/),
+    ).toBeDefined();
+  });
+});
+
+describe("CtaBand", () => {
+  it("offers both the demo and the way in for someone who already has an account", () => {
+    render(<CtaBand />);
+
+    expect(
+      screen.getByRole("link", { name: "Book a demo" }).getAttribute("href"),
+    ).toBe("#request");
+    // One way in: a plain link to the vanity route, which forwards to Auth0.
+    expect(
+      screen.getByRole("link", { name: "Sign in" }).getAttribute("href"),
+    ).toBe("/signin");
+  });
+});
+
+describe("SiteFooter", () => {
+  it("gives the contact address as a mailto", () => {
+    render(<SiteFooter />);
+
+    const link = screen.getByRole("link", { name: "partner@subrahq.com" });
+    expect(link.getAttribute("href")).toBe("mailto:partner@subrahq.com");
+  });
+
+  it("carries the disclaimer a regulated buyer's compliance team looks for", () => {
+    render(<SiteFooter />);
+
+    expect(
+      screen.getByText(/not endorsed by or affiliated\s+with any regulator/),
+    ).toBeDefined();
+  });
+
+  it("groups the links under headings rather than as one list", () => {
+    render(<SiteFooter />);
+
+    for (const heading of ["Product", "Company", "Legal"]) {
+      expect(screen.getByText(heading)).toBeDefined();
+    }
+  });
+
+  it("names the sections exactly as the nav does", () => {
+    render(<SiteFooter />);
+
+    // Two vocabularies for one page is how "The record" and "How it works"
+    // end up meaning the same section to everyone except the reader.
+    for (const link of SECTION_LINKS) {
+      expect(
+        screen.getByRole("link", { name: link.label }).getAttribute("href"),
+      ).toBe(link.href);
+    }
+  });
+});

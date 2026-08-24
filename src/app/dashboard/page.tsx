@@ -1,9 +1,9 @@
 import { redirect } from "next/navigation";
 
 import { auth } from "@/auth";
-import { DashboardView } from "@/components/dashboard-view";
-import { WorkspaceUnavailable } from "@/components/workspace-unavailable";
-import { loadWorkspace } from "@/lib/workspace-page";
+import { DashboardView } from "@/domains/workspace/dashboard-view";
+import { WorkspaceUnavailable } from "@/domains/workspace/workspace-unavailable";
+import { loadWorkspace } from "@/domains/workspace/workspace-page";
 
 // Reads the session and the registry per request; never prerendered.
 export const dynamic = "force-dynamic";

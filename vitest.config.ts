@@ -24,7 +24,6 @@ export default defineConfig({
         // Renders to a PNG through next/og, so there is nothing jsdom can
         // assert. Verified by `next build`, which prerenders it.
         "src/app/opengraph-image.tsx",
-        "src/components/ui/**",
         "src/instrumentation.ts",
         "src/instrumentation-client.ts",
         // Auth.js framework glue — verified by the manual "invited user logs
@@ -32,7 +31,7 @@ export default defineConfig({
         // dashboard / sign-in / sign-out components).
         "src/auth.ts",
         "src/proxy.ts",
-        "src/lib/auth-actions.ts",
+        "src/domains/auth/auth-actions.ts",
         "src/app/api/**",
         "src/app/dashboard/**",
         "src/**/*.test.{ts,tsx}",

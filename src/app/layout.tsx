@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Instrument_Serif, Poppins } from "next/font/google";
+import { IBM_Plex_Mono, Inter, Poppins } from "next/font/google";
 
 import "./globals.css";
 
@@ -14,11 +14,20 @@ const poppins = Poppins({
   display: "swap",
 });
 
-const instrumentSerif = Instrument_Serif({
+// The public landing page's pair. Self-hosted at build time for the same
+// reason as Poppins above — the mockup links them from fonts.googleapis.com,
+// which is the one thing from it that cannot be copied over.
+const inter = Inter({
   subsets: ["latin"],
-  weight: ["400"],
-  style: ["italic"],
-  variable: "--font-instrument-serif",
+  weight: ["400", "500", "600"],
+  variable: "--font-inter",
+  display: "swap",
+});
+
+const ibmPlexMono = IBM_Plex_Mono({
+  subsets: ["latin"],
+  weight: ["400", "500"],
+  variable: "--font-ibm-plex-mono",
   display: "swap",
 });
 
@@ -26,24 +35,34 @@ export const metadata: Metadata = {
   metadataBase: new URL("https://subrahq.com"),
   applicationName: "AIN Registry",
   title: {
+    // Applies to every authenticated route, none of which sets its own title.
+    // The landing page overrides it absolutely — see `page.tsx`.
     default: "AIN Registry · Subra",
-    template: "%s · AIN Registry",
+    template: "%s · Subra",
   },
   description:
-    "The accountability register for autonomous agents: a permanent identifier, a signed record of what an agent may do, and the person who answers for it. Built for UK regulated firms.",
+    "Every action an agent takes is bound to the scope it was authorised under, and to the role that answers for it. Private preview for UK regulated firms.",
+  // Icons are file-based — `icon.svg`, `apple-icon.png` and `favicon.ico`
+  // beside this file. Next emits the tags from those, so there is no path
+  // here to drift out of step with what is actually on disk. The SVG carries
+  // its own dark-mode swap; the PNGs bake the light face, which is what a
+  // home screen and a bookmark bar show.
+  // Each route is canonical to itself. Relative, so it resolves against
+  // `metadataBase` per page rather than pointing everything at the root.
+  alternates: { canonical: "./" },
   openGraph: {
     type: "website",
     siteName: "AIN Registry",
     locale: "en_GB",
-    title: "AIN Registry · Subra",
+    title: "Subra: The accountability register for autonomous agents",
     description:
-      "A permanent identifier, a signed record of what an agent may do, and the person who answers for it.",
+      "Every action an agent takes is bound to the scope it was authorised under, and to the role that answers for it. Private preview for UK regulated firms.",
   },
   twitter: {
     card: "summary_large_image",
-    title: "AIN Registry · Subra",
+    title: "Subra: The accountability register for autonomous agents",
     description:
-      "A permanent identifier, a signed record of what an agent may do, and the person who answers for it.",
+      "Every action an agent takes is bound to the scope it was authorised under, and to the role that answers for it. Private preview for UK regulated firms.",
   },
 };
 
@@ -55,7 +74,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`h-full antialiased ${poppins.variable} ${instrumentSerif.variable}`}
+      className={`h-full antialiased ${poppins.variable} ${inter.variable} ${ibmPlexMono.variable}`}
     >
       <body className="flex min-h-full flex-col">{children}</body>
     </html>

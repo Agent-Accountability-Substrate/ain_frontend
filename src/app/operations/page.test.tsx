@@ -6,7 +6,7 @@ import { appRouterStubs } from "@test/stubs/app-router";
 import {
   initialAccountWorkspaceState,
   type AccountWorkspaceState,
-} from "@/lib/account-workspace";
+} from "@/domains/workspace/account-workspace";
 
 const {
   authMock,
@@ -51,10 +51,14 @@ vi.mock("next/navigation", () => ({
   ...appRouterStubs,
   redirect: redirectMock,
 }));
-vi.mock("@/lib/auth-actions", () => ({ signOutAction: vi.fn() }));
-vi.mock("@/lib/workspace-page", () => ({ loadWorkspace: loadWorkspaceMock }));
-vi.mock("@/lib/operations-actions", () => ({ recordDecisionAction: vi.fn() }));
-vi.mock("@/lib/registry-api", () => ({
+vi.mock("@/domains/auth/auth-actions", () => ({ signOutAction: vi.fn() }));
+vi.mock("@/domains/workspace/workspace-page", () => ({
+  loadWorkspace: loadWorkspaceMock,
+}));
+vi.mock("@/domains/operations/operations-actions", () => ({
+  recordDecisionAction: vi.fn(),
+}));
+vi.mock("@/lib/registry/registry-api", () => ({
   listReviewQueue: listReviewQueueMock,
   checkRegistration: checkRegistrationMock,
   NotAuthenticatedError,

@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { appRouterStubs } from "@test/stubs/app-router";
 
-import { initialAccountWorkspaceState } from "@/lib/account-workspace";
+import { initialAccountWorkspaceState } from "@/domains/workspace/account-workspace";
 
 const { authMock, redirectMock, loadWorkspaceMock } = vi.hoisted(() => ({
   authMock: vi.fn(),
@@ -18,7 +18,7 @@ vi.mock("@/auth", () => ({
 // The page now reads the registry. Mocked here so these stay tests of the
 // route's own behaviour — fail closed, render the right shell — rather than
 // of the DAL, which has its own.
-vi.mock("@/lib/workspace-page", () => ({
+vi.mock("@/domains/workspace/workspace-page", () => ({
   loadWorkspace: loadWorkspaceMock,
 }));
 
@@ -27,7 +27,7 @@ vi.mock("next/navigation", () => ({
   redirect: redirectMock,
 }));
 
-vi.mock("@/lib/auth-actions", () => ({
+vi.mock("@/domains/auth/auth-actions", () => ({
   signOutAction: vi.fn(),
 }));
 

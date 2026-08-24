@@ -1,9 +1,9 @@
 import { redirect } from "next/navigation";
 
 import { auth } from "@/auth";
-import { AccountSecurityView } from "@/components/account-security-view";
-import { WorkspaceUnavailable } from "@/components/workspace-unavailable";
-import { loadWorkspace } from "@/lib/workspace-page";
+import { AccountSecurityView } from "@/domains/identity/account-security-view";
+import { WorkspaceUnavailable } from "@/domains/workspace/workspace-unavailable";
+import { loadWorkspace } from "@/domains/workspace/workspace-page";
 
 export const dynamic = "force-dynamic";
 
