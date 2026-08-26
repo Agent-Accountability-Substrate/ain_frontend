@@ -238,6 +238,26 @@ describe("requestAccessAction", () => {
     expect(send).not.toHaveBeenCalled();
   });
 
+  it("keeps the length reason when the address failed as well", async () => {
+    const result = await requestAccessAction(
+      IDLE,
+      form({
+        name: "A".repeat(201),
+        email: "not-an-address",
+        company: "",
+      }),
+    );
+
+    // Reporting only "enter your name" beside a box the visitor can see is
+    // full sends them back for the address alone, and they learn about the
+    // ceiling on the next attempt — two round trips for one form.
+    expect(result).toMatchObject({
+      message:
+        "That name is longer than the 200 characters we can store, and we need a work email address so we can reply.",
+    });
+    expect(send).not.toHaveBeenCalled();
+  });
+
   it("reports success to a filled honeypot and sends nothing", async () => {
     const result = await requestAccessAction(
       IDLE,

@@ -11,6 +11,10 @@ import { FAQ_ENTRIES } from "@/domains/marketing/landing-content";
  * Base UI's accordion gives the one-open-at-a-time behaviour, the measured
  * height to animate against, and the `aria-controls`/`aria-expanded` wiring
  * without any of it being hand-rolled.
+ * `hiddenUntilFound` is what keeps a closed answer in the document rather than
+ * unmounted, which is the whole reason the native `<details>` this replaces was
+ * worth replacing carefully: the answers are the page's substance, so a crawler,
+ * a printed copy and find-in-page all need them present, open or not.
  * The plus turns into a minus by scaling the vertical stroke to nothing, so
  * there is one icon rather than two swapped.
  */
@@ -37,6 +41,9 @@ export function SiteFaq() {
             // The first answer is open on arrival, so the section reads as
             // answers rather than as four closed rows a visitor has to guess at.
             defaultValue={[FAQ_ENTRIES[0]?.question]}
+            // Renders every panel and hides the closed ones with
+            // `hidden="until-found"`, which `globals.css` already assumes.
+            hiddenUntilFound
             className="border-t border-site-rule"
           >
             {FAQ_ENTRIES.map((entry) => (

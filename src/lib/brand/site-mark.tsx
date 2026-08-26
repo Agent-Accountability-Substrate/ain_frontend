@@ -31,15 +31,26 @@ function SiteMark({ className }: { className?: string }) {
 }
 
 /**
- * Mark, wordmark, and the product name it belongs to. `sub` is dropped on
- * narrow viewports where the divider would crowd the burger.
+ * Mark, wordmark, and the product name it belongs to.
+ *
+ * Two ways to drop the product name, because the surfaces need different
+ * things. `showProduct={false}` drops it outright — the auth screens wear the
+ * mark and the name alone. `productClassName` is how a surface drops it by
+ * viewport: the nav passes `max-[700px]:hidden`, the width at which its burger
+ * appears and the divider would crowd it. Doing that here for every surface
+ * would take it off the footer too, which has no burger and the room to spare.
+ *
+ * The divider and the name share a wrapper so one class hides both, and the
+ * wrapper repeats the row's own gap so the spacing is unchanged by having it.
  */
 export function SiteWordmark({
   className,
   showProduct = true,
+  productClassName,
 }: {
   className?: string;
   showProduct?: boolean;
+  productClassName?: string;
 }) {
   return (
     <span className={cn("flex items-center gap-[13px]", className)}>
@@ -48,12 +59,12 @@ export function SiteWordmark({
         Subra
       </span>
       {showProduct ? (
-        <>
+        <span className={cn("flex items-center gap-[13px]", productClassName)}>
           <span className="h-[18px] w-px bg-current opacity-[0.13]" />
           <span className="font-site-mono text-[9.5px] uppercase tracking-[0.15em] opacity-60">
             AIN Registry
           </span>
-        </>
+        </span>
       ) : null}
     </span>
   );

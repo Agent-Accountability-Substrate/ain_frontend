@@ -1,6 +1,11 @@
 import { startAuth } from "@/domains/auth/auth-redirects";
 
-/** `/register` — forwarded to Auth0's Universal Login, sign-up screen. */
-export async function GET(): Promise<never> {
+/** `/register` — forwarded to Auth0's Universal Login. Sign-up screen. */
+export async function GET(): Promise<Response> {
   return startAuth("signup");
 }
+
+// Starting a flow writes a per-attempt cookie and reads the request headers to
+// decide whether to start one at all, so this is never a response that can be
+// computed once at build time and handed to everybody.
+export const dynamic = "force-dynamic";

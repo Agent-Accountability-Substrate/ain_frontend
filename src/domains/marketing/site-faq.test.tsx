@@ -37,6 +37,25 @@ describe("SiteFaq", () => {
     }
   });
 
+  it("keeps every answer in the document while it is closed", () => {
+    const { container } = render(<SiteFaq />);
+
+    // The section is server-rendered, so an answer that exists only once its
+    // panel has been opened is absent from the HTML a crawler indexes, a
+    // printed copy carries, and find-in-page searches. The `<details>` this
+    // replaced kept all four; unmounting three would be a regression.
+    for (const entry of FAQ_ENTRIES) {
+      expect(screen.getByText(entry.answer)).toBeDefined();
+    }
+
+    // Present, not shown: the closed three are hidden rather than unmounted.
+    const [, ...rest] = FAQ_ENTRIES;
+    for (const entry of rest) {
+      expect(screen.getByText(entry.answer).closest("[hidden]")).not.toBeNull();
+    }
+    expect(container.querySelectorAll("[hidden]")).toHaveLength(rest.length);
+  });
+
   it("opens the answer to the question that was asked", () => {
     render(<SiteFaq />);
     const [, second] = FAQ_ENTRIES;

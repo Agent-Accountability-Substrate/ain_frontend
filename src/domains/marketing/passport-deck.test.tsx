@@ -79,6 +79,23 @@ describe("PassportDeck", () => {
     ).toBeDefined();
   });
 
+  it("keeps the turned-away face out of the accessibility tree", () => {
+    render(<PassportDeck />);
+
+    // `backface-visibility` hides the turned-away face's pixels and nothing
+    // else. Unmarked, a reader is read all three fronts and all three nine-row
+    // records in sequence, and the button offering to turn a card over then
+    // changes nothing it can perceive.
+    expect(screen.queryAllByRole("term")).toHaveLength(0);
+
+    fireEvent.click(screen.getByRole("button", { name: /Turn over v3/ }));
+
+    // Turned over, exactly one record is readable: the one now facing out.
+    expect(screen.getAllByRole("term")).toHaveLength(
+      PASSPORT_VERSIONS.at(-1)?.record.length ?? 0,
+    );
+  });
+
   it("keeps the permanent identifier the same across every version", () => {
     render(<PassportDeck />);
 

@@ -34,10 +34,24 @@ const METADATA_ROUTES = new Set([
   "/manifest.webmanifest",
 ]);
 
+/**
+ * Next's disambiguating suffix on a metadata file that sits under a `(group)`
+ * or an `@slot`: a short hash of the parent path, appended to the name and
+ * before any extension — `/opengraph-image` is served at
+ * `/opengraph-image-pwu6ef`, `/icon.svg` at `/icon-pwu6ef.svg`.
+ *
+ * Stripped rather than enumerated, because the hash is derived from the
+ * group's name: listing it would mean re-deriving every entry the day someone
+ * renames a route group, and the list falling silently out of date if they
+ * forget. The paths it widens are metadata names that exist only as metadata
+ * routes; anything else still answers 404, session or no session.
+ */
+const GROUP_HASH = /-[0-9a-z]{6}(?=$|\.)/;
+
 export function isPublicPath(pathname: string): boolean {
   // Auth.js's own routes must stay public or sign-in loops.
   if (pathname.startsWith("/api/auth")) return true;
   if (AUTH_ENTRY_PATHS.has(pathname)) return true;
-  if (METADATA_ROUTES.has(pathname)) return true;
+  if (METADATA_ROUTES.has(pathname.replace(GROUP_HASH, ""))) return true;
   return pathname === "/";
 }

@@ -1,7 +1,6 @@
 "use client";
 
 import { ChevronRight } from "lucide-react";
-import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 
 import { SiteWordmark } from "@/lib/brand/site-mark";
@@ -19,7 +18,11 @@ import { cn } from "@/lib/utils";
  * property some time after the panel was first painted at a guess.
  *
  * Scroll is locked on both `html` and `body`: locking only `body` still lets
- * iOS Safari scroll the document behind an overlay.
+ * iOS Safari scroll the document behind an overlay. Every control in the panel
+ * closes it on the way out, sign-in included: `/signin` is a route handler, so
+ * the navigation is a full page load, and a panel left up over it holds the
+ * scroll lock and the focus for the whole round trip — and stays there if the
+ * load fails.
  */
 export function SiteNav() {
   const [open, setOpen] = useState(false);
@@ -73,7 +76,7 @@ export function SiteNav() {
             aria-label="Subra AIN Registry"
             className="text-site-ink"
           >
-            <SiteWordmark />
+            <SiteWordmark productClassName="max-[700px]:hidden" />
           </a>
 
           <div className="flex gap-8 text-[14px] text-site-ink-soft max-[700px]:hidden">
@@ -89,12 +92,12 @@ export function SiteNav() {
           </div>
 
           <div className="flex items-center gap-1.5 max-[700px]:hidden">
-            <Link
+            <a
               href="/signin"
               className="rounded-full px-4 py-2.5 text-[13.5px] font-medium text-site-ink-soft hover:bg-site-ink/5 hover:text-site-ink"
             >
               Sign in
-            </Link>
+            </a>
             <a
               href="#request"
               className="rounded-full bg-site-ink px-5 py-2.5 text-[13.5px] font-medium text-site-paper"
@@ -160,12 +163,13 @@ export function SiteNav() {
           </nav>
 
           <div className="mt-auto grid grid-cols-2 gap-[11px] pt-9">
-            <Link
+            <a
               href="/signin"
+              onClick={closeFromPanel}
               className="inline-flex items-center justify-center rounded-full border border-site-rule px-4 py-[15px] text-[14.5px] font-medium text-site-ink transition-colors duration-300 ease-site hover:border-site-ink"
             >
               Sign in
-            </Link>
+            </a>
             <a
               href="#request"
               onClick={closeFromPanel}

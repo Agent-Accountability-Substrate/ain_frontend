@@ -34,6 +34,10 @@ export default defineConfig({
         "src/domains/auth/auth-actions.ts",
         "src/app/api/**",
         "src/app/dashboard/**",
+        // Vendored shadcn primitives, written by the CLI rather than by us —
+        // `components.json` points it at this path. Third-party source has no
+        // business failing our own coverage gate.
+        "src/lib/ui/**",
         "src/**/*.test.{ts,tsx}",
       ],
       thresholds: {

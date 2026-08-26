@@ -49,15 +49,23 @@ const GENERIC_ERROR = `That did not send. Email ${PARTNER_EMAIL} and we will pic
  * Which field to point the visitor at, read off the ones that actually failed.
  * Inferring it from an empty name reported a name over the schema's ceiling as
  * a bad email address — the one field that was fine.
+ *
+ * A name that survives trimming can only have failed for length, so the reason
+ * is stated whether or not the address failed too. Collapsing both failures to
+ * "enter your name" beside a visibly full box costs a second round trip to
+ * learn what was actually wrong with it.
  */
 function rejection(failed: ReadonlySet<string>, name: string): string {
+  const tooLong = failed.has("name") && name !== "";
   if (failed.has("name") && failed.has("email")) {
-    return "Enter your name and a work email address so we can reply.";
+    return tooLong
+      ? "That name is longer than the 200 characters we can store, and we need a work email address so we can reply."
+      : "Enter your name and a work email address so we can reply.";
   }
   if (failed.has("name")) {
-    return name === ""
-      ? "Enter your name so we can reply."
-      : "That name is longer than the 200 characters we can store.";
+    return tooLong
+      ? "That name is longer than the 200 characters we can store."
+      : "Enter your name so we can reply.";
   }
   return "Enter a work email address so we can reply.";
 }

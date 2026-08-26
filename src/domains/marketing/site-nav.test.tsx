@@ -128,6 +128,40 @@ describe("SiteNav", () => {
     ).toBeNull();
   });
 
+  it("closes when Sign in is followed, like every other control in the panel", () => {
+    render(<SiteNav />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Open menu" }));
+    const link = menu()?.querySelector('a[href="/signin"]') as HTMLElement;
+    // jsdom cannot navigate, and a real click here would log that it tried.
+    link.addEventListener("click", (event) => {
+      event.preventDefault();
+    });
+    link.focus();
+    fireEvent.click(link);
+
+    // `/signin` is a route handler, so this is a full page load rather than a
+    // soft navigation. A panel left up holds the scroll lock and the focus for
+    // the whole round trip, and stays up if the load never lands.
+    expect(menu()?.hasAttribute("hidden")).toBe(true);
+    expect(document.documentElement.style.overflow).toBe("");
+    expect(document.body.style.overflow).toBe("");
+    expect(document.activeElement).toBe(
+      screen.getByRole("button", { name: "Open menu" }),
+    );
+  });
+
+  it("drops the product name at the width the burger appears", () => {
+    render(<SiteNav />);
+
+    // The bar is mark + "Subra" + divider + "AIN REGISTRY" against a 40px
+    // burger at 375px. The divider goes with the name or it is left as a
+    // hairline rule beside the burger.
+    expect(screen.getByText("AIN Registry").parentElement?.className).toContain(
+      "max-[700px]:hidden",
+    );
+  });
+
   it("links to each section of the page", () => {
     render(<SiteNav />);
 

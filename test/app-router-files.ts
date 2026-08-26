@@ -7,6 +7,13 @@ export interface AppFile {
   readonly name: string;
   /** The segment's URL path. `/` at the app root, never with a trailing slash. */
   readonly segment: string;
+  /**
+   * The directory as it sits on disk, `(group)` and `@slot` segments kept.
+   *
+   * Next hashes this path to disambiguate metadata routes, so the URL a
+   * metadata file is served at cannot be derived from `segment` alone.
+   */
+  readonly dir: string;
 }
 
 // Anchored to the project root rather than counted in `../` hops from a test
@@ -23,16 +30,21 @@ const APP_DIR = join(process.cwd(), "src/app");
  * all. A dynamic `[segment]` is kept in the path verbatim — skipping it would
  * hide exactly the case a guard exists to catch.
  *
+ * `dir` keeps what `segment` drops. A group is transparent to the URL but not
+ * to Next's metadata routing, which hashes the parent path to keep two
+ * `opengraph-image` files from colliding, so a guard that needs the served URL
+ * has to start from the path on disk.
+ *
  * Reading only the top level, as both guards used to, meant a route or a
  * metadata file one directory further down was simply not seen.
  */
 export function appFiles(): AppFile[] {
   const found: AppFile[] = [];
 
-  const walk = (directory: string, segment: string) => {
+  const walk = (directory: string, segment: string, dir: string) => {
     for (const entry of readdirSync(directory, { withFileTypes: true })) {
       if (entry.isFile()) {
-        found.push({ name: entry.name, segment });
+        found.push({ name: entry.name, segment, dir });
         continue;
       }
       if (entry.name.startsWith("_")) continue;
@@ -43,10 +55,11 @@ export function appFiles(): AppFile[] {
         transparent
           ? segment
           : `${segment === "/" ? "" : segment}/${entry.name}`,
+        `${dir === "/" ? "" : dir}/${entry.name}`,
       );
     }
   };
 
-  walk(APP_DIR, "/");
+  walk(APP_DIR, "/", "/");
   return found;
 }

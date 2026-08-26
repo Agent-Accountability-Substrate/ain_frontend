@@ -26,6 +26,16 @@ describe("SiteWordmark", () => {
     expect(container.textContent).toBe("Subra");
   });
 
+  it("hands the caller one handle on both halves of the product name", () => {
+    render(<SiteWordmark productClassName="max-[700px]:hidden" />);
+
+    // A surface that drops the name by viewport has to drop the divider with
+    // it — the nav's burger is what the divider would otherwise crowd.
+    const group = screen.getByText("AIN Registry").parentElement;
+    expect(group?.className).toContain("max-[700px]:hidden");
+    expect(group?.querySelectorAll("span")).toHaveLength(2);
+  });
+
   it("draws the same square as the favicon, and in the same accent", () => {
     const { container } = render(<SiteWordmark />);
     const inline = container.querySelector("path")?.getAttribute("d") ?? "";
