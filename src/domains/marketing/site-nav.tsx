@@ -8,14 +8,12 @@ import { SECTION_LINKS } from "@/domains/marketing/landing-content";
 import { cn } from "@/lib/utils";
 
 /**
- * The top bar, and the panel it becomes on a narrow viewport.
+ * The navigation bar, and the panel it becomes on a narrow viewport.
  *
- * Open, the announcement, the bar and the panel are one fixed column: the first
- * two keep their own height and the panel takes what is left. That is what
- * holds the burger still between the two states, and it holds without
- * measuring anything — the panel starts where the bar ends because it is the
- * next box down, not because a script wrote the bar's height into a custom
- * property some time after the panel was first painted at a guess.
+ * Open, the bar and the panel are one fixed column: the bar keeps its own
+ * height and the panel takes what is left. That holds the burger still between
+ * the two states without measuring anything—the panel starts where the bar
+ * ends because it is simply the next box down.
  *
  * Scroll is locked on both `html` and `body`: locking only `body` still lets
  * iOS Safari scroll the document behind an overlay. Every control in the panel
@@ -65,10 +63,6 @@ export function SiteNav() {
 
   return (
     <div className={cn(open && "fixed inset-0 z-[200] flex flex-col")}>
-      <div className="bg-site-ink px-5 py-2.5 text-center font-site-mono text-[12.5px] tracking-[0.02em] text-site-cream-soft select-none">
-        Private preview · working with a small number of UK regulated firms
-      </div>
-
       <div className={cn(open && "bg-site-paper")}>
         <nav className="mx-auto flex max-w-[1320px] items-center justify-between px-[clamp(20px,3.05vw,44px)] py-[22px] max-[700px]:py-4">
           <a

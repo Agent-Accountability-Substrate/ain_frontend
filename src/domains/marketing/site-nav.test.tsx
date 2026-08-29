@@ -64,10 +64,8 @@ describe("SiteNav", () => {
     render(<SiteNav />);
     fireEvent.click(screen.getByRole("button", { name: "Open menu" }));
 
-    // The announcement, the bar and the panel are one column, so the panel
-    // starts where the bar ends by being the next box down. Writing the bar's
-    // height into a custom property put the panel 19px out on its first frame,
-    // because the effect that measured it ran after that frame was painted.
+    // The bar and panel are one column, so the panel starts where the bar ends
+    // by being the next box down. No measured-height custom property is needed.
     for (const property of ["--site-announce-h", "--site-head-h"]) {
       expect(document.documentElement.style.getPropertyValue(property)).toBe(
         "",

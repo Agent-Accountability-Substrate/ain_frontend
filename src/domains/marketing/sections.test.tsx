@@ -18,17 +18,32 @@ describe("SiteHero", () => {
     render(<SiteHero />);
 
     expect(screen.getByRole("heading", { level: 1 }).textContent).toBe(
-      "The accountability register for autonomous agents.",
+      "Evidence for every consequential action an AI agent takes.",
     );
+    expect(screen.getByTestId("hero-eyebrow").textContent).toBe(
+      "Evidence and accountability for consequential AI agentsBeta",
+    );
+    expect(
+      screen.getByText(
+        "Subra binds each consequential action to the identity presented, the organisation, the accountable owner, the declared scope, and the policy and model versions in force - then produces signed evidence that can be checked independently later, by someone else.",
+      ),
+    ).toBeDefined();
+    expect(screen.queryByText("Accountability register")).toBeNull();
+    expect(screen.queryByText(/passport/i)).toBeNull();
+    expect(screen.queryByText(/registry/i)).toBeNull();
   });
 
   it("offers the primary action and the way to read on", () => {
     render(<SiteHero />);
 
-    expect(screen.getByRole("link", { name: "Book a demo" })).toBeDefined();
     expect(
-      screen.getByRole("link", { name: "See what a record contains" }),
-    ).toBeDefined();
+      screen.getByRole("link", { name: "Book a demo" }).getAttribute("href"),
+    ).toBe("#request");
+    expect(
+      screen
+        .getByRole("link", { name: "See what a record contains" })
+        .getAttribute("href"),
+    ).toBe("#record");
   });
 
   it("states the three commitments a regulated buyer checks first", () => {
@@ -50,14 +65,40 @@ describe("RecordBand", () => {
     expect(container.querySelector("#record")).not.toBeNull();
   });
 
+  it("places the open partner invitation immediately before the record divider", () => {
+    const { container } = render(<RecordBand />);
+    const carousel = screen.getByTestId("partner-carousel");
+    const divider = container.querySelector(".border-t.border-site-hair");
+
+    expect(carousel.nextElementSibling).toBe(divider);
+  });
+
   it("says what the deck below it is showing", () => {
     render(<RecordBand />);
 
-    expect(screen.getByRole("heading", { level: 2 }).textContent).toBe(
-      "Every version it has ever had.",
-    );
+    expect(
+      screen
+        .getAllByRole("heading", { level: 2 })
+        .find(
+          (heading) => heading.textContent === "Every version it has ever had.",
+        ),
+    ).toBeDefined();
     expect(screen.getByText("One identifier")).toBeDefined();
-    expect(screen.getByText("Three signed versions")).toBeDefined();
+    expect(screen.getByText("Multiple signed versions")).toBeDefined();
+  });
+
+  it("renders the supplied agent identity passport without an added wrapper", () => {
+    render(<RecordBand />);
+
+    expect(
+      screen.getByRole("heading", {
+        level: 2,
+        name: "One registry. A distinct passport for every agent.",
+      }),
+    ).toBeDefined();
+    expect(
+      screen.getByLabelText("Agent identity passport cards"),
+    ).toBeDefined();
   });
 });
 

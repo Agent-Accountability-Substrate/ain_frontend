@@ -34,14 +34,12 @@ describe("LandingPage", () => {
     expect(auth).not.toHaveBeenCalled();
   });
 
-  it("says it is a private preview before anything else", () => {
+  it("does not place an announcement bar above the navigation", () => {
     render(<LandingPage />);
 
     expect(
-      screen.getByText(
-        /Private preview · working with a small number of UK regulated firms/,
-      ),
-    ).toBeDefined();
+      screen.queryByText(/working with a small number of UK regulated firms/),
+    ).toBeNull();
   });
 
   it("has exactly one h1", () => {

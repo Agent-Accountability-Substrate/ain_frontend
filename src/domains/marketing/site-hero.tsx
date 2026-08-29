@@ -39,24 +39,29 @@ export function SiteHero() {
       <div className="relative z-[1] mx-auto max-w-[1320px] px-[clamp(20px,3.05vw,44px)]">
         <div className="grid items-end gap-[92px] [grid-template-columns:minmax(0,1.42fr)_minmax(0,0.78fr)] max-[1000px]:grid-cols-[minmax(0,1fr)] max-[1000px]:gap-11">
           <div>
-            <div className="mb-9 flex items-center gap-[13px] font-site-mono text-[10.5px] uppercase tracking-[0.16em] text-site-cream-dim select-none max-[560px]:mb-7 max-[560px]:flex-wrap max-[560px]:gap-[9px] max-[560px]:text-[9.5px]">
+            <div
+              className="mb-9 flex items-center gap-[13px] font-site-mono text-[11px] font-medium uppercase tracking-[0.16em] text-site-cream-soft select-none max-[560px]:mb-7 max-[560px]:flex-wrap max-[560px]:gap-[9px] max-[560px]:text-[10px]"
+              data-testid="hero-eyebrow"
+            >
               <span className="h-1.5 w-1.5 rounded-full bg-site-accent" />
-              Accountability register
+              Evidence and accountability for consequential AI agents
               <span className="h-px flex-none basis-[46px] bg-site-hair max-[560px]:basis-4" />
-              Private preview
+              Beta
             </div>
             <RevealHeading
               level={1}
-              lead="The accountability register for"
-              accent="autonomous agents."
+              lead="Evidence for every consequential action"
+              accent="an AI agent takes."
               className="max-w-[15ch] text-[clamp(38px,7.4vw,80px)] leading-[1.02] font-medium tracking-[-0.038em] text-site-cream"
             />
           </div>
 
           <div>
-            <p className="mb-[30px] max-w-[34ch] text-[17px] leading-[1.62] text-site-cream-soft">
-              Every action an agent takes is bound to the scope it was
-              authorised under, and to the role that answers for it.
+            <p className="mb-[30px] max-w-[40ch] text-[17px] leading-[1.62] text-site-cream-soft">
+              Subra binds each consequential action to the identity presented,
+              the organisation, the accountable owner, the declared scope, and
+              the policy and model versions in force - then produces signed
+              evidence that can be checked independently later, by someone else.
             </p>
             <div className="flex flex-wrap items-center gap-6 max-[560px]:flex-col max-[560px]:items-stretch max-[560px]:gap-[18px]">
               <a

@@ -122,7 +122,7 @@
      Values are the mockup's, unrounded — this block is the only place they
      appear, so the page cannot drift from the design by a hex at a time. */
   --color-site-paper: #edeae4;
-  --color-site-ink: #15161a;
+  --color-site-ink: #0b1127;
   --color-site-ink-soft: #3e4148;
   --color-site-muted: #74736e;
   --color-site-rule: rgba(22, 24, 28, 0.13);
@@ -157,7 +157,7 @@
   --card-foreground: #091126;
   --popover: #ffffff;
   --popover-foreground: #091126;
-  --primary: #091126;
+  --primary: #0b1127;
   --primary-foreground: #ffffff;
   --secondary: #4d6fad;
   --secondary-foreground: #ffffff;
@@ -3573,5 +3573,1247 @@ details > summary::-webkit-details-marker {
 @media (prefers-reduced-motion: reduce) {
   .site-faq-panel {
     transition: none;
+  }
+}
+
+/* The identity deck sits inside a restrained tablet shell on larger screens.
+   On narrow screens the shell disappears so the content behaves like a normal
+   responsive section without device chrome or rounded outer corners. */
+.agent-tablet-frame {
+  position: relative;
+  padding: 0.875rem;
+  border: 1px solid rgba(150, 164, 194, 0.48);
+  border-radius: 2.75rem;
+  background: transparent;
+  box-shadow:
+    0 2.25rem 5rem -2.75rem rgba(4, 8, 24, 0.72),
+    inset 0 1px 0 rgba(255, 255, 255, 0.13);
+}
+
+/* A small invitation rather than a customer-logo wall: the marks describe
+   open collaboration lanes and never imply an existing commercial relationship. */
+.partner-carousel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.65rem;
+  padding: 0 0 clamp(2rem, 4vw, 3.5rem);
+  text-align: center;
+}
+
+.partner-carousel-invitation {
+  max-width: 34rem;
+}
+
+.partner-carousel-invitation > p {
+  margin: 0;
+  color: var(--color-site-cream-dim);
+  font-family: var(--font-site-mono);
+  font-size: 0.62rem;
+  font-weight: 500;
+  letter-spacing: 0.17em;
+  text-transform: uppercase;
+}
+
+.partner-carousel-invitation h2 {
+  margin: 0.45rem 0 0;
+  color: var(--color-site-cream-soft);
+  font-size: clamp(1.05rem, 1.7vw, 1.3rem);
+  font-weight: 500;
+  letter-spacing: -0.018em;
+}
+
+.partner-carousel-invitation > span {
+  display: block;
+  margin-top: 0.55rem;
+  color: var(--color-site-cream-dim);
+  font-size: 0.82rem;
+  line-height: 1.6;
+}
+
+.partner-carousel-invitation a {
+  display: inline-flex;
+  margin-top: 0.65rem;
+  border-bottom: 1px solid var(--color-site-cream-dim);
+  color: var(--color-site-cream-soft);
+  font-size: 0.76rem;
+  font-weight: 500;
+  text-decoration: none;
+  transition: border-color 180ms ease;
+}
+
+.partner-carousel-invitation a:hover {
+  border-color: var(--color-site-cream);
+}
+
+.partner-carousel-showcase {
+  display: block;
+  width: 100%;
+  min-width: 0;
+}
+
+.partner-carousel-viewport {
+  position: relative;
+  width: min(100%, 30.5rem);
+  min-width: 0;
+  margin-inline: auto;
+  overflow: hidden;
+  mask-image: linear-gradient(
+    90deg,
+    transparent,
+    black 10%,
+    black 90%,
+    transparent
+  );
+}
+
+.partner-carousel-track {
+  display: flex;
+  width: max-content;
+  animation: partner-carousel-scroll 22s linear infinite;
+}
+
+.partner-carousel[data-motion="paused"] .partner-carousel-track {
+  animation-play-state: paused;
+}
+
+.partner-carousel[data-motion="reduced"] .partner-carousel-viewport {
+  overflow-x: auto;
+  mask-image: none;
+  scrollbar-width: thin;
+}
+
+.partner-carousel[data-motion="reduced"] .partner-carousel-track {
+  animation: none;
+}
+
+.partner-carousel[data-motion="reduced"]
+  .partner-carousel-track
+  ul[aria-hidden="true"] {
+  display: none;
+}
+
+.partner-carousel-track ul {
+  display: flex;
+  flex: none;
+  gap: 1.75rem;
+  margin: 0;
+  padding: 0 0.35rem;
+  list-style: none;
+}
+
+.partner-carousel-item {
+  display: inline-flex;
+  width: 9rem;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  gap: 0.68rem;
+  padding: 0.2rem 0;
+  color: var(--color-site-cream-dim);
+  font-family: var(--font-site-mono);
+  font-size: 0.62rem;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+.partner-carousel-mark {
+  display: inline-flex;
+  width: 2.15rem;
+  height: 2.15rem;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-site-cream-soft);
+  opacity: 0.58;
+}
+
+.partner-carousel-mark svg {
+  width: 100%;
+  height: 100%;
+  stroke-width: 1.3;
+}
+
+@keyframes partner-carousel-scroll {
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+@media (max-width: 700px) {
+  .partner-carousel {
+    gap: 1.3rem;
+  }
+
+  .partner-carousel-viewport {
+    width: min(100%, 24rem);
+  }
+
+  .partner-carousel-track ul {
+    gap: 1.25rem;
+  }
+
+  .partner-carousel-item {
+    width: 8.5rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .partner-carousel-viewport {
+    overflow-x: auto;
+    mask-image: none;
+    scrollbar-width: thin;
+  }
+
+  .partner-carousel-track {
+    animation: none;
+  }
+
+  .partner-carousel-track ul[aria-hidden="true"] {
+    display: none;
+  }
+}
+
+.agent-tablet-frame::before {
+  content: "";
+  position: absolute;
+  inset: 0.35rem;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 2.4rem;
+  pointer-events: none;
+}
+
+.agent-tablet-camera {
+  position: absolute;
+  z-index: 2;
+  top: 0.4rem;
+  left: 50%;
+  width: 2.75rem;
+  height: 0.24rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.16);
+  box-shadow: 0 0 0 1px rgba(1, 5, 18, 0.45);
+  transform: translateX(-50%);
+}
+
+.agent-tablet-screen {
+  position: relative;
+  z-index: 1;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 1.95rem;
+}
+
+@media (max-width: 700px) {
+  .agent-tablet-frame {
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+  }
+
+  .agent-tablet-frame::before,
+  .agent-tablet-camera {
+    display: none;
+  }
+
+  .agent-tablet-screen {
+    border: 0;
+    border-radius: 0;
+  }
+}
+
+/* Exact AgentIdentityDeck treatment imported from feat/auth0-login. */
+.agent-deck-stage {
+  --deck-offset: clamp(4rem, 13vw, 6.5rem);
+  --deck-drop: 1.5rem;
+  --deck-hover-offset: 0.875rem;
+  position: relative;
+  isolation: isolate;
+  min-height: 35.5rem;
+  -webkit-perspective: 1400px;
+  perspective: 1400px;
+  -webkit-transform-style: preserve-3d;
+  transform-style: preserve-3d;
+}
+
+.agent-deck-stage::after {
+  content: "";
+  position: absolute;
+  z-index: 0;
+  right: 50%;
+  bottom: 0.8rem;
+  width: min(32rem, 88%);
+  height: 4rem;
+  border-radius: 50%;
+  pointer-events: none;
+  background: radial-gradient(
+    ellipse at center,
+    rgba(1, 6, 24, 0.34) 0%,
+    rgba(1, 6, 24, 0.2) 42%,
+    rgba(1, 6, 24, 0) 74%
+  );
+  transform: translateX(50%);
+}
+
+.agent-deck-card {
+  --glow-x: 50%;
+  --glow-y: 34%;
+  position: absolute;
+  inset: 0;
+  width: min(24rem, calc(100% - 3rem));
+  aspect-ratio: 384 / 496;
+  margin: auto;
+  border: 0;
+  border-radius: 26px;
+  background: transparent;
+  color: white;
+  cursor: default;
+  text-align: left;
+  -webkit-transform-style: preserve-3d;
+  transform-style: preserve-3d;
+  transform-origin: 50% 92%;
+  transition:
+    inset 560ms cubic-bezier(0.2, 0.72, 0.2, 1),
+    transform 560ms cubic-bezier(0.2, 0.72, 0.2, 1),
+    opacity 560ms ease;
+  animation: agent-deck-reveal 560ms cubic-bezier(0.2, 0.72, 0.2, 1) backwards;
+}
+
+.agent-deck-card:nth-child(2) {
+  animation-delay: 100ms;
+}
+
+.agent-deck-card:nth-child(3) {
+  animation-delay: 200ms;
+}
+
+.agent-deck-card[data-position="active"] {
+  z-index: 30;
+  cursor: default;
+  inset: 0;
+}
+
+.agent-deck-card[data-position="previous"] {
+  z-index: 10;
+  top: calc(var(--deck-drop) + var(--deck-drop));
+  right: 0;
+  bottom: 0;
+  left: calc(0rem - var(--deck-offset) - var(--deck-offset));
+  transform: rotate(-8deg);
+}
+
+.agent-deck-card[data-position="next"] {
+  z-index: 20;
+  top: calc(var(--deck-drop) + var(--deck-drop));
+  right: calc(0rem - var(--deck-offset) - var(--deck-offset));
+  bottom: 0;
+  left: 0;
+  transform: rotate(8deg);
+}
+
+.agent-card-flipper,
+.agent-card-face {
+  display: block;
+  height: 100%;
+  width: 100%;
+  border-radius: inherit;
+}
+
+.agent-card-flipper {
+  position: relative;
+  -webkit-transform-style: preserve-3d;
+  transform-style: preserve-3d;
+  will-change: transform;
+  transition: transform 620ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.agent-deck-card[data-flipped="true"] .agent-card-flipper {
+  -webkit-transform: rotateY(180deg);
+  transform: rotateY(180deg);
+}
+
+.agent-card-face {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: geometricPrecision;
+  box-shadow:
+    0 2px 4px rgba(2, 10, 40, 0.16),
+    0 18px 36px rgba(2, 10, 40, 0.22),
+    0 46px 84px rgba(2, 10, 40, 0.42),
+    inset 0 1px 0 rgba(255, 255, 255, 0.16);
+}
+
+.agent-card-front {
+  pointer-events: auto;
+  -webkit-transform: rotateY(0deg) translateZ(0.1px);
+  transform: rotateY(0deg) translateZ(0.1px);
+  background:
+    radial-gradient(
+      circle at 76% 24%,
+      color-mix(in srgb, var(--agent-accent) 28%, transparent),
+      transparent 31%
+    ),
+    linear-gradient(158deg, #102250 0%, #07132f 48%, #03081d 100%);
+}
+
+.agent-card-back {
+  display: grid;
+  grid-template-rows: auto auto auto 1fr auto;
+  gap: 0.72rem;
+  padding: 1.15rem;
+  pointer-events: none;
+  -webkit-transform: rotateY(180deg) translateZ(0.1px);
+  transform: rotateY(180deg) translateZ(0.1px);
+  border-color: #cbd5e1;
+  color: #0b1220;
+  background:
+    linear-gradient(rgba(247, 249, 252, 0.94), rgba(247, 249, 252, 0.98)),
+    #f7f9fc;
+}
+
+.agent-deck-card[data-flipped="true"] .agent-card-front {
+  pointer-events: none;
+}
+
+.agent-deck-card[data-flipped="true"] .agent-card-back {
+  pointer-events: auto;
+}
+
+.agent-card-grid {
+  position: absolute;
+  inset: 0;
+  opacity: 0.18;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.1) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.1) 1px, transparent 1px);
+  background-size: 18px 18px;
+  mask-image: linear-gradient(90deg, transparent 22%, black 100%);
+}
+
+.agent-card-biometric {
+  position: absolute;
+  z-index: 1;
+  inset: -21% -45% 15% 11%;
+  display: block;
+  opacity: 0.58;
+  background:
+    repeating-radial-gradient(
+      ellipse at 57% 48%,
+      transparent 0 4px,
+      color-mix(in srgb, var(--agent-accent-soft) 58%, transparent) 4.5px 5.25px,
+      transparent 5.75px 9px
+    ),
+    repeating-radial-gradient(
+      ellipse at 48% 42%,
+      transparent 0 8px,
+      color-mix(in srgb, white 22%, transparent) 8.5px 9px,
+      transparent 9.5px 13px
+    );
+  mask-image: radial-gradient(ellipse at 58% 48%, black 18%, transparent 72%);
+  transform: rotate(-7deg) scale(1.08);
+  transform-origin: center;
+  animation: agent-card-biometric-drift 13s ease-in-out infinite alternate;
+}
+
+.agent-card-biometric::before {
+  content: "";
+  position: absolute;
+  inset: 8% 14% 4% 10%;
+  border-radius: 48%;
+  opacity: 0.6;
+  background: repeating-conic-gradient(
+    from 21deg at 58% 46%,
+    transparent 0deg 2.5deg,
+    color-mix(in srgb, var(--agent-accent) 46%, transparent) 3deg 3.4deg,
+    transparent 3.9deg 7deg
+  );
+  mask-image: radial-gradient(
+    ellipse,
+    transparent 0 16%,
+    black 17% 63%,
+    transparent 65%
+  );
+}
+
+.agent-card-light {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  opacity: 0;
+  background: radial-gradient(
+    390px at var(--glow-x) var(--glow-y),
+    color-mix(in srgb, var(--agent-accent-soft) 34%, transparent),
+    transparent 48%
+  );
+  mix-blend-mode: screen;
+  transition: opacity 250ms ease;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .agent-deck-card[data-position="active"]:hover .agent-card-light {
+    opacity: 1;
+  }
+}
+
+.agent-card-scan {
+  position: absolute;
+  z-index: 2;
+  top: -5%;
+  left: 8%;
+  width: 84%;
+  height: 1px;
+  opacity: 0.7;
+  pointer-events: none;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    color-mix(in srgb, var(--agent-accent-soft) 74%, transparent),
+    transparent
+  );
+  box-shadow: 0 0 10px color-mix(in srgb, var(--agent-accent) 34%, transparent);
+  animation: agent-card-scan 5.5s ease-in-out infinite;
+}
+
+.agent-card-brand {
+  position: absolute;
+  z-index: 4;
+  top: 1.8rem;
+  left: 1.8rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.65rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.agent-card-brand-mark {
+  display: inline-flex;
+  height: 1.7rem;
+  width: 1.7rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.55rem;
+  color: #091126;
+  background: linear-gradient(
+    115deg,
+    var(--agent-accent),
+    var(--agent-accent-soft) 35%,
+    white 52%,
+    var(--agent-accent) 78%,
+    white
+  );
+  background-size: 240% 240%;
+  box-shadow: 0 0 24px color-mix(in srgb, var(--agent-accent) 30%, transparent);
+  animation: agent-card-hologram 4.8s linear infinite;
+}
+
+.agent-card-brand-mark svg {
+  height: 1rem;
+  width: 1rem;
+}
+
+.agent-card-visual {
+  position: absolute;
+  z-index: 2;
+  top: 4.7rem;
+  right: -2.7rem;
+  display: block;
+  width: 15rem;
+  aspect-ratio: 1;
+  opacity: 0.9;
+}
+
+.agent-card-orbit,
+.agent-card-core,
+.agent-card-node {
+  position: absolute;
+  border-radius: 999px;
+}
+
+.agent-card-orbit {
+  border: 1px solid
+    color-mix(in srgb, var(--agent-accent-soft) 52%, transparent);
+  box-shadow:
+    inset 0 0 30px color-mix(in srgb, var(--agent-accent) 12%, transparent),
+    0 0 38px color-mix(in srgb, var(--agent-accent) 10%, transparent);
+}
+
+.agent-card-orbit-outer {
+  inset: 0;
+  animation: agent-card-orbit 16s linear infinite;
+}
+
+.agent-card-orbit-outer::before,
+.agent-card-orbit-inner::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: -4px;
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: var(--agent-accent-soft);
+  box-shadow: 0 0 14px var(--agent-accent);
+}
+
+.agent-card-orbit-inner {
+  inset: 2.5rem;
+  border-style: dashed;
+  animation: agent-card-orbit 11s linear infinite reverse;
+}
+
+.agent-card-core {
+  inset: 5.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  background:
+    radial-gradient(circle at 32% 28%, white 0 3%, transparent 4%),
+    linear-gradient(145deg, var(--agent-accent), #1f3d7b 55%, #07132f);
+  box-shadow:
+    0 0 0 10px color-mix(in srgb, var(--agent-accent) 10%, transparent),
+    0 0 45px color-mix(in srgb, var(--agent-accent) 38%, transparent),
+    inset -10px -12px 25px rgba(3, 8, 29, 0.5);
+}
+
+.agent-card-core svg {
+  height: 2.3rem;
+  width: 2.3rem;
+}
+
+.agent-card-node {
+  width: 0.55rem;
+  height: 0.55rem;
+  background: var(--agent-accent-soft);
+  box-shadow:
+    0 0 0 5px color-mix(in srgb, var(--agent-accent) 11%, transparent),
+    0 0 18px var(--agent-accent);
+  animation: agent-card-node 2.4s ease-in-out infinite;
+}
+
+.agent-card-node-one {
+  top: 13%;
+  left: 26%;
+}
+
+.agent-card-node-two {
+  top: 55%;
+  left: 7%;
+  animation-delay: 700ms;
+}
+
+.agent-card-node-three {
+  right: 12%;
+  bottom: 17%;
+  animation-delay: 1.4s;
+}
+
+.agent-card-details {
+  position: absolute;
+  z-index: 5;
+  left: 1.8rem;
+  right: 1.8rem;
+  bottom: 1.8rem;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.agent-card-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin-bottom: 0.8rem;
+  border: 1px solid rgba(116, 214, 162, 0.34);
+  border-radius: 999px;
+  background: rgba(116, 214, 162, 0.09);
+  color: #9aebbe;
+  padding: 0.32rem 0.62rem;
+  font-size: 0.58rem;
+  font-weight: 700;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+}
+
+.agent-card-status > span {
+  width: 0.35rem;
+  height: 0.35rem;
+  border-radius: 999px;
+  background: #74d6a2;
+  box-shadow: 0 0 10px rgba(116, 214, 162, 0.8);
+  animation: agent-card-node 2s ease-in-out infinite;
+}
+
+.agent-card-name {
+  max-width: 17rem;
+  font-size: clamp(1.65rem, 4.8vw, 2.35rem);
+  font-weight: 800;
+  letter-spacing: -0.045em;
+  line-height: 1.03;
+  text-wrap: balance;
+}
+
+.agent-card-rule {
+  width: 7.5rem;
+  height: 1px;
+  margin: 0.9rem 0 0.7rem;
+  background: rgba(255, 255, 255, 0.28);
+}
+
+.agent-card-label {
+  color: rgba(255, 255, 255, 0.48);
+  font-size: 0.56rem;
+  font-weight: 600;
+  letter-spacing: 0.17em;
+  text-transform: uppercase;
+}
+
+.agent-card-owner {
+  margin-top: 0.22rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.agent-card-scope {
+  margin: 0.55rem 0 0.72rem;
+  border: 1px solid rgba(255, 255, 255, 0.13);
+  border-radius: 0.5rem;
+  background: rgba(255, 255, 255, 0.06);
+  padding: 0.3rem 0.5rem;
+  color: var(--agent-accent-soft);
+  font-family: var(--font-mono);
+  font-size: 0.58rem;
+}
+
+.agent-card-ain {
+  margin-top: 0.2rem;
+  font-family: var(--font-mono);
+  font-size: 0.76rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+}
+
+.agent-card-seal {
+  position: absolute;
+  z-index: 5;
+  right: 1.75rem;
+  bottom: 1.8rem;
+  display: flex;
+  width: 2.8rem;
+  height: 2.8rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  color: #091126;
+  background: linear-gradient(
+    115deg,
+    var(--agent-accent),
+    var(--agent-accent-soft) 24%,
+    white 40%,
+    var(--agent-accent) 64%,
+    white 82%,
+    var(--agent-accent)
+  );
+  background-size: 260% 260%;
+  box-shadow: 0 0 24px color-mix(in srgb, var(--agent-accent) 24%, transparent);
+  animation: agent-card-hologram 4.8s linear infinite reverse;
+}
+
+.agent-card-seal svg {
+  width: 1.3rem;
+  height: 1.3rem;
+}
+
+.agent-card-face-click {
+  position: absolute;
+  z-index: 15;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  cursor: pointer;
+  border: 0;
+  border-radius: inherit;
+  background: transparent;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+.agent-card-face-click:focus-visible {
+  outline: 2px solid #facc15;
+  outline-offset: -5px;
+}
+
+.agent-card-record-biometric {
+  position: absolute;
+  inset: -22% -28% 43% 32%;
+  opacity: 0.17;
+  background: repeating-radial-gradient(
+    ellipse at 52% 48%,
+    transparent 0 3px,
+    #1d4ed8 3.5px 4px,
+    transparent 4.5px 7px
+  );
+  mask-image: radial-gradient(ellipse, black 8%, transparent 72%);
+  transform: rotate(9deg);
+}
+
+.agent-card-record-header {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  border-bottom: 1px solid #cbd5e1;
+  padding: 0 0 0.78rem;
+}
+
+.agent-card-record-header p,
+.agent-card-record-agent p,
+.agent-card-record-ain > p,
+.agent-card-record-scope > p,
+.agent-card-record-details dt {
+  margin: 0;
+  color: #64748b;
+  font-size: 0.48rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  line-height: 1.4;
+  text-transform: uppercase;
+}
+
+.agent-card-record-header h3 {
+  margin: 0.2rem 0 0;
+  color: #0b1220;
+  font-size: 0.92rem;
+  font-weight: 800;
+  letter-spacing: -0.025em;
+  line-height: 1.15;
+}
+
+.agent-card-record-agent {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.8rem;
+  border: 1px solid #dce3ec;
+  border-radius: 0.62rem;
+  background: rgba(255, 255, 255, 0.7);
+  padding: 0.62rem 0.68rem;
+}
+
+.agent-card-record-agent strong {
+  display: block;
+  margin-top: 0.2rem;
+  max-width: 13rem;
+  color: #0b1220;
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1.18;
+}
+
+.agent-card-record-agent > span {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 0.32rem;
+  border-radius: 999px;
+  background: #eaf7f0;
+  color: #0f7a52;
+  padding: 0.3rem 0.48rem;
+  font-size: 0.5rem;
+  font-weight: 800;
+}
+
+.agent-card-record-agent i {
+  width: 0.3rem;
+  height: 0.3rem;
+  border-radius: 999px;
+  background: #0f7a52;
+}
+
+.agent-card-record-ain {
+  position: relative;
+  z-index: 20;
+  margin: 0;
+}
+
+.agent-card-record-ain > div {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 0.35rem;
+  margin-top: 0.28rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 0.58rem;
+  background: rgba(255, 255, 255, 0.9);
+  padding: 0.34rem 0.34rem 0.34rem 0.52rem;
+}
+
+.agent-card-record-ain code {
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+  color: #0b1220;
+  font-family: var(--font-mono);
+  font-size: 0.54rem;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.agent-card-record-copy {
+  position: relative;
+  z-index: 30;
+  display: inline-flex;
+  flex-shrink: 0;
+}
+
+.agent-card-record-copy button {
+  min-height: 1.75rem;
+  gap: 0.28rem;
+  border-radius: 0.42rem;
+  padding: 0.28rem 0.45rem;
+  font-size: 0.5rem;
+}
+
+.agent-card-record-copy button svg {
+  width: 0.65rem;
+  height: 0.65rem;
+}
+
+.agent-card-record-details {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-content: stretch;
+  gap: 0.45rem;
+  margin: 0;
+}
+
+.agent-card-record-details > div {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  justify-content: center;
+  border: 1px solid #e1e7ef;
+  border-radius: 0.55rem;
+  background: rgba(255, 255, 255, 0.62);
+  padding: 0.48rem 0.55rem;
+}
+
+.agent-card-record-details dd {
+  margin: 0.18rem 0 0;
+  overflow-wrap: anywhere;
+  color: #0b1220;
+  font-size: 0.64rem;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.agent-card-record-details .agent-card-record-mono {
+  font-family: var(--font-mono);
+  font-size: 0.52rem;
+  font-weight: 600;
+}
+
+.agent-card-record-wide {
+  grid-column: 1 / -1;
+}
+
+.agent-card-record-scope {
+  position: relative;
+  z-index: 2;
+  margin: 0;
+  border-top: 1px solid #dce2ea;
+  padding-top: 0.58rem;
+}
+
+.agent-card-record-scope ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.34rem;
+  margin: 0.32rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.agent-card-record-scope li {
+  border: 1px solid #cbd5e1;
+  border-radius: 0.4rem;
+  background: white;
+  color: #1d4ed8;
+  padding: 0.3rem 0.42rem;
+  font-family: var(--font-mono);
+  font-size: 0.48rem;
+  font-weight: 600;
+}
+
+.agent-card-edge {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06);
+}
+
+.agent-deck-card[data-position="previous"] .agent-card-edge,
+.agent-deck-card[data-position="next"] .agent-card-edge {
+  background: rgba(3, 8, 29, 0.18);
+  transition: background 220ms ease;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .agent-deck-card[data-position="previous"]:hover {
+    left: calc(
+      0rem - var(--deck-offset) - var(--deck-offset) - var(--deck-hover-offset)
+    );
+    transform: rotate(-8deg);
+  }
+
+  .agent-deck-card[data-position="next"]:hover {
+    right: calc(
+      0rem - var(--deck-offset) - var(--deck-offset) - var(--deck-hover-offset)
+    );
+    transform: rotate(8deg);
+  }
+
+  .agent-deck-card[data-position="previous"]:hover .agent-card-edge,
+  .agent-deck-card[data-position="next"]:hover .agent-card-edge {
+    background: rgba(3, 8, 29, 0.12);
+  }
+}
+
+@keyframes agent-deck-reveal {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes agent-card-hologram {
+  0% {
+    background-position: 0% 50%;
+  }
+  100% {
+    background-position: 200% 50%;
+  }
+}
+
+@keyframes agent-card-orbit {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes agent-card-node {
+  0%,
+  100% {
+    opacity: 0.5;
+    transform: scale(0.8);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes agent-card-scan {
+  0%,
+  12% {
+    opacity: 0;
+    transform: translateY(-20%);
+  }
+  42% {
+    opacity: 0.55;
+  }
+  72%,
+  100% {
+    opacity: 0;
+    transform: translateY(440px);
+  }
+}
+
+@keyframes agent-card-biometric-drift {
+  from {
+    transform: rotate(-7deg) scale(1.08) translate3d(-0.8%, -0.4%, 0);
+  }
+  to {
+    transform: rotate(-6deg) scale(1.11) translate3d(0.8%, 0.6%, 0);
+  }
+}
+
+@media (max-width: 639px) {
+  .agent-deck-stage {
+    --deck-offset: 3rem;
+    --deck-drop: 1.125rem;
+    --deck-hover-offset: 0.75rem;
+    min-height: 31.5rem;
+  }
+
+  .agent-deck-card {
+    width: min(20rem, calc(100% - 1rem));
+  }
+
+  .agent-deck-card[data-position="previous"] {
+    transform: rotate(-5deg);
+  }
+
+  .agent-deck-card[data-position="next"] {
+    transform: rotate(5deg);
+  }
+
+  .agent-card-brand,
+  .agent-card-details {
+    left: 1.35rem;
+  }
+
+  .agent-card-brand {
+    top: 1.35rem;
+  }
+
+  .agent-card-details {
+    right: 1.35rem;
+    bottom: 1.35rem;
+  }
+
+  .agent-card-visual {
+    top: 4.3rem;
+    right: -3.7rem;
+    width: 13.5rem;
+  }
+
+  .agent-card-seal {
+    right: 1.35rem;
+    bottom: 1.35rem;
+    width: 2.45rem;
+    height: 2.45rem;
+  }
+
+  .agent-card-ain {
+    font-size: 0.64rem;
+    letter-spacing: 0.08em;
+  }
+
+  .agent-card-back {
+    gap: 0.32rem;
+    padding: 0.62rem;
+  }
+
+  .agent-card-record-header {
+    padding: 0 0 0.38rem;
+  }
+
+  .agent-card-record-header p,
+  .agent-card-record-agent p,
+  .agent-card-record-ain > p,
+  .agent-card-record-scope > p,
+  .agent-card-record-details dt {
+    font-size: 0.39rem;
+  }
+
+  .agent-card-record-header h3 {
+    font-size: 0.74rem;
+  }
+
+  .agent-card-record-agent {
+    padding: 0.38rem 0.45rem;
+  }
+
+  .agent-card-record-agent strong {
+    font-size: 0.66rem;
+  }
+
+  .agent-card-record-agent > span {
+    padding: 0.24rem 0.38rem;
+    font-size: 0.42rem;
+  }
+
+  .agent-card-record-ain > div {
+    gap: 0.22rem;
+    margin-top: 0.18rem;
+    padding: 0.22rem 0.22rem 0.22rem 0.38rem;
+  }
+
+  .agent-card-record-ain code {
+    font-size: 0.46rem;
+  }
+
+  .agent-card-record-copy button {
+    min-height: 1.4rem;
+    padding: 0.2rem 0.32rem;
+    font-size: 0.42rem;
+  }
+
+  .agent-card-record-details,
+  .agent-card-record-ain,
+  .agent-card-record-scope {
+    margin: 0;
+  }
+
+  .agent-card-record-details {
+    gap: 0.25rem;
+  }
+
+  .agent-card-record-details > div {
+    padding: 0.28rem 0.34rem;
+  }
+
+  .agent-card-record-details dd {
+    font-size: 0.52rem;
+  }
+
+  .agent-card-record-details .agent-card-record-mono {
+    font-size: 0.42rem;
+  }
+
+  .agent-card-record-scope {
+    padding-top: 0.3rem;
+  }
+
+  .agent-card-record-scope ul {
+    gap: 0.2rem;
+    margin-top: 0.2rem;
+  }
+
+  .agent-card-record-scope li {
+    padding: 0.22rem 0.3rem;
+    font-size: 0.4rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .agent-deck-card,
+  .agent-card-light,
+  .agent-card-flipper {
+    transition-duration: 0.01ms;
+  }
+
+  .agent-deck-card,
+  .agent-card-brand-mark,
+  .agent-card-scan,
+  .agent-card-orbit,
+  .agent-card-node,
+  .agent-card-seal,
+  .agent-card-status > span,
+  .agent-card-biometric {
+    animation: none;
   }
 }

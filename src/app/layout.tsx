@@ -41,7 +41,7 @@ export const metadata: Metadata = {
     template: "%s · Subra",
   },
   description:
-    "Every action an agent takes is bound to the scope it was authorised under, and to the role that answers for it. Private preview for UK regulated firms.",
+    "Every action an agent takes is bound to the scope it was authorised under, and to the role that answers for it. Beta for UK regulated firms.",
   // Icons are file-based — `icon.svg`, `apple-icon.png` and `favicon.ico`
   // beside this file. Next emits the tags from those, so there is no path
   // here to drift out of step with what is actually on disk. The SVG carries
@@ -56,13 +56,13 @@ export const metadata: Metadata = {
     locale: "en_GB",
     title: "Subra: The accountability register for autonomous agents",
     description:
-      "Every action an agent takes is bound to the scope it was authorised under, and to the role that answers for it. Private preview for UK regulated firms.",
+      "Every action an agent takes is bound to the scope it was authorised under, and to the role that answers for it. Beta for UK regulated firms.",
   },
   twitter: {
     card: "summary_large_image",
     title: "Subra: The accountability register for autonomous agents",
     description:
-      "Every action an agent takes is bound to the scope it was authorised under, and to the role that answers for it. Private preview for UK regulated firms.",
+      "Every action an agent takes is bound to the scope it was authorised under, and to the role that answers for it. Beta for UK regulated firms.",
   },
 };
 

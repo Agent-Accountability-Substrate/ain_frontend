@@ -15,7 +15,7 @@ const COLUMNS = [
     heading: "Company",
     links: [
       { label: "About", href: "#record" },
-      { label: "Private preview", href: "#request" },
+      { label: "Beta", href: "#request" },
       { label: PARTNER_EMAIL, href: `mailto:${PARTNER_EMAIL}` },
     ],
   },
