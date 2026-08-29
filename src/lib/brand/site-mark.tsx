@@ -1,3 +1,5 @@
+import Image from "next/image";
+
 import { cn } from "@/lib/utils";
 
 /**
@@ -47,17 +49,33 @@ export function SiteWordmark({
   className,
   showProduct = true,
   productClassName,
+  variant = "official",
 }: {
   className?: string;
   showProduct?: boolean;
   productClassName?: string;
+  variant?: "official" | "inverse";
 }) {
   return (
     <span className={cn("flex items-center gap-[13px]", className)}>
-      <SiteMark />
-      <span className="text-[21px] font-semibold tracking-[-0.03em]">
-        Subra
-      </span>
+      {variant === "official" ? (
+        <Image
+          src="/media/subra-logo.png"
+          alt="Subra"
+          width={1660}
+          height={373}
+          unoptimized
+          sizes="(max-width: 700px) 108px, 118px"
+          className="h-auto w-[118px] max-[700px]:w-[108px]"
+        />
+      ) : (
+        <>
+          <SiteMark />
+          <span className="text-[21px] font-semibold tracking-[-0.03em]">
+            Subra
+          </span>
+        </>
+      )}
       {showProduct ? (
         <span className={cn("flex items-center gap-[13px]", productClassName)}>
           <span className="h-[18px] w-px bg-current opacity-[0.13]" />

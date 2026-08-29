@@ -25,6 +25,14 @@ describe("SiteStage", () => {
     expect(screen.getByText("the hero")).toBeDefined();
   });
 
+  it("holds the hero and passport on the brand navy", () => {
+    render(<SiteStage>the hero</SiteStage>);
+
+    expect(screen.getByTestId("site-stage").className).toContain(
+      "bg-[#0b1127]",
+    );
+  });
+
   it("starts fully inset", () => {
     render(<SiteStage>the hero</SiteStage>);
 

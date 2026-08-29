@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type PointerEvent } from "react";
+import { useState, type CSSProperties, type PointerEvent } from "react";
 
 import {
   PASSPORT_VERSIONS,
@@ -8,6 +8,12 @@ import {
 } from "@/domains/marketing/landing-content";
 import { CardOrbit, FingerprintGlyph } from "@/lib/brand/registry-glyphs";
 import { cn } from "@/lib/utils";
+
+const ORIGINAL_VERSION_ACCENTS = [
+  { accent: "#76A2FF", soft: "#B8CAFF" },
+  { accent: "#74D6A2", soft: "#B9F4D3" },
+  { accent: "#B6A2FF", soft: "#DDD4FF" },
+] as const;
 
 function PassportFront({
   version,
@@ -175,7 +181,10 @@ export function PassportDeck() {
 
   return (
     <>
-      <div className="relative isolate mt-[52px] min-h-[34rem] [--deck-drop:1.5rem] [--deck-offset:clamp(3.4rem,11vw,6.5rem)] [--deck-peek:0.875rem] [perspective:1400px] [transform-style:preserve-3d] max-[700px]:[--deck-drop:1.1rem] max-[700px]:[--deck-offset:2.5rem] after:pointer-events-none after:absolute after:bottom-[1.2rem] after:left-1/2 after:z-0 after:h-[3.6rem] after:w-[min(30rem,84%)] after:-translate-x-1/2 after:rounded-[50%] after:bg-[radial-gradient(ellipse_at_center,rgba(0,0,0,0.44),rgba(0,0,0,0.22)_42%,transparent_74%)] after:content-['']">
+      <div
+        data-passport-style="original"
+        className="relative isolate mt-[52px] min-h-[35.5rem] [--deck-drop:1.5rem] [--deck-offset:clamp(4rem,13vw,6.5rem)] [--deck-peek:0.875rem] [perspective:1400px] [transform-style:preserve-3d] max-[700px]:min-h-[31.5rem] max-[700px]:[--deck-drop:1.1rem] max-[700px]:[--deck-offset:2.5rem] after:pointer-events-none after:absolute after:bottom-[1.2rem] after:left-1/2 after:z-0 after:h-[4rem] after:w-[min(32rem,88%)] after:-translate-x-1/2 after:rounded-[50%] after:bg-[radial-gradient(ellipse_at_center,rgba(1,6,24,0.34),rgba(1,6,24,0.2)_42%,transparent_74%)] after:content-['']"
+      >
         {PASSPORT_VERSIONS.map((version, index) => {
           const relative =
             (index - activeIndex + PASSPORT_VERSIONS.length) %
@@ -184,6 +193,11 @@ export function PassportDeck() {
             relative === 0 ? "active" : relative === 1 ? "next" : "previous";
           const isActive = position === "active";
           const showsBack = isActive && flipped;
+          const colours = ORIGINAL_VERSION_ACCENTS[index]!;
+          const cardStyle = {
+            "--pa": colours.accent,
+            "--pa-soft": colours.soft,
+          } as CSSProperties;
 
           return (
             <article
@@ -191,10 +205,11 @@ export function PassportDeck() {
               data-position={position}
               data-flipped={showsBack}
               data-live={version.inForce}
+              style={cardStyle}
               onPointerMove={onPointerMove}
               onPointerLeave={onPointerLeave}
               className={cn(
-                "pass absolute m-auto aspect-[384/496] w-[min(22rem,calc(100%-2.5rem))] [perspective:1400px]",
+                "pass absolute m-auto aspect-[384/496] w-[min(24rem,calc(100%-3rem))] [perspective:1400px] max-[700px]:w-[min(20rem,calc(100%-2.25rem))]",
                 isActive && "inset-0 z-30",
                 position === "next" &&
                   "top-[calc(var(--deck-drop)*2)] right-[calc(0px-var(--deck-offset)*2)] bottom-0 left-0 z-20 rotate-[8deg]",

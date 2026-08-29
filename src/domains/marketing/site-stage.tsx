@@ -75,7 +75,7 @@ export function SiteStage({ children }: { children: ReactNode }) {
     <div
       ref={ref}
       data-testid="site-stage"
-      className="site-stage site-dots site-stage-glow bg-site-ink text-site-cream"
+      className="site-stage site-dots site-stage-glow bg-[#0b1127] text-site-cream"
     >
       {children}
     </div>

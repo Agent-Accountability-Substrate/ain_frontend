@@ -23,12 +23,27 @@ describe("PassportDeck", () => {
     expect(active?.textContent).toContain("v3");
   });
 
-  it("marks only the version in force as live, so one card carries the accent", () => {
+  it("marks only the version in force as live", () => {
     render(<PassportDeck />);
 
     const live = document.querySelectorAll('[data-live="true"]');
     expect(live.length).toBe(1);
     expect(live[0]?.textContent).toContain("v3");
+  });
+
+  it("restores the original three-version passport treatment", () => {
+    const { container } = render(<PassportDeck />);
+    const deck = container.querySelector('[data-passport-style="original"]');
+    const cards = Array.from(
+      deck?.querySelectorAll<HTMLElement>(".pass") ?? [],
+    );
+
+    expect(deck).not.toBeNull();
+    expect(cards.map((item) => item.style.getPropertyValue("--pa"))).toEqual([
+      "#76A2FF",
+      "#74D6A2",
+      "#B6A2FF",
+    ]);
   });
 
   it("brings a card behind to the front when it is clicked", () => {

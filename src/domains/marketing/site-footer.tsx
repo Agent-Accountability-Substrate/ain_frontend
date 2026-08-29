@@ -35,7 +35,7 @@ export function SiteFooter() {
       <div className="relative z-[1] mx-auto max-w-[1320px] px-[clamp(20px,3.05vw,44px)]">
         <div className="grid gap-[70px] pb-[60px] [grid-template-columns:minmax(0,1fr)_minmax(0,1.15fr)] max-[1000px]:grid-cols-[minmax(0,1fr)] max-[1000px]:gap-11">
           <div>
-            <SiteWordmark className="text-site-cream" />
+            <SiteWordmark className="text-site-cream" variant="inverse" />
             <p className="mt-[22px] max-w-[44ch] text-[15px] leading-[1.65] text-site-cream-soft">
               The accountability register for autonomous agents. Built for UK
               regulated firms, and never in your agents’ runtime path.

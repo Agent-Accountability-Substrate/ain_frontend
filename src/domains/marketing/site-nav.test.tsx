@@ -154,9 +154,9 @@ describe("SiteNav", () => {
   it("drops the product name at the width the burger appears", () => {
     render(<SiteNav />);
 
-    // The bar is mark + "Subra" + divider + "AIN REGISTRY" against a 40px
-    // burger at 375px. The divider goes with the name or it is left as a
-    // hairline rule beside the burger.
+    // The official logo + divider + "AIN REGISTRY" share the row with a 40px
+    // burger at 375px. The divider goes with the product name or it is left as
+    // a hairline rule beside the burger.
     expect(screen.getByText("AIN Registry").parentElement?.className).toContain(
       "max-[700px]:hidden",
     );
