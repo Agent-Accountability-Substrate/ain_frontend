@@ -4,8 +4,19 @@ import { ChevronRight } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 import { SiteWordmark } from "@/lib/brand/site-mark";
-import { SECTION_LINKS } from "@/domains/marketing/landing-content";
 import { cn } from "@/lib/utils";
+
+const HEADER_LINKS = [
+  { label: "Product", href: "#top" },
+  { label: "how it works", href: "#record" },
+  { label: "Integrity", href: "#integrity" },
+  { label: "Use cases", href: "#scope" },
+  { label: "Security", href: "#questions" },
+] as const;
+
+const MOBILE_LINKS = HEADER_LINKS.map((link) =>
+  link.href === "#record" ? { ...link, label: "Evidence flow" } : link,
+);
 
 /**
  * The navigation bar, and the panel it becomes on a narrow viewport.
@@ -48,7 +59,7 @@ export function SiteNav() {
     };
     // A rotation to landscape can cross the breakpoint with the panel still up.
     const onResize = () => {
-      if (window.innerWidth > 700) setOpen(false);
+      if (window.innerWidth > 1000) setOpen(false);
     };
     window.addEventListener("keydown", onKeyDown);
     window.addEventListener("resize", onResize);
@@ -65,16 +76,15 @@ export function SiteNav() {
     <div className={cn(open && "fixed inset-0 z-[200] flex flex-col")}>
       <div className={cn(open && "bg-site-paper")}>
         <nav className="mx-auto flex max-w-[1320px] items-center justify-between px-[clamp(20px,3.05vw,44px)] py-[22px] max-[700px]:py-4">
-          <a
-            href="#top"
-            aria-label="Subra AIN Registry"
-            className="text-site-ink"
-          >
-            <SiteWordmark productClassName="max-[700px]:hidden" />
+          <a href="#top" aria-label="Subra home" className="text-site-ink">
+            <SiteWordmark showProduct={false} />
           </a>
 
-          <div className="flex gap-8 text-[14px] text-site-ink-soft max-[700px]:hidden">
-            {SECTION_LINKS.map((link) => (
+          <div
+            aria-label="Primary"
+            className="flex gap-[clamp(14px,2vw,32px)] text-[14px] text-site-ink-soft max-[1000px]:hidden"
+          >
+            {HEADER_LINKS.map((link) => (
               <a
                 key={link.href}
                 href={link.href}
@@ -85,7 +95,7 @@ export function SiteNav() {
             ))}
           </div>
 
-          <div className="flex items-center gap-1.5 max-[700px]:hidden">
+          <div className="flex items-center gap-1.5 max-[1000px]:hidden">
             <a
               href="/signin"
               className="rounded-full px-4 py-2.5 text-[13.5px] font-medium text-site-ink-soft hover:bg-site-ink/5 hover:text-site-ink"
@@ -96,7 +106,7 @@ export function SiteNav() {
               href="#request"
               className="rounded-full bg-site-ink px-5 py-2.5 text-[13.5px] font-medium text-site-paper"
             >
-              Book a demo
+              Book a private demo
             </a>
           </div>
 
@@ -109,7 +119,7 @@ export function SiteNav() {
             onClick={() => {
               setOpen((wasOpen) => !wasOpen);
             }}
-            className="relative -mr-2 hidden h-10 w-10 flex-none cursor-pointer rounded-[9px] text-site-ink hover:bg-site-ink/5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-site-accent max-[700px]:inline-flex"
+            className="relative -mr-2 hidden h-10 w-10 flex-none cursor-pointer rounded-[9px] text-site-ink hover:bg-site-ink/5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-site-accent max-[1000px]:inline-flex"
           >
             <span
               className={cn(
@@ -137,7 +147,7 @@ export function SiteNav() {
       >
         <div className="mx-auto flex min-h-full max-w-[1320px] flex-col px-[clamp(20px,3.05vw,44px)] pt-2.5 pb-[calc(26px+env(safe-area-inset-bottom,0px))]">
           <nav aria-label="Main" className="flex flex-col">
-            {SECTION_LINKS.map((link, index) => (
+            {MOBILE_LINKS.map((link, index) => (
               <a
                 key={link.href}
                 href={link.href}
@@ -169,7 +179,7 @@ export function SiteNav() {
               onClick={closeFromPanel}
               className="inline-flex items-center justify-center rounded-full bg-site-ink px-4 py-[15px] text-[14.5px] font-medium text-site-paper transition-colors duration-300 ease-site hover:bg-[#2c2e34]"
             >
-              Book a demo
+              Book a private demo
             </a>
           </div>
         </div>

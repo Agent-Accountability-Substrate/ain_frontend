@@ -18,6 +18,7 @@ describe("LandingPage", () => {
 
     expect(ids).toEqual([
       "record",
+      "problem",
       "scope",
       "integrity",
       "questions",

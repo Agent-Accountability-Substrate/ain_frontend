@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 
 import { AccessForm } from "@/domains/marketing/access-form";
+import { BuyerProblem } from "@/domains/marketing/buyer-problem";
 import { CtaBand } from "@/domains/marketing/cta-band";
 import { IntegrityChain } from "@/domains/marketing/integrity-chain";
 import { RecordBand } from "@/domains/marketing/record-band";
@@ -52,6 +53,7 @@ export default function LandingPage() {
         <RecordBand />
       </SiteStage>
 
+      <BuyerProblem />
       <ScopeArtifact />
       <IntegrityChain />
       <CtaBand />

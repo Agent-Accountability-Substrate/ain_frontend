@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
 import { SiteNav } from "@/domains/marketing/site-nav";
@@ -98,7 +98,7 @@ describe("SiteNav", () => {
       window.dispatchEvent(new Event("resize"));
     });
 
-    // A rotation to landscape can widen past 700px with the panel still up.
+    // A rotation to landscape can widen past 1000px with the panel still up.
     expect(menu()?.hasAttribute("hidden")).toBe(true);
   });
 
@@ -149,22 +149,57 @@ describe("SiteNav", () => {
     );
   });
 
-  it("drops the product name at the width the burger appears", () => {
+  it("uses the standalone Subra wordmark in the header", () => {
     render(<SiteNav />);
 
-    // The official logo + divider + "AIN REGISTRY" share the row with a 40px
-    // burger at 375px. The divider goes with the product name or it is left as
-    // a hairline rule beside the burger.
-    expect(screen.getByText("AIN Registry").parentElement?.className).toContain(
-      "max-[700px]:hidden",
-    );
+    expect(screen.getByRole("link", { name: "Subra home" })).toBeDefined();
+    expect(screen.queryByText("AIN Registry")).toBeNull();
   });
 
-  it("links to each section of the page", () => {
+  it("uses the final desktop labels and destinations", () => {
     render(<SiteNav />);
 
-    for (const href of ["#record", "#integrity", "#questions"]) {
-      expect(document.querySelector(`a[href="${href}"]`)).not.toBeNull();
-    }
+    const primary = screen.getByLabelText("Primary");
+    const links = within(primary).getAllByRole("link");
+
+    expect(links.map((link) => link.textContent)).toEqual([
+      "Product",
+      "how it works",
+      "Integrity",
+      "Use cases",
+      "Security",
+    ]);
+    expect(links.map((link) => link.getAttribute("href"))).toEqual([
+      "#top",
+      "#record",
+      "#integrity",
+      "#scope",
+      "#questions",
+    ]);
+    expect(
+      screen
+        .getByRole("link", { name: "Book a private demo" })
+        .getAttribute("href"),
+    ).toBe("#request");
+  });
+
+  it("orders the mobile drawer labels before sign in", () => {
+    render(<SiteNav />);
+    fireEvent.click(screen.getByRole("button", { name: "Open menu" }));
+
+    const mobileMenu = menu() as HTMLElement;
+    const labels = within(mobileMenu)
+      .getAllByRole("link")
+      .map((link) => link.textContent);
+
+    expect(labels).toEqual([
+      "Product",
+      "Evidence flow",
+      "Integrity",
+      "Use cases",
+      "Security",
+      "Sign in",
+      "Book a private demo",
+    ]);
   });
 });

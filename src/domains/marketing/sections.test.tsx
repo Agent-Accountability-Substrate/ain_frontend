@@ -1,7 +1,8 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
 import { CtaBand } from "@/domains/marketing/cta-band";
+import { BuyerProblem } from "@/domains/marketing/buyer-problem";
 import { IntegrityChain } from "@/domains/marketing/integrity-chain";
 import { RecordBand } from "@/domains/marketing/record-band";
 import { ScopeArtifact } from "@/domains/marketing/scope-artifact";
@@ -98,6 +99,109 @@ describe("RecordBand", () => {
     ).toBeDefined();
     expect(
       screen.getByLabelText("Agent identity passport cards"),
+    ).toBeDefined();
+  });
+});
+
+describe("BuyerProblem", () => {
+  it("frames the buyer problem as fragmented evidence converging on one question", () => {
+    render(<BuyerProblem />);
+
+    expect(screen.getByText("The problem")).toBeDefined();
+    expect(screen.getByRole("heading", { level: 2 }).textContent).toBe(
+      "When an agent action has to be explained, the evidence is rarely in one place.",
+    );
+    expect(
+      screen.getByRole("heading", {
+        level: 3,
+        name: "Who acted, under whose authority, using which policy and model version?",
+      }),
+    ).toBeDefined();
+    expect(
+      screen.getByText(
+        "Audit teams assemble these fragments manually after the event.",
+      ),
+    ).toBeDefined();
+  });
+
+  it("shows the five evidence fragments as one semantic diagram rather than feature cards", () => {
+    const { container } = render(<BuyerProblem />);
+    const diagram = screen.getByRole("list", {
+      name: "Fragmented evidence sources",
+    });
+
+    expect(within(diagram).getAllByRole("listitem")).toHaveLength(5);
+    for (const label of [
+      "Identity",
+      "Authority",
+      "Versions",
+      "Accountability",
+      "Activity",
+    ]) {
+      expect(within(diagram).getByText(label)).toBeDefined();
+    }
+    expect(container.querySelector(".buyer-problem-paths")).not.toBeNull();
+    expect(container.querySelector(".card")).toBeNull();
+  });
+
+  it("sequences one signal dot from the question panel to each evidence item", () => {
+    const { container } = render(<BuyerProblem />);
+    const paths = Array.from(
+      container.querySelectorAll<SVGPathElement>(
+        ".buyer-problem-paths > path[data-signal]",
+      ),
+    );
+    const dots = Array.from(
+      container.querySelectorAll<SVGGElement>(
+        ".buyer-problem-signal-dot[data-signal]",
+      ),
+    );
+    const signals = [
+      "identity",
+      "authority",
+      "versions",
+      "accountability",
+      "activity",
+    ];
+
+    expect(paths).toHaveLength(5);
+    expect(dots).toHaveLength(5);
+    expect(paths.map((path) => path.dataset.signal)).toEqual(signals);
+    expect(dots.map((dot) => dot.dataset.signal)).toEqual(signals);
+
+    dots.forEach((dot, index) => {
+      const motion = dot.querySelector("animateMotion");
+      const motionPath = dot.querySelector("mpath");
+
+      expect(motion?.getAttribute("begin")).toBe(`${index * 2}s`);
+      expect(motion?.getAttribute("dur")).toBe("10s");
+      expect(motionPath?.getAttribute("href")).toBe(
+        `#buyer-problem-path-${signals[index]}`,
+      );
+    });
+  });
+
+  it("uses buyer-oriented copy without em dashes", () => {
+    const { container } = render(<BuyerProblem />);
+
+    expect(container.textContent).not.toContain("—");
+    expect(
+      screen.getByText(
+        "Identity, authority, ownership, policy and model versions often live in different systems. Runtime logs show what happened, but not always what the agent was authorised to do.",
+      ),
+    ).toBeDefined();
+  });
+
+  it("frames the dashboard-derived review as an evidence signal", () => {
+    render(<BuyerProblem />);
+
+    const preview = screen.getByRole("complementary", {
+      name: "Illustrative evidence review interface",
+    });
+    expect(within(preview).getByText("Evidence signal")).toBeDefined();
+    expect(within(preview).getByText("2 of 5 fragments")).toBeDefined();
+    expect(
+      within(preview).getByText("Manual reconstruction required"),
     ).toBeDefined();
   });
 });
