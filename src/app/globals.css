@@ -11,28 +11,18 @@
    paint. Everything else in the workspace is expressed as utilities at the
    call site, where a reviewer can see it. */
 
-/* Above this size the workspace stops being a scrolling document and becomes a
-   fixed-height app shell whose panes scroll independently. Height is in the
-   query on purpose: a wide but short viewport (a laptop with devtools open)
-   must keep the document scroll, or the panes collapse to nothing. */
-@custom-variant app-shell (@media (min-width: 1280px) and (min-height: 720px));
-
-/* The narrow end, where the shell loses its card edges and fills the screen. */
+/* The narrow end, where the rail becomes a strip under the bar. */
 @custom-variant handheld (@media (max-width: 767px));
 
 /* The two-row command bar: logo + actions on one row, navigation beneath. */
 @custom-variant bar-stacked (@media (max-width: 899px));
 
+/* The backdrop behind a centred card — the error boundary. The workspace
+   itself fills the window, so nothing of this shows through there. */
 @utility workspace-canvas {
   background:
     radial-gradient(circle at 8% 0%, rgba(77, 111, 173, 0.13), transparent 30%),
     linear-gradient(145deg, #dfe4ec 0%, #eef1f6 48%, #dce2ea 100%);
-}
-
-@utility workspace-shell-surface {
-  box-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.88) inset,
-    0 32px 90px -50px rgba(9, 17, 38, 0.56);
 }
 
 /* The metric tile's three decorations, ported verbatim from the rules they
@@ -44,6 +34,18 @@
 
    `data-[state=active]` on the wrapper drives the "has data" appearance; the
    whole group is aria-hidden, so none of it carries meaning on its own. */
+@layer base {
+  /* Tailwind v4's Preflight sets `cursor: default` on buttons — correct per the
+     spec, and wrong for everyone who has used a browser. Anchors keep the UA's
+     pointer; this restores it for the controls that are buttons because they
+     do something rather than go somewhere. */
+  button:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]),
+  summary {
+    cursor: pointer;
+  }
+}
+
 @utility metric-segment {
   height: 0.5rem;
   border-radius: 2px;

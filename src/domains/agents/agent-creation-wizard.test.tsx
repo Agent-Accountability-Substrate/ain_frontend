@@ -17,6 +17,7 @@ import { AgentCreationWizard } from "@/domains/agents/agent-creation-wizard";
 import { chooseOption, selectTrigger } from "@/lib/testing/select";
 
 const ORG_ID = "6a1f6f38-0d3f-4c86-9a53-8c8f7a1e2b4d";
+const ORG_ULID = "01ARZ3NDEKTSV4RRFFQ69G5FAV";
 const AIN = "did:ain:gb:01ARZ3NDEKTSV4RRFFQ69G5FAV:01BX5ZZKBKACTAV9WEVGEMMVRZ";
 
 function renderWizard(
@@ -26,6 +27,7 @@ function renderWizard(
     <AgentCreationWizard
       organisationId={ORG_ID}
       organisationName="Northwind Advisory Ltd"
+      organisationUlid={ORG_ULID}
       organisationVerified
       {...props}
     />,

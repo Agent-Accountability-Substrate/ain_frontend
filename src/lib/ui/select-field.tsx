@@ -11,23 +11,18 @@ import { CONTROL_CLASS } from "@/lib/ui/text-field";
 /**
  * A labelled select.
  *
- * `items` is required, not optional, and that is the whole reason this wrapper
- * exists rather than the parts being assembled per call site. Without it
- * `Select.Root` renders the raw *value* in the trigger — and every select in
- * this product has a value that is not its label (an organisation UUID, `gb`
- * for "United Kingdom", `low` for "Low"). Requiring it makes the failure
- * impossible to reach instead of merely unlikely.
+ * `items` is required, which is why this wrapper exists rather than the parts
+ * being assembled per call site: without it `Select.Root` renders the raw
+ * *value* in the trigger, and every select here has a value that is not its
+ * label (an organisation UUID, `gb` for "United Kingdom", `low` for "Low").
  *
- * `name` reaches `Select.Root`, which is what renders the hidden input the form
+ * `name` reaches `Select.Root`, which renders the hidden input the form
  * submits. Passing it to the trigger instead type-checks, renders correctly,
  * and silently posts nothing.
  *
- * `modal={false}` because Base UI defaults it to `true`, which — by its own
- * documented contract — locks document scroll and disables pointer interaction
- * outside the popup while it is open. The workspace shell already owns the
- * page's scrolling behaviour, and a select is not a dialog: taking the document
- * hostage to choose an organisation is not today's behaviour and not a change
- * this component should make on its own.
+ * `modal={false}` because Base UI defaults it to `true`, which locks document
+ * scroll and disables pointer interaction outside the popup. A select is not a
+ * dialog, and the workspace shell already owns the page's scrolling.
  */
 
 export type SelectItem = { label: string; value: string };
@@ -115,7 +110,7 @@ export function SelectField({
                   <Select.Item
                     key={item.value}
                     value={item.value}
-                    className="flex cursor-default items-center justify-between gap-3 rounded-lg px-3 py-2 text-xs text-ink-soft data-[highlighted]:bg-wash-blue data-[highlighted]:text-ink data-[selected]:font-semibold"
+                    className="flex cursor-pointer items-center justify-between gap-3 rounded-lg px-3 py-2 text-xs text-ink-soft data-[highlighted]:bg-wash-blue data-[highlighted]:text-ink data-[selected]:font-semibold"
                   >
                     <Select.ItemText>{item.label}</Select.ItemText>
                     <Select.ItemIndicator>

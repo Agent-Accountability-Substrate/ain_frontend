@@ -1,141 +1,121 @@
-import { fireEvent, render, screen, within } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 import { IdentityOnboardingView } from "@/domains/identity/identity-onboarding-view";
+import {
+  initialIndividualAssurance,
+  type IndividualAssuranceSummary,
+} from "@/domains/identity/identity-assurance";
+
+/** What the registry answers today: verified, from a confirmed address. */
+const EMAIL_ONLY: IndividualAssuranceSummary = {
+  status: "verified",
+  assuranceProfile: "email_verified",
+};
 
 vi.mock("@/domains/auth/auth-actions", () => ({
   signOutAction: vi.fn(),
 }));
 
 describe("IdentityOnboardingView", () => {
-  it("renders the individual due-diligence landing inside the workspace shell", () => {
-    render(
-      <IdentityOnboardingView
-        email="creator@example.com"
-        name="Casey Morgan"
-      />,
-    );
+  it("renders the identity check inside the workspace shell", () => {
+    render(<IdentityOnboardingView assurance={initialIndividualAssurance} />);
 
     expect(
       screen.getByRole("heading", {
         name: "Verify the person behind the organisation",
       }),
     ).toBeDefined();
-    expect(screen.getByText("creator@example.com")).toBeDefined();
-    expect(
-      within(screen.getByRole("contentinfo")).getByText("Casey Morgan"),
-    ).toBeDefined();
     expect(screen.getByText("Not started")).toBeDefined();
-    expect(screen.getByText("Individual identity due diligence")).toBeDefined();
+    expect(screen.getByText("Identity check")).toBeDefined();
   });
 
-  it("uses the side panel for onboarding context without repeating top navigation", () => {
-    render(
-      <IdentityOnboardingView
-        email="creator@example.com"
-        name="Casey Morgan"
-      />,
-    );
+  it("is one column, with the questions folded away and the check itself not", () => {
+    render(<IdentityOnboardingView assurance={initialIndividualAssurance} />);
 
+    expect(screen.queryByRole("complementary")).toBeNull();
+    expect(screen.queryByText("Due-diligence stages")).toBeNull();
+
+    // The check is a plain card, not a row: it has no trigger to collapse it,
+    // because reading about data handling must never take the button off
+    // screen. Base UI's accordion opens one row at a time, so a collapsible
+    // first row would do exactly that.
     expect(
-      screen.queryByRole("navigation", { name: "Onboarding stages" }),
+      screen.getByRole("heading", { name: "What the check will involve" }),
+    ).toBeDefined();
+    expect(
+      screen.queryByRole("button", { name: /What the check will involve/ }),
     ).toBeNull();
 
-    const sidePanel = screen.getByRole("complementary", {
-      name: "Due-diligence stages",
-    });
-    [
-      "Identity verification",
-      "Organisation verification",
-      "Agent workspace",
-    ].forEach((label) => {
-      expect(within(sidePanel).getByText(label)).toBeDefined();
-    });
+    // Everything answering "and what about…" is a row, and starts closed.
+    const questions = screen.getAllByRole("button", { expanded: false });
+    expect(questions).toHaveLength(2);
   });
 
   it("keeps the identity provider action disabled without claiming success", () => {
-    render(
-      <IdentityOnboardingView
-        email="creator@example.com"
-        name="Casey Morgan"
-      />,
-    );
+    render(<IdentityOnboardingView assurance={initialIndividualAssurance} />);
 
     const startButton = screen.getByRole("button", {
       name: "Begin identity check",
     });
 
     expect(startButton).toHaveProperty("disabled", true);
-    expect(
-      screen.getByText(/Verification provider not connected yet/),
-    ).toBeDefined();
+    expect(screen.getByText(/This check is not open yet/)).toBeDefined();
     expect(screen.queryByText(/^Verified$/)).toBeNull();
     expect(screen.queryByText(/^Complete$/)).toBeNull();
   });
 
-  it("explains the assurance boundary, privacy handling, and fallback", () => {
-    render(
-      <IdentityOnboardingView
-        email="creator@example.com"
-        name="Casey Morgan"
-      />,
-    );
+  it("explains the privacy handling and the fallback", () => {
+    render(<IdentityOnboardingView assurance={initialIndividualAssurance} />);
 
+    // The closed rows stay in the document — `hiddenUntilFound` — so a closed
+    // row is never a hidden answer, and find-in-page still reaches it.
+    expect(screen.getByRole("button", { name: /What we keep/ })).toBeDefined();
     expect(
       screen.getByText(
-        /will not verify a company or prove that you are authorised/,
-      ),
-    ).toBeDefined();
-    expect(screen.getByText("Minimal data retained")).toBeDefined();
-    expect(
-      screen.getByText(
-        /not document images, selfies, video or biometric templates/,
+        /no document images, selfies, video or biometric templates/,
       ),
     ).toBeDefined();
     expect(
-      screen.getByText(/retry or manual review, not a permanent denial/),
+      screen.getByText(/retry or a manual review, not a permanent denial/),
     ).toBeDefined();
   });
 
-  it("provides a footer skip without changing the assurance state", () => {
+  it("reports the level held, not just the status", () => {
+    // A bare "Verified" would claim this check had run, when a confirmed
+    // address is all the registry holds (`ain_docs` DECISIONS.md, 2026-08-16).
+    render(<IdentityOnboardingView assurance={EMAIL_ONLY} />);
+
+    expect(screen.getByText("Verified · email only")).toBeDefined();
+    expect(screen.queryByText("Not started")).toBeNull();
+    expect(
+      screen.getByText(/we have only confirmed your email address/),
+    ).toBeDefined();
+  });
+
+  it("keeps an unrecognised profile a token rather than inventing wording", () => {
     render(
       <IdentityOnboardingView
-        email="creator@example.com"
-        name="Casey Morgan"
+        assurance={{ status: "verified", assuranceProfile: "eidas_high" }}
       />,
     );
 
+    expect(screen.getByText("Verified")).toBeDefined();
+  });
+
+  it("can be left without finishing it", () => {
+    render(<IdentityOnboardingView assurance={initialIndividualAssurance} />);
+
+    // A flow, not a gate: nothing here blocks registering a company, so the
+    // way out is a close in the corner rather than a decision to skip.
     expect(
-      within(screen.getByRole("contentinfo")).getByRole("link", {
-        name: "Skip for now",
-      }),
-    ).toHaveProperty("href", "http://localhost:3000/dashboard");
+      screen.getByRole("link", { name: "Close the identity check" }),
+    ).toHaveProperty("href", "http://localhost:3000/o");
     expect(
       screen.queryByRole("link", { name: "Continue in read-only mode" }),
     ).toBeNull();
-    expect(screen.getByText("Assurance state: not_started")).toBeDefined();
     expect(
       screen.queryByRole("combobox", { name: "Organisation switcher" }),
     ).toBeNull();
-  });
-
-  it("shows the onboarding notification state", () => {
-    render(
-      <IdentityOnboardingView
-        email="creator@example.com"
-        name="Casey Morgan"
-      />,
-    );
-
-    // The count is part of the name: a bell that says only "notifications"
-    // makes a reader open the menu to discover there is nothing in it.
-    const bell = screen.getByRole("button", {
-      name: "Notifications, 1 unread",
-    });
-    expect(screen.queryByText("Identity verification not started")).toBeNull();
-
-    fireEvent.click(bell);
-
-    expect(screen.getByText("Identity verification not started")).toBeDefined();
   });
 });

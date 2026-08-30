@@ -1,23 +1,26 @@
 "use client";
 
-import { ChevronDown, LockKeyhole, LogOut, UserRound } from "lucide-react";
+import { ChevronDown, LogOut, ShieldCheck } from "lucide-react";
 
 import { signOutAction } from "@/domains/auth/auth-actions";
-import { Menu, MenuGroup, MenuItem, MenuSeparator } from "@/lib/ui/menu";
+import { ACCOUNT_SETTINGS } from "@/domains/workspace/workspace-routes";
+import {
+  Menu,
+  MenuGroup,
+  MenuItem,
+  MenuLinkItem,
+  MenuSeparator,
+} from "@/lib/ui/menu";
 
 /**
  * The account menu.
  *
- * The trigger's accessible name is the account's email plus its role. The
- * previous markup used a static "Open account menu" label, which *replaced* the
- * visible email rather than containing it — a Label in Name failure
- * (WCAG 2.5.3) — and told a screen-reader user the menu was closed while it was
- * open, because the label never changed. Base UI keeps the open state on the
- * trigger's `aria-expanded`, so the name no longer has to carry it.
+ * The trigger's accessible name contains the visible email rather than
+ * replacing it, so Label in Name (WCAG 2.5.3) holds. Base UI keeps the open
+ * state on `aria-expanded`, so the name does not have to carry it.
  *
  * Sign-out is a real `menuitem` that submits a form, so it is reachable by
- * keyboard from inside the menu. The previous markup put a plain button inside
- * a `<details>` that arrow keys could not enter.
+ * keyboard from inside the menu.
  */
 export function UserAccountMenu({
   email,
@@ -52,27 +55,14 @@ export function UserAccountMenu({
       }
     >
       <MenuGroup label="Account">
-        {/* Genuinely disabled, and announced as such. `aria-disabled` on a
-          role-less <div> — the previous markup — is dropped by assistive
-          technology entirely, so this read as an ordinary item that did
-          nothing when activated. */}
-        <MenuItem disabled className="items-start">
-          <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-line-soft text-mist">
-            <UserRound className="h-3.5 w-3.5" aria-hidden="true" />
+        {/* The account's own settings, addressed without a tenant because no
+            organisation owns them. */}
+        <MenuLinkItem href={ACCOUNT_SETTINGS}>
+          <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-wash-blue text-cobalt">
+            <ShieldCheck className="h-3.5 w-3.5" aria-hidden="true" />
           </span>
-          <span className="flex flex-col gap-0.5">
-            <span className="font-semibold">
-              Profile &amp; account management
-            </span>
-            <span className="text-[11px] text-mist-light">
-              Available when account settings are connected
-            </span>
-          </span>
-          <LockKeyhole
-            className="ml-auto h-3.5 w-3.5 shrink-0 text-mist-light"
-            aria-hidden="true"
-          />
-        </MenuItem>
+          <span className="font-semibold">Account &amp; security</span>
+        </MenuLinkItem>
       </MenuGroup>
 
       <MenuSeparator />

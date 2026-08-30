@@ -1,12 +1,26 @@
 import { describe, expect, it } from "vitest";
 
 import robots from "@/app/robots";
-import { AUTH_ENTRY_PATHS, isPublicPath } from "@/domains/auth/public-paths";
+import {
+  AUTH_ENTRY_PATHS,
+  isPublicPath,
+  PUBLIC_PAGE_PATHS,
+} from "@/domains/auth/public-paths";
 import { SITE_ORIGIN } from "@/lib/brand/site-origin";
 import { appFiles } from "@test/app-router-files";
 
 /** A file that answers at a URL, as opposed to a convention or a test beside one. */
 const ROUTABLE = /^(page|route)\.(tsx?|jsx?)$/;
+
+/**
+ * One robots.txt rule against one path. A rule is a prefix unless it ends in
+ * `$`, which anchors it to the end of the path (RFC 9309 §2.2.3).
+ */
+function covers(rule: string, pathname: string): boolean {
+  return rule.endsWith("$")
+    ? pathname === rule.slice(0, -1)
+    : pathname.startsWith(rule);
+}
 
 describe("robots", () => {
   it("points crawlers at the sitemap on the canonical origin", () => {
@@ -19,12 +33,32 @@ describe("robots", () => {
     const { disallow } = robots().rules as { disallow: string[] };
 
     // A public information page listed here is deindexed silently, which
-    // looks like an SEO problem and is a config one. Trailing slashes are a
-    // robots.txt prefix, not part of the path.
+    // looks like an SEO problem and is a config one. Neither a trailing slash
+    // nor a trailing `$` is part of the path they match.
     for (const path of disallow) {
-      const pathname = path.replace(/\/$/, "");
+      const pathname = path.replace(/\$$/, "").replace(/\/$/, "");
       if (AUTH_ENTRY_PATHS.has(pathname)) continue;
       expect(isPublicPath(pathname)).toBe(false);
+    }
+  });
+
+  it("keeps the public site out of the disallow list, share card included", () => {
+    const { disallow } = robots().rules as { disallow: string[] };
+
+    // The other direction of the same list. `Disallow` is a prefix and the
+    // organisation segment is one letter, so a bare `/o` also matches
+    // `/opengraph-image` — the card every social scraper fetches, and the
+    // route the landing rebuild had just stopped answering 307 to. `/o$`
+    // is what keeps the two apart, and nothing else here would notice.
+    for (const pathname of [
+      ...PUBLIC_PAGE_PATHS,
+      "/blog/the-accountability-gap-in-autonomous-ai",
+      "/opengraph-image",
+    ]) {
+      expect(
+        disallow.some((rule) => covers(rule, pathname)),
+        `${pathname} is public and must not be disallowed`,
+      ).toBe(false);
     }
   });
 
@@ -41,10 +75,9 @@ describe("robots", () => {
       if (!ROUTABLE.test(file.name)) continue;
       if (isPublicPath(file.segment)) continue;
 
-      // `Disallow` matches a prefix, so a route is covered when any entry
-      // begins it.
+      // A route is covered when any rule matches it.
       expect(
-        disallow.some((prefix) => file.segment.startsWith(prefix)),
+        disallow.some((rule) => covers(rule, file.segment)),
         `${file.segment} needs a session and is not disallowed in robots.txt`,
       ).toBe(true);
     }

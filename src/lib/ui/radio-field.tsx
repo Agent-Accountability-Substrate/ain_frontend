@@ -15,9 +15,8 @@ import { cn } from "@/lib/utils";
  * of it is load-bearing:
  *
  * - `Fieldset.Root render={<RadioGroup />}` + `Fieldset.Legend` names the
- *   *group*. Putting the group's name on `Field.Label` instead gives all three
- *   radios the same `aria-labelledby`, so every option announces identically —
- *   which is what the first version of this component did.
+ *   *group*. Putting the group's name on `Field.Label` instead gives every
+ *   radio the same `aria-labelledby`, so they all announce identically.
  * - `Field.Item` scopes a label and a description to one control. Without it
  *   the enclosing `Field.Root` owns a single label and every radio inherits it.
  * - The guidance is a `Field.Description`, not part of the label, so the option

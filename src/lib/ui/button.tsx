@@ -1,3 +1,4 @@
+import Link from "next/link";
 import type { ComponentPropsWithoutRef, ReactNode } from "react";
 
 import { cn } from "@/lib/utils";
@@ -5,14 +6,12 @@ import { cn } from "@/lib/utils";
 /**
  * The workspace's one button.
  *
- * Variants are a plain record rather than `cva`: there are three of them, the
- * repo's convention is an `as const` set with the type derived from it, and a
- * variant library earns its keep at compound variants and slots, neither of
- * which exists here.
+ * Variants are a plain record rather than `cva`: there are three, and the
+ * repo's convention is an `as const` set with the type derived from it.
  *
  * `Button` renders a `<button>` and `ButtonLink` an `<a>`, because the two are
  * not interchangeable — a link that submits a form and a button that navigates
- * are both bugs, and keeping them separate makes choosing wrong deliberate.
+ * are both bugs.
  */
 
 const VARIANTS = {
@@ -67,14 +66,22 @@ export function ButtonLink({
   variant = "secondary",
   className,
   children,
+  href = "#",
   ...props
 }: ComponentPropsWithoutRef<"a"> & {
   variant?: ButtonVariant;
   children: ReactNode;
 }) {
+  // `next/link` rather than a bare anchor: an anchor throws the document away
+  // and rebuilds the shell with it, which is the whole reason the shell moved
+  // into a layout. An absolute URL still renders as a plain anchor.
   return (
-    <a className={cn(BASE, VARIANTS[variant], className)} {...props}>
+    <Link
+      href={href}
+      className={cn(BASE, VARIANTS[variant], className)}
+      {...props}
+    >
       {children}
-    </a>
+    </Link>
   );
 }

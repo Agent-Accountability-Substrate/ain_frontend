@@ -1,26 +1,20 @@
 "use client";
 
+import Link from "next/link";
 import { Menu as BaseMenu } from "@base-ui/react/menu";
 import type { ComponentPropsWithoutRef, ReactNode } from "react";
 
 import { cn } from "@/lib/utils";
 
 /**
- * A dropdown menu that behaves like one.
+ * A dropdown menu that behaves like one: `role="menu"`, arrow-key and Home/End
+ * movement, typeahead, Escape, outside-press dismissal, focus return to the
+ * trigger, and `aria-haspopup`.
  *
- * What this replaces was a `<details>` with a `<summary>`: no `role="menu"`, no
- * `menuitem`s, no arrow-key or Home/End movement, no typeahead, no Escape, no
- * outside-press dismissal, no focus return to the trigger, and no
- * `aria-haspopup`. Two of them could be open at once. `<summary>` announces as
- * a disclosure triangle, so the account menu was a triangle that opened a div.
- * All of that is behaviour, and behaviour is what a CSS file cannot supply —
- * which is why the fix is a primitive rather than more CSS.
- *
- * `modal={false}` is deliberate and load-bearing. Base UI defaults it to `true`,
- * which — by its own documented contract — locks document scroll and disables
- * pointer interaction outside the popup. That is dialog behaviour; a command-bar
- * menu should not take the page hostage. Deleting this prop as noise would
- * silently reintroduce it.
+ * `modal={false}` is load-bearing. Base UI defaults it to `true`, which locks
+ * document scroll and disables pointer interaction outside the popup — dialog
+ * behaviour, which a command-bar menu should not have. Deleting this prop as
+ * noise would silently reintroduce it.
  */
 
 export const POPUP_CLASS =
@@ -68,7 +62,7 @@ export function Menu({
 }
 
 const ITEM_CLASS =
-  "flex w-full cursor-default items-center gap-3 rounded-lg px-3 py-2.5 text-left text-xs font-medium text-ink-soft data-[highlighted]:bg-wash-blue data-[highlighted]:text-ink data-[disabled]:cursor-not-allowed data-[disabled]:text-mist-light";
+  "flex w-full cursor-pointer items-center gap-3 rounded-lg px-3 py-2.5 text-left text-xs font-medium text-ink-soft data-[highlighted]:bg-wash-blue data-[highlighted]:text-ink data-[disabled]:cursor-not-allowed data-[disabled]:text-mist-light";
 
 export function MenuItem({
   className,
@@ -79,9 +73,23 @@ export function MenuItem({
 
 export function MenuLinkItem({
   className,
+  href = "#",
+  closeOnClick = true,
   ...props
-}: ComponentPropsWithoutRef<typeof BaseMenu.LinkItem>) {
-  return <BaseMenu.LinkItem className={cn(ITEM_CLASS, className)} {...props} />;
+}: ComponentPropsWithoutRef<typeof BaseMenu.LinkItem> & { href?: string }) {
+  // `render` makes this a `next/link`, so choosing from a menu is a client
+  // transition and the shell around it stays mounted. Base UI defaults
+  // `closeOnClick` to false on a LinkItem, which is correct for a plain anchor
+  // that replaces the document and takes the popup with it — here the document
+  // survives, so the menu must be told to close.
+  return (
+    <BaseMenu.LinkItem
+      className={cn(ITEM_CLASS, className)}
+      closeOnClick={closeOnClick}
+      render={<Link href={href} />}
+      {...props}
+    />
+  );
 }
 
 export function MenuSeparator() {

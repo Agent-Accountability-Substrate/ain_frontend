@@ -4,13 +4,11 @@ import { ReviewDecisionForm } from "@/domains/operations/review-decision-form";
 import {
   WorkspaceContent,
   WorkspacePane,
-  WorkspaceShell,
-} from "@/domains/workspace/workspace-shell";
+} from "@/domains/workspace/workspace-content";
 import type {
   RegistrationCheck,
   ReviewItem,
 } from "@/lib/registry/registry-api";
-import { menuItemsFor } from "@/domains/workspace/workspace-navigation";
 import { Callout } from "@/lib/ui/callout";
 import { Card } from "@/lib/ui/card";
 import { Eyebrow } from "@/lib/ui/eyebrow";
@@ -19,10 +17,10 @@ import { StatusPill } from "@/lib/ui/status-pill";
 /**
  * The trust-operations console (architecture.md M12).
  *
- * A queue, one company at a time, and a decision. Deliberately not a table of
- * every organisation: an operator is answering one question — may this company
- * issue agents — and the screen shows what that question turns on and nothing
- * else. Members, agents and audit history stay behind their own reads.
+ * A queue, one company at a time, and a decision. Not a table of every
+ * organisation: an operator is answering one question — may this company issue
+ * agents — and the screen shows what that question turns on and nothing else.
+ * Members, agents and audit history stay behind their own reads.
  */
 
 const QUEUE_STATUS = {
@@ -71,8 +69,8 @@ function Comparison({ check }: { check: RegistrationCheck }) {
           whether this person may act for either of them. */}
       <p className="rounded-xl border border-frost bg-wash-blue p-3 text-[11px] leading-5 text-ink-muted">
         {check.name_matches
-          ? "The names match once case, punctuation and Ltd/Limited are folded."
-          : "The names do not match after folding case, punctuation and Ltd/Limited."}{" "}
+          ? "The names match, ignoring case, punctuation and Ltd/Limited."
+          : "The names do not match, even ignoring case, punctuation and Ltd/Limited."}{" "}
         Neither this nor the register can tell you whether the applicant may act
         for the company — that part is yours.
       </p>
@@ -81,13 +79,11 @@ function Comparison({ check }: { check: RegistrationCheck }) {
 }
 
 export function OperationsView({
-  email,
   queue,
   selected,
   check,
   checkUnavailable,
 }: {
-  email: string | null | undefined;
   queue: readonly ReviewItem[];
   selected: ReviewItem | null;
   check: RegistrationCheck | null;
@@ -95,14 +91,7 @@ export function OperationsView({
   checkUnavailable: string | null;
 }) {
   return (
-    <WorkspaceShell
-      currentPath="/operations"
-      email={email}
-      navigationItems={menuItemsFor(true)}
-      navigationLabel="Account sections"
-      signedInAs="Trust operations"
-      workspaceLabel="Trust operations"
-    >
+    <>
       <WorkspaceContent>
         <WorkspacePane
           as="aside"
@@ -170,7 +159,7 @@ export function OperationsView({
                 <Clock className="h-5 w-5" aria-hidden="true" />
               </span>
               <div className="flex flex-col gap-2">
-                <Eyebrow>Trust operations</Eyebrow>
+                <Eyebrow>Review</Eyebrow>
                 <h2 className="text-lg font-semibold tracking-[-0.02em] text-ink">
                   Choose a company to review
                 </h2>
@@ -235,6 +224,6 @@ export function OperationsView({
           )}
         </WorkspacePane>
       </WorkspaceContent>
-    </WorkspaceShell>
+    </>
   );
 }

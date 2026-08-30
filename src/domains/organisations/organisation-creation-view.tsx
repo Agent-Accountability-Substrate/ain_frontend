@@ -7,10 +7,10 @@ import { PrimaryNextActions } from "@/domains/workspace/primary-next-actions";
 import {
   WorkspaceContent,
   WorkspacePane,
-  WorkspaceShell,
-} from "@/domains/workspace/workspace-shell";
+} from "@/domains/workspace/workspace-content";
 import {
   initialAccountWorkspaceState,
+  isSetupComplete,
   type AccountWorkspaceState,
 } from "@/domains/workspace/account-workspace";
 import { JURISDICTIONS } from "@/domains/organisations/jurisdictions";
@@ -18,7 +18,7 @@ import {
   createOrganisationAction,
   type CreateOrganisationState,
 } from "@/domains/organisations/organisation-actions";
-import { menuItemsFor } from "@/domains/workspace/workspace-navigation";
+import { orgHref, WORKSPACE } from "@/domains/workspace/workspace-routes";
 import { Callout } from "@/lib/ui/callout";
 import { Button, ButtonLink } from "@/lib/ui/button";
 import { CheckboxField } from "@/lib/ui/checkbox-field";
@@ -43,10 +43,8 @@ const STEP_ONE_FIELDS = [
 ];
 
 export function OrganisationCreationView({
-  email,
   state = initialAccountWorkspaceState,
 }: {
-  email: string | null | undefined;
   state?: AccountWorkspaceState;
 }) {
   const [result, formAction, pending] = useActionState(
@@ -74,23 +72,19 @@ export function OrganisationCreationView({
   const jurisdictionLabel =
     JURISDICTIONS.find((entry) => entry.code === jurisdiction)?.label ??
     jurisdiction;
+  const setupRunning = !isSetupComplete(state);
 
   return (
-    <WorkspaceShell
-      currentPath="/organisations"
-      email={email}
-      navigationItems={menuItemsFor(state.isOperator)}
-      navigationLabel="Account sections"
-      organisations={state.organisations}
-      selectedOrganisationId={state.selectedOrganisationId}
-      showOrganisationSwitcher
-      signedInAs={created ? name : "No organisation selected"}
-      workspaceLabel="Create organisation"
-    >
-      <WorkspaceContent>
-        <WorkspacePane as="aside" className="max-lg:order-2">
-          <PrimaryNextActions state={state} />
-        </WorkspacePane>
+    <>
+      <WorkspaceContent columns={setupRunning ? "sidebar" : "single"}>
+        {/* The checklist stops existing once setup is done, so the column it
+          sits in has to go with it — otherwise the form is pushed off centre
+          by a reserved space holding nothing. */}
+        {setupRunning ? (
+          <WorkspacePane as="aside" className="max-lg:order-2">
+            <PrimaryNextActions state={state} />
+          </WorkspacePane>
+        ) : null}
 
         <WorkspacePane className="max-lg:order-1">
           {created ? (
@@ -105,18 +99,25 @@ export function OrganisationCreationView({
                     {name} is registered
                   </h1>
                   {/* Deliberately not a link into agent creation: the registry
-                      refuses agents in an unverified organisation. */}
+                    refuses agents in an unverified organisation. */}
                   <p className="text-xs leading-5 text-mist">
-                    Trust operations will confirm the company number against
-                    Companies House and check your authority to act for it.
-                    Until that is done the organisation is inert — agents can be
-                    registered once it is verified.
+                    We check the company number against Companies House and
+                    confirm your authority to act for it. Until that is done the
+                    organisation is inert — agents can be registered once it is
+                    verified.
                   </p>
                 </div>
               </div>
               <div className="flex justify-end">
-                <ButtonLink variant="primary" href="/organisations">
-                  Back to organisations
+                <ButtonLink
+                  variant="primary"
+                  href={
+                    result.status === "created"
+                      ? orgHref(result.organisationUlid)
+                      : WORKSPACE
+                  }
+                >
+                  Go to {name}
                   <ArrowRight className="h-4 w-4" aria-hidden="true" />
                 </ButtonLink>
               </div>
@@ -230,12 +231,12 @@ export function OrganisationCreationView({
               ) : (
                 <>
                   {/* Step 1's values ride along as hidden inputs rather than as
-                      visually-hidden required controls. The previous form kept
-                      them mounted under [hidden] with `required` still set,
-                      which Chrome refuses to submit — it cannot focus the
-                      invalid control to report it — so the whole form silently
-                      deadlocked. A truthiness guard on the Continue button
-                      masked it, and a single space defeated that guard. */}
+                    visually-hidden required controls. The previous form kept
+                    them mounted under [hidden] with `required` still set,
+                    which Chrome refuses to submit — it cannot focus the
+                    invalid control to report it — so the whole form silently
+                    deadlocked. A truthiness guard on the Continue button
+                    masked it, and a single space defeated that guard. */}
                   <input type="hidden" name="name" value={name} />
                   <input
                     type="hidden"
@@ -269,8 +270,8 @@ export function OrganisationCreationView({
                   </dl>
 
                   {/* An attestation, not a stored field: the registry has
-                      nowhere to put a claimed relationship, and a form that
-                      asks and discards would be worse than not asking. */}
+                    nowhere to put a claimed relationship, and a form that
+                    asks and discards would be worse than not asking. */}
                   <CheckboxField
                     required
                     checked={authorityConfirmed}
@@ -288,9 +289,9 @@ export function OrganisationCreationView({
                 </Callout>
               ) : (
                 <Callout>
-                  The organisation is created pending verification. Trust
-                  operations check the company number and your authority to act
-                  for it before it can do anything.
+                  The organisation is created pending verification. We check the
+                  company number and your authority to act for it before it can
+                  do anything.
                 </Callout>
               )}
 
@@ -304,7 +305,7 @@ export function OrganisationCreationView({
                     Back
                   </Button>
                 ) : (
-                  <ButtonLink variant="secondary" href="/dashboard">
+                  <ButtonLink variant="secondary" href={WORKSPACE}>
                     Save and return
                   </ButtonLink>
                 )}
@@ -335,6 +336,6 @@ export function OrganisationCreationView({
           )}
         </WorkspacePane>
       </WorkspaceContent>
-    </WorkspaceShell>
+    </>
   );
 }

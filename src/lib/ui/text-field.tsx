@@ -8,20 +8,15 @@ import { cn } from "@/lib/utils";
 /**
  * A labelled text control, wired for server-returned errors.
  *
- * Replaces the sixteen hand-written `<label><span>…</span><input/><small
- * role="alert">` blocks. Those gave the control an accessible name consisting
- * of its label *plus* its helper text *plus*, after a refusal, its error — read
- * out in full on every focus, and the error read twice. `Field` puts the helper
- * on `aria-describedby` and the error on `aria-describedby` + `aria-invalid`,
- * which is what those two attributes are for.
+ * `Field` puts the helper on `aria-describedby` and the error on
+ * `aria-describedby` + `aria-invalid`, so neither ends up in the control's
+ * accessible name and read out on every focus.
  *
- * `match` is the load-bearing prop and it is deliberately `true` rather than a
- * `ValidityState` key. `Field.Error`'s default keys off native constraint
- * validation, so a message the *server* produced renders nothing; `match={true}`
- * is the documented hand-off for exactly that. The consequence, recorded so it
- * is a decision rather than a discovery: per-constraint messages (and with them
- * the library's message-localisation hook) are foreclosed while every error in
- * this product comes back from a Server Action.
+ * `match` is `true` rather than a `ValidityState` key: `Field.Error`'s default
+ * keys off native constraint validation, so a message the *server* produced
+ * would render nothing. The trade-off is that per-constraint messages, and the
+ * library's message-localisation hook with them, are foreclosed while every
+ * error in this product comes back from a Server Action.
  *
  * `match={true}` means *always render*, so the element is only mounted when
  * there is something to say. Left unconditional it put an empty `<div>` under

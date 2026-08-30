@@ -59,7 +59,7 @@ export default function WorkspaceError({
           ) : null}
         </div>
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <ButtonLink href="/dashboard">Back to overview</ButtonLink>
+          <ButtonLink href="/o">Back to your workspace</ButtonLink>
           <Button type="button" onClick={reset}>
             Try again
           </Button>

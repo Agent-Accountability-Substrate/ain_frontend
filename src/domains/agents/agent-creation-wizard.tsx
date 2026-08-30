@@ -20,6 +20,7 @@ import {
   type RegisterAgentState,
   type SubmitAgentState,
 } from "@/domains/agents/agent-actions";
+import { orgHref, WORKSPACE } from "@/domains/workspace/workspace-routes";
 import { Callout } from "@/lib/ui/callout";
 import { Button, ButtonLink } from "@/lib/ui/button";
 import { Eyebrow } from "@/lib/ui/eyebrow";
@@ -35,11 +36,9 @@ import { TextField } from "@/lib/ui/text-field";
  * those calls, so a draft that exists on the server is a draft the wizard can
  * show rather than a local object hoping to become real.
  *
- * Both forms are controlled, and that is load-bearing rather than stylistic:
- * React resets a form once its action resolves, so a refusal would hand back
- * the reason with the fields already wiped. The declaration step is six fields
- * including the SMCR reference — retyping them to read an error is not a
- * reasonable thing to ask.
+ * Both forms are controlled because React resets a form once its action
+ * resolves, so a refusal would hand back the reason with the fields already
+ * wiped — six of them on the declaration step, including the SMCR reference.
  */
 
 const RISK_LEVELS = [
@@ -96,15 +95,22 @@ function Note({ children }: { children: ReactNode }) {
 export function AgentCreationWizard({
   organisationId,
   organisationName,
+  organisationUlid,
   organisationVerified,
   onBack,
 }: {
   /** `null` when no organisation is selected — the wizard then refuses to run. */
   organisationId: string | null;
   organisationName: string | null;
+  organisationUlid: string | null;
   organisationVerified: boolean;
   onBack?: () => void;
 }) {
+  // Every way out of the wizard leads back to the register it was opened
+  // from: it is where a draft will be waiting and where the new agent lands.
+  const registerHref = organisationUlid
+    ? orgHref(organisationUlid, "agents")
+    : WORKSPACE;
   const [registered, registerAction, registering] = useActionState<
     RegisterAgentState,
     FormData
@@ -162,15 +168,15 @@ export function AgentCreationWizard({
         eyebrow="Awaiting verification"
         title={`${organisationName} is not verified yet`}
         action={
-          <ButtonLink href="/organisations">
+          <ButtonLink href={registerHref}>
             <ArrowLeft className="h-4 w-4" aria-hidden="true" />
-            Back to organisations
+            Back to the register
           </ButtonLink>
         }
       >
-        Trust operations confirm the company registration and your authority to
-        act for it before any agent can be registered. This step opens as soon
-        as that is done.
+        We confirm the company registration and your authority to act for it
+        before any agent can be registered. This step opens as soon as that is
+        done.
       </Blocked>
     );
   }
@@ -191,7 +197,7 @@ export function AgentCreationWizard({
         </p>
         <CopyableAin value={issued.ain} />
         <div className="flex flex-wrap gap-3">
-          <ButtonLink href="/dashboard">Return to overview</ButtonLink>
+          <ButtonLink href={registerHref}>Back to the register</ButtonLink>
           <ButtonLink variant="primary" href={issued.resolverUrl}>
             Resolver URL
           </ButtonLink>
@@ -345,7 +351,7 @@ export function AgentCreationWizard({
               rows={3}
               required
               placeholder={"payments.initiate\ncustomer_comms.send"}
-              description="One per line. Anything not declared is unauthorised — unknown never means allowed."
+              description="One per line. Anything you do not list here is not authorised."
               error={declarationErrors["actionClasses"]}
             />
             <SelectField
@@ -427,7 +433,7 @@ export function AgentCreationWizard({
             </Note>
           )}
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <ButtonLink href="/dashboard">Save draft and return</ButtonLink>
+            <ButtonLink href={registerHref}>Save draft and return</ButtonLink>
             <Button type="submit" disabled={declaring}>
               {declaring ? "Attaching…" : "Attach declaration"}
               <ArrowRight className="h-4 w-4" aria-hidden="true" />
@@ -458,7 +464,7 @@ export function AgentCreationWizard({
             <Refusal message={issued.message} />
           ) : null}
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <ButtonLink href="/dashboard">Leave as draft</ButtonLink>
+            <ButtonLink href={registerHref}>Leave as draft</ButtonLink>
             <Button type="submit" disabled={submitting}>
               {submitting ? "Signing…" : "Sign and issue"}
               <ArrowRight className="h-4 w-4" aria-hidden="true" />

@@ -4,7 +4,7 @@ import type { CSSProperties, PointerEvent, TouchEvent } from "react";
 import { Bot, Fingerprint } from "lucide-react";
 import { useRef, useState } from "react";
 
-import { CopyableAin } from "@/domains/agents/copyable-ain";
+import { CopyAinButton } from "@/domains/agents/copyable-ain";
 
 const AGENT_RECORDS = [
   {
@@ -334,7 +334,7 @@ export function AgentIdentityDeck() {
                           </code>
                           {isActive && isFlipped ? (
                             <span className="agent-card-record-copy">
-                              <CopyableAin value={agent.permanentAin} />
+                              <CopyAinButton value={agent.permanentAin} />
                             </span>
                           ) : null}
                         </div>

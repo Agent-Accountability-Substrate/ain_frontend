@@ -9,11 +9,9 @@ import { POPUP_CLASS } from "@/lib/ui/menu";
 /**
  * A disclosure panel anchored to its trigger.
  *
- * Distinct from `Menu` on purpose. A menu is a list of commands and its
- * contents are `menuitem`s; the notifications panel is headings and prose, and
- * putting that inside `role="menu"` describes it to assistive technology as
- * something it is not. The old markup used one `<details>` for both, which is
- * how they came to look interchangeable.
+ * Distinct from `Menu` on purpose: a menu is a list of commands and its
+ * contents are `menuitem`s, where the notifications panel is headings and
+ * prose, which `role="menu"` would describe as something it is not.
  *
  * `Popover` already defaults to `modal={false}`; it is passed explicitly so the
  * three popups in this codebase read the same way and none of them is one

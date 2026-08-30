@@ -1,147 +1,187 @@
-import { Fingerprint, KeyRound, ShieldCheck, UserRound } from "lucide-react";
-import type { LucideIcon } from "lucide-react";
+import type { ReactNode } from "react";
 
+import { SettingsLayout } from "@/domains/workspace/settings-layout";
+import type { AccountWorkspaceState } from "@/domains/workspace/account-workspace";
 import {
-  WorkspaceContent,
-  WorkspacePane,
-  WorkspaceShell,
-} from "@/domains/workspace/workspace-shell";
+  assuranceProfileLabel,
+  isEmailOnlyAssurance,
+  type IndividualAssuranceStatus,
+} from "@/domains/identity/identity-assurance";
 import {
-  getSelectedOrganisation,
-  initialAccountWorkspaceState,
-  type AccountWorkspaceState,
-} from "@/domains/workspace/account-workspace";
-import { menuItemsFor } from "@/domains/workspace/workspace-navigation";
+  ACCOUNT_SETTINGS,
+  IDENTITY_ONBOARDING,
+} from "@/domains/workspace/workspace-routes";
+import { ButtonLink } from "@/lib/ui/button";
 import { Card } from "@/lib/ui/card";
-import { Eyebrow } from "@/lib/ui/eyebrow";
-import { PageHeading } from "@/lib/ui/page-heading";
-import { cn } from "@/lib/utils";
+import { StatusPill, type StatusTone } from "@/lib/ui/status-pill";
 
-function assuranceLabel(
-  status: AccountWorkspaceState["individualAssurance"]["status"],
-) {
-  return status
-    .split("_")
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(" ");
-}
+/**
+ * The account's own settings: what the account says about you, and where the
+ * identity check stands.
+ */
 
-function SettingCard({
-  icon: Icon,
-  tone = "blue",
-  eyebrow,
-  title,
-  titleId,
-  children,
-}: {
-  icon: LucideIcon;
-  tone?: "blue" | "green";
-  eyebrow: string;
-  title: string;
-  titleId: string;
-  children: string;
-}) {
+const ASSURANCE: Record<
+  IndividualAssuranceStatus,
+  { label: string; tone: StatusTone; action?: string }
+> = {
+  not_started: {
+    label: "Not started",
+    tone: "pending",
+    action: "Start identity check",
+  },
+  pending: { label: "In progress", tone: "pending", action: "Continue" },
+  needs_review: { label: "Being reviewed", tone: "attention" },
+  verified: { label: "Verified", tone: "success" },
+  failed: {
+    label: "Could not be completed",
+    tone: "refused",
+    action: "Try again",
+  },
+  expired: { label: "Expired", tone: "attention", action: "Verify again" },
+};
+
+function Row({ label, children }: { label: string; children: ReactNode }) {
   return (
-    <Card
-      as="section"
-      aria-labelledby={titleId}
-      className="flex items-start gap-4"
-    >
-      <span
-        className={cn(
-          "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl",
-          tone === "green"
-            ? "bg-success-wash text-success-strong"
-            : "bg-wash-blue text-cobalt",
-        )}
-      >
-        <Icon className="h-5 w-5" aria-hidden="true" />
-      </span>
-      <div className="flex flex-col gap-1">
-        <Eyebrow>{eyebrow}</Eyebrow>
-        <h2 id={titleId} className="text-sm font-semibold text-ink">
-          {title}
-        </h2>
-        <p className="text-[11px] leading-4 text-mist">{children}</p>
-      </div>
-    </Card>
+    <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1 border-t border-line py-3 first:border-t-0 first:pt-0">
+      <dt className="text-[11px] font-semibold text-mist">{label}</dt>
+      <dd className="min-w-0 text-sm text-ink">{children}</dd>
+    </div>
   );
 }
 
 export function AccountSecurityView({
   email,
   name,
-  state = initialAccountWorkspaceState,
+  state,
 }: {
   email: string | null | undefined;
   name: string | null | undefined;
-  state?: AccountWorkspaceState;
+  state: AccountWorkspaceState;
 }) {
-  const selectedOrganisation = getSelectedOrganisation(state);
-  const accountName = name?.trim() || "Account holder";
-  const accountEmail = email ?? "Not available";
+  const assurance = ASSURANCE[state.individualAssurance.status];
+  const { checkedAt, expiresAt, assuranceProfile, providerReference } =
+    state.individualAssurance;
+  const level = assuranceProfileLabel(assuranceProfile);
+  const emailOnly = isEmailOnlyAssurance(state.individualAssurance);
+  const date = (value: string) =>
+    new Date(value).toLocaleDateString("en-GB", {
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+    });
+  const record: [string, string][] = [
+    ...(checkedAt
+      ? ([["Checked", date(checkedAt)]] as [string, string][])
+      : []),
+    ...(expiresAt
+      ? ([["Expires", date(expiresAt)]] as [string, string][])
+      : []),
+    ...(assuranceProfile !== undefined && level === null
+      ? ([["Profile", assuranceProfile]] as [string, string][])
+      : []),
+    ...(providerReference
+      ? ([["Reference", providerReference]] as [string, string][])
+      : []),
+  ];
 
   return (
-    <WorkspaceShell
-      assuranceStatus={state.individualAssurance.status}
-      currentPath="/account"
-      email={email}
-      navigationItems={menuItemsFor(state.isOperator)}
-      navigationLabel="Account sections"
-      organisations={state.organisations}
-      selectedOrganisationId={state.selectedOrganisationId}
-      showOrganisationSwitcher
-      signedInAs={selectedOrganisation?.name ?? "No organisation selected"}
-      workspaceLabel="Account and security"
+    <SettingsLayout
+      currentPath={ACCOUNT_SETTINGS}
+      title="Account & security"
+      lede="This account, whichever company you are acting for."
     >
-      <WorkspaceContent columns="single">
-        <WorkspacePane className="mx-auto flex w-[min(100%,64rem)] flex-col gap-5">
-          <PageHeading
-            eyebrow="Personal account"
-            lede="Authentication details and identity assurance are shown separately."
-          >
-            Account &amp; Security
-          </PageHeading>
+      <Card as="section" aria-labelledby="details-title">
+        <h2 id="details-title" className="text-sm font-semibold text-ink">
+          Your details
+        </h2>
+        <dl className="mt-4 flex flex-col">
+          <Row label="Name">{name?.trim() || "Not set"}</Row>
+          <Row label="Email">{email ?? "Not available"}</Row>
+          <Row label="Password">
+            {/* Credentials are held by the identity provider, so there is
+                nothing here to change. */}
+            <span className="text-mist">Changed when you sign in</span>
+          </Row>
+        </dl>
+      </Card>
 
-          <div className="grid gap-3.5 sm:grid-cols-2">
-            <SettingCard
-              icon={UserRound}
-              eyebrow="Profile"
-              title={accountName}
-              titleId="profile-title"
-            >
-              {accountEmail}
-            </SettingCard>
-            <SettingCard
-              icon={KeyRound}
-              eyebrow="Authentication"
-              title="Managed by Auth0"
-              titleId="authentication-title"
-            >
-              Signing in confirms account access, not personal identity.
-            </SettingCard>
-            <SettingCard
-              icon={Fingerprint}
-              tone="green"
-              eyebrow="Individual assurance"
-              title={assuranceLabel(state.individualAssurance.status)}
-              titleId="assurance-title"
-            >
-              Email and provider sign-in status are never treated as identity
-              assurance.
-            </SettingCard>
-            <SettingCard
-              icon={ShieldCheck}
-              tone="green"
-              eyebrow="Session security"
-              title="Protected workspace session"
-              titleId="session-title"
-            >
-              Use the account menu to sign out of this browser session.
-            </SettingCard>
+      <Card as="section" aria-labelledby="identity-title">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="flex min-w-0 flex-col gap-1">
+            <h2 id="identity-title" className="text-sm font-semibold text-ink">
+              Identity check
+            </h2>
+            {assurance.action ? (
+              <p className="text-[11px] leading-4 text-mist">
+                A one-off check, so we know who is registering the company.
+              </p>
+            ) : null}
           </div>
-        </WorkspacePane>
-      </WorkspaceContent>
-    </WorkspaceShell>
+          {/* Status and level in one phrase. Either alone misleads: "Verified"
+              on its own reads as a document check, and a level on its own does
+              not say whether it holds. */}
+          <StatusPill tone={assurance.tone}>
+            {level === null ? assurance.label : `${assurance.label} · ${level}`}
+          </StatusPill>
+        </div>
+
+        {/* Without this, an account confirmed by an email round-trip carries a
+            green pill and nothing says that is all it is. */}
+        {emailOnly ? (
+          <p className="mt-3 text-[11px] leading-4 text-mist">
+            So far we have only confirmed your email address. A full identity
+            check will replace this — nothing is needed from you until then.
+          </p>
+        ) : null}
+
+        {state.individualAssurance.reviewReason ? (
+          <p className="mt-3 text-[11px] leading-4 text-mist">
+            {state.individualAssurance.reviewReason}
+          </p>
+        ) : null}
+
+        {/* A check that has passed stops being a task and becomes something
+            you may need to quote. Nothing here is document data — the outcome,
+            the dates and an opaque reference are all it holds. */}
+        {record.length > 0 ? (
+          <dl className="mt-4 flex flex-col">
+            {record.map(([label, value]) => (
+              <Row key={label} label={label}>
+                {label === "Reference" ? (
+                  <span className="select-all break-all font-mono text-[11px]">
+                    {value}
+                  </span>
+                ) : (
+                  value
+                )}
+              </Row>
+            ))}
+          </dl>
+        ) : null}
+
+        {/* A provider that cannot place someone is the case the onboarding
+            screen already promises a human for. */}
+        {state.individualAssurance.status === "failed" ? (
+          <p className="mt-3 text-[11px] leading-4 text-mist">
+            If it fails again, we review it by hand rather than turning you
+            away.
+          </p>
+        ) : null}
+
+        {assurance.action ? (
+          <div className="mt-4">
+            <ButtonLink variant="primary" href={IDENTITY_ONBOARDING}>
+              {assurance.action}
+            </ButtonLink>
+          </div>
+        ) : emailOnly ? (
+          <div className="mt-4">
+            <ButtonLink variant="secondary" href={IDENTITY_ONBOARDING}>
+              What the full check involves
+            </ButtonLink>
+          </div>
+        ) : null}
+      </Card>
+    </SettingsLayout>
   );
 }

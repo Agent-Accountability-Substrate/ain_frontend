@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
   createOrganisationMock,
+  leaveOrganisationMock,
   revalidatePathMock,
   NotAuthenticatedError,
   RegistryRefusedError,
@@ -19,6 +20,7 @@ const {
   }
   return {
     createOrganisationMock: vi.fn(),
+    leaveOrganisationMock: vi.fn(),
     revalidatePathMock: vi.fn(),
     NotAuthenticatedError,
     RegistryRefusedError,
@@ -28,6 +30,8 @@ const {
 
 vi.mock("@/lib/registry/registry-api", () => ({
   createOrganisation: createOrganisationMock,
+  inviteMember: vi.fn(),
+  leaveOrganisation: leaveOrganisationMock,
   NotAuthenticatedError,
   RegistryRefusedError,
   RegistryUnavailableError,
@@ -39,7 +43,10 @@ vi.mock("@/lib/logger", () => ({
   logger: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() },
 }));
 
-import { createOrganisationAction } from "@/domains/organisations/organisation-actions";
+import {
+  createOrganisationAction,
+  leaveOrganisationAction,
+} from "@/domains/organisations/organisation-actions";
 
 function form(overrides: Record<string, string> = {}): FormData {
   const data = new FormData();
@@ -79,13 +86,13 @@ describe("createOrganisationAction", () => {
   });
 
   it("refreshes the pages that render the list", async () => {
-    // Both are server-rendered from the registry per request, so without this
-    // the organisation someone just created is missing from the page they
-    // land on next.
+    // Every workspace screen is server-rendered from the registry per request
+    // and the switcher sits in the shared shell, so the whole subtree is
+    // revalidated — otherwise the organisation someone just created is missing
+    // from the page they land on next.
     await createOrganisationAction({ status: "idle" }, form());
 
-    expect(revalidatePathMock).toHaveBeenCalledWith("/organisations");
-    expect(revalidatePathMock).toHaveBeenCalledWith("/dashboard");
+    expect(revalidatePathMock).toHaveBeenCalledWith("/o", "layout");
   });
 
   it.each([
@@ -156,5 +163,97 @@ describe("createOrganisationAction", () => {
     expect(state).toMatchObject({
       message: expect.stringContaining("Sign in again"),
     });
+  });
+});
+
+describe("leaveOrganisationAction", () => {
+  const ORG_ID = "6a1f6f38-0d3f-4c86-9a53-8c8f7a1e2b4d";
+
+  function leaveForm(organisationId: string = ORG_ID): FormData {
+    const data = new FormData();
+    data.set("organisationId", organisationId);
+    return data;
+  }
+
+  beforeEach(() => {
+    leaveOrganisationMock.mockReset();
+    revalidatePathMock.mockReset();
+  });
+
+  it("gives up access and refreshes what lists it", async () => {
+    leaveOrganisationMock.mockResolvedValue("left");
+
+    expect(
+      await leaveOrganisationAction({ status: "idle" }, leaveForm()),
+    ).toEqual({ status: "left" });
+    expect(leaveOrganisationMock).toHaveBeenCalledWith(ORG_ID);
+    expect(revalidatePathMock).toHaveBeenCalledWith("/o", "layout");
+  });
+
+  it("says what is missing rather than advising a retry", async () => {
+    // Nothing is wrong with the registry, so "try again shortly" would be a
+    // promise nothing can keep. The way on is a person, so name them.
+    leaveOrganisationMock.mockResolvedValue("unsupported");
+
+    const state = await leaveOrganisationAction(
+      { status: "idle" },
+      leaveForm(),
+    );
+
+    expect(state.status).toBe("error");
+    expect(state).toHaveProperty(
+      "message",
+      expect.stringContaining("Ask an owner or admin"),
+    );
+    expect(revalidatePathMock).not.toHaveBeenCalled();
+  });
+
+  it("relays a refusal in the registry's own words", async () => {
+    leaveOrganisationMock.mockRejectedValue(
+      new RegistryRefusedError(
+        403,
+        "An owner cannot leave their organisation.",
+      ),
+    );
+
+    expect(
+      await leaveOrganisationAction({ status: "idle" }, leaveForm()),
+    ).toEqual({
+      status: "error",
+      message: "An owner cannot leave their organisation.",
+    });
+  });
+
+  it("refuses an identifier that is not one", async () => {
+    const state = await leaveOrganisationAction(
+      { status: "idle" },
+      leaveForm("not-a-uuid"),
+    );
+
+    expect(state.status).toBe("error");
+    expect(leaveOrganisationMock).not.toHaveBeenCalled();
+  });
+
+  it("asks for a fresh sign-in rather than losing the click", async () => {
+    leaveOrganisationMock.mockRejectedValue(new NotAuthenticatedError());
+
+    const state = await leaveOrganisationAction(
+      { status: "idle" },
+      leaveForm(),
+    );
+
+    expect(state.status).toBe("error");
+  });
+
+  it("reports an outage as an outage", async () => {
+    leaveOrganisationMock.mockRejectedValue(new RegistryUnavailableError());
+
+    const state = await leaveOrganisationAction(
+      { status: "idle" },
+      leaveForm(),
+    );
+
+    expect(state.status).toBe("error");
+    expect(revalidatePathMock).not.toHaveBeenCalled();
   });
 });

@@ -27,11 +27,10 @@ import { TextField } from "@/lib/ui/text-field";
  * registration rather than an appeal — that is worth a moment's friction, not a
  * button of equal weight beside "verify".
  *
- * Each option's guidance is a `<RadioField>` description rather than part of the
- * label, so the option announces as "Refuse" and not as "Refuse Final. Frees
- * the company number, so the way forward is a fresh registration — say what was
- * wrong." The guidance still reaches assistive technology, through
- * `aria-describedby`, which is what that attribute is for.
+ * Each option's guidance is a `<RadioField>` description rather than part of
+ * the label, so the option announces as "Refuse" rather than as "Refuse" plus
+ * the whole paragraph beneath it. The guidance still reaches assistive
+ * technology through `aria-describedby`.
  */
 
 const OUTCOMES = [

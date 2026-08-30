@@ -2,10 +2,7 @@ import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 import { AgentCreationView } from "@/domains/agents/agent-creation-view";
-import {
-  initialAccountWorkspaceState,
-  type AccountWorkspaceState,
-} from "@/domains/workspace/account-workspace";
+import { type OrganisationSummary } from "@/domains/workspace/account-workspace";
 
 vi.mock("@/domains/auth/auth-actions", () => ({
   signOutAction: vi.fn(),
@@ -19,72 +16,41 @@ vi.mock("@/domains/agents/agent-actions", () => ({
   submitAgentAction: vi.fn(),
 }));
 
-function workspace(
-  overrides: Partial<AccountWorkspaceState>,
-): AccountWorkspaceState {
-  return { ...initialAccountWorkspaceState, ...overrides };
+const ORG_ID = "6a1f6f38-0d3f-4c86-9a53-8c8f7a1e2b4d";
+const ORG_ULID = "01ARZ3ND3EX62JM1DZMBK9A9JF";
+
+function organisation(
+  verificationStatus: OrganisationSummary["verificationStatus"],
+): OrganisationSummary {
+  return {
+    id: ORG_ID,
+    ulid: ORG_ULID,
+    name: "Acme Ltd",
+    membershipRole: "owner",
+    verificationStatus,
+  };
 }
 
-const ORG_ID = "6a1f6f38-0d3f-4c86-9a53-8c8f7a1e2b4d";
+function renderFor(organisationSummary: OrganisationSummary) {
+  render(<AgentCreationView organisation={organisationSummary} />);
+}
 
 describe("AgentCreationView", () => {
-  it("keeps the direct agent route honest without an organisation", () => {
-    render(<AgentCreationView email="owner@example.com" />);
-
-    expect(
-      screen.getByRole("heading", { name: "Select an organisation first" }),
-    ).toBeDefined();
-    expect(
-      screen.getByRole("heading", {
-        name: "Choose an organisation to continue",
-      }),
-    ).toBeDefined();
-
-    // With no organisation there must be no submittable agent form at all.
-    expect(screen.queryByLabelText("Agent name")).toBeNull();
-  });
-
   it("says why the form is closed while verification is pending", () => {
-    render(
-      <AgentCreationView
-        email="owner@example.com"
-        state={workspace({
-          organisations: [
-            {
-              id: ORG_ID,
-              name: "Acme Ltd",
-              membershipRole: "owner",
-              verificationStatus: "pending",
-            },
-          ],
-          selectedOrganisationId: ORG_ID,
-        })}
-      />,
-    );
+    renderFor(organisation("pending"));
 
     expect(
       screen.getByRole("heading", { name: "Acme Ltd is not verified yet" }),
     ).toBeDefined();
     expect(screen.queryByLabelText("Agent name")).toBeNull();
+    // The way out of a closed wizard is the register it was opened from.
+    expect(
+      screen.getByRole("link", { name: "Back to the register" }),
+    ).toHaveProperty("href", `http://localhost:3000/o/${ORG_ULID}/agents`);
   });
 
   it("opens the identity step once the organisation is verified", () => {
-    render(
-      <AgentCreationView
-        email="owner@example.com"
-        state={workspace({
-          organisations: [
-            {
-              id: ORG_ID,
-              name: "Acme Ltd",
-              membershipRole: "owner",
-              verificationStatus: "verified",
-            },
-          ],
-          selectedOrganisationId: ORG_ID,
-        })}
-      />,
-    );
+    renderFor(organisation("verified"));
 
     expect(screen.getByLabelText("Agent name")).toBeDefined();
     expect(screen.getByLabelText("What it does")).toBeDefined();

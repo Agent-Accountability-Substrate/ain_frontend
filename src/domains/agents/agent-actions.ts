@@ -155,7 +155,7 @@ const declarationSchema = z.object({
     .transform(list)
     .refine(
       (entries) => entries.length > 0,
-      "Declare at least one action class, or state a deny-all scope explicitly",
+      "List at least one action this agent is authorised to take",
     ),
   riskLevel: z.string().trim().min(1, "Choose a risk level").max(50),
   regulatoryMappings: z.string().transform(list),
@@ -254,7 +254,7 @@ export async function submitAgentAction(
       parsed.data.ain,
     );
     logger.info("agent.issued");
-    revalidatePath("/dashboard");
+    revalidatePath("/o", "layout");
     revalidatePath("/organisations");
     return {
       status: "done",

@@ -1,58 +1,45 @@
 import { render, screen } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 
 import { WorkspaceUnavailable } from "@/domains/workspace/workspace-unavailable";
 
-vi.mock("@/domains/auth/auth-actions", () => ({ signOutAction: vi.fn() }));
-
 describe("WorkspaceUnavailable", () => {
-  it("keeps the workspace navigable while the registry is down", () => {
-    // The failure is real but it is not the end of the session. A page that
-    // loses its navigation turns a passing outage into a dead end.
+  it("says what failed", () => {
     render(
       <WorkspaceUnavailable
-        currentPath="/dashboard"
         detail="storage is temporarily unavailable"
         email="owner@example.com"
-        workspaceLabel="Overview"
       />,
     );
 
     expect(screen.getByRole("alert").textContent).toBe(
       "storage is temporarily unavailable",
     );
-    expect(screen.getByRole("link", { name: "Overview" })).toBeDefined();
-    expect(screen.getByRole("link", { name: "Organisations" })).toBeDefined();
+  });
+
+  it("carries no rail, because the rail is what could not be read", () => {
+    // Every section hangs off an organisation, and the membership list is
+    // exactly what the registry could not answer for. Offering sections here
+    // would be inventing the one missing fact.
+    render(<WorkspaceUnavailable detail="down" email="owner@example.com" />);
+
+    expect(screen.queryByRole("navigation")).toBeNull();
+    expect(screen.queryByText(/organisations owned/i)).toBeNull();
   });
 
   it("offers a retry that asks the server again", () => {
-    // A router refresh would not help: this page was server-rendered from a
-    // failed read, so only another request can succeed.
-    render(
-      <WorkspaceUnavailable
-        currentPath="/organisations"
-        detail="The registry is not answering right now."
-        email="owner@example.com"
-        workspaceLabel="Organisations"
-      />,
-    );
+    // A router refresh would not help: this was server-rendered from a failed
+    // read, so only another request can succeed.
+    render(<WorkspaceUnavailable detail="down" email="owner@example.com" />);
 
     expect(
       screen.getByRole("link", { name: "Try again" }).getAttribute("href"),
-    ).toBe("/organisations");
+    ).toBe("/o");
   });
 
-  it("invents no data it could not read", () => {
-    render(
-      <WorkspaceUnavailable
-        currentPath="/dashboard"
-        detail="down"
-        email="owner@example.com"
-        workspaceLabel="Overview"
-      />,
-    );
+  it("says nothing about who is signed in when nobody is", () => {
+    render(<WorkspaceUnavailable detail="down" email={null} />);
 
-    // No counts, no organisation names — showing zeros would be a claim.
-    expect(screen.queryByText(/organisations owned/i)).toBeNull();
+    expect(screen.queryByText(/signed in as/i)).toBeNull();
   });
 });

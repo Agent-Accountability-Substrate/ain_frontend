@@ -11,6 +11,9 @@ vi.mock("@/lib/config/server-env", () => ({ getServerEnv: getServerEnvMock }));
 import {
   createOrganisation,
   identityAssurance,
+  inviteMember,
+  leaveOrganisation,
+  listMembers,
   listReviewQueue,
   recordVerification,
   submitAgent,
@@ -335,6 +338,9 @@ describe("registry api", () => {
     const second = {
       ...ORGANISATION,
       organisation_id: "1a1f6f38-0d3f-4c86-9a53-8c8f7a1e2b4d",
+      // Its own ULID, because that is what addresses it: two organisations
+      // sharing one would be two organisations at one URL.
+      org_ulid: "01BX5ZZKBKACTAV9WEVGEMMVRZ",
       name: "Beta Ltd",
       is_owner: false,
       verification_status: "pending",
@@ -365,12 +371,14 @@ describe("registry api", () => {
     expect(state.organisations).toEqual([
       {
         id: ORG_ID,
+        ulid: "01ARZ3NDEKTSV4RRFFQ69G5FAV",
         name: "Acme Ltd",
         membershipRole: "owner",
         verificationStatus: "verified",
       },
       {
         id: second.organisation_id,
+        ulid: "01BX5ZZKBKACTAV9WEVGEMMVRZ",
         name: "Beta Ltd",
         membershipRole: "member",
         verificationStatus: "pending",
@@ -582,5 +590,78 @@ describe("registry writes", () => {
     // The queue is what is *outstanding*; a decided row appearing in it is a
     // contract break worth failing on rather than rendering.
     await expect(listReviewQueue()).rejects.toThrow();
+  });
+
+  it("sends an invitation as a write, not a read", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(jsonResponse({}));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await inviteMember(ORG_ID, "auditor@example.com", "auditor");
+
+    const [url, init] = fetchMock.mock.calls[0] as [URL, RequestInit];
+    expect(url.pathname).toBe(`/orgs/${ORG_ID}/members`);
+    expect(init.method).toBe("POST");
+  });
+
+  it("says nobody is listed only when the registry could list them", async () => {
+    // The registry has no members read yet. An empty array and "we cannot ask"
+    // are different claims, and only one of them is true.
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(jsonResponse({}, 404)));
+
+    await expect(listMembers(ORG_ID)).resolves.toBeNull();
+
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        jsonResponse({
+          members: [
+            {
+              member_id: "1f4f4c6e-0000-4000-8000-000000000001",
+              email: "auditor@example.com",
+              role: "auditor",
+            },
+          ],
+        }),
+      ),
+    );
+
+    await expect(listMembers(ORG_ID)).resolves.toEqual([
+      {
+        id: "1f4f4c6e-0000-4000-8000-000000000001",
+        email: "auditor@example.com",
+        role: "auditor",
+      },
+    ]);
+  });
+
+  it("gives up access with a delete that expects no body", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(new Response(null, { status: 204 }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(leaveOrganisation(ORG_ID)).resolves.toBe("left");
+
+    const [url, init] = fetchMock.mock.calls[0] as [URL, RequestInit];
+    expect(url.pathname).toBe(`/orgs/${ORG_ID}/members/me`);
+    expect(init.method).toBe("DELETE");
+    // No body, so no content-type to declare one.
+    expect(init.body).toBeUndefined();
+  });
+
+  it("reports a missing capability as missing, not as an outage", async () => {
+    // A 404 or 405 here means the route is not there. Nothing is wrong with
+    // the registry, so "try again shortly" would be advice that cannot work.
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(jsonResponse({}, 405)));
+
+    await expect(leaveOrganisation(ORG_ID)).resolves.toBe("unsupported");
+  });
+
+  it("still fails an outage closed while leaving", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(jsonResponse({}, 500)));
+
+    await expect(leaveOrganisation(ORG_ID)).rejects.toBeInstanceOf(
+      RegistryUnavailableError,
+    );
   });
 });

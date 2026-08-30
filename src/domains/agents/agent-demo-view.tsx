@@ -1,3 +1,4 @@
+import Link from "next/link";
 import {
   Bot,
   Check,
@@ -16,9 +17,7 @@ import type { LucideIcon } from "lucide-react";
 import {
   WorkspaceContent,
   WorkspacePane,
-  WorkspaceShell,
-} from "@/domains/workspace/workspace-shell";
-import { userMenuItems } from "@/domains/workspace/workspace-navigation";
+} from "@/domains/workspace/workspace-content";
 import { Eyebrow } from "@/lib/ui/eyebrow";
 import { StatusPill } from "@/lib/ui/status-pill";
 import { cn } from "@/lib/utils";
@@ -127,22 +126,9 @@ function RailCard({
   );
 }
 
-export function AgentDemoView({ email }: { email: string | null | undefined }) {
+export function AgentDemoView() {
   return (
-    <WorkspaceShell
-      assuranceStatus="not_started"
-      currentPath="/dashboard/agent-demo"
-      email={email}
-      navigationItems={userMenuItems}
-      navigationLabel="Account sections"
-      organisations={[
-        { id: "illustrative-workspace", name: "Illustrative workspace" },
-      ]}
-      selectedOrganisationId="illustrative-workspace"
-      showOrganisationSwitcher
-      signedInAs="Illustrative workspace"
-      workspaceLabel="Illustrative agent accountability dashboard"
-    >
+    <>
       <WorkspaceContent
         columns="single"
         className="items-stretch xl:grid-cols-[17.5rem_minmax(28rem,1fr)_22rem]"
@@ -161,7 +147,7 @@ export function AgentDemoView({ email }: { email: string | null | undefined }) {
             <ul className="mt-2.5 flex flex-col gap-0.5">
               {RECORD_SECTIONS.map((item) => (
                 <li key={item.label}>
-                  <a
+                  <Link
                     href={item.href}
                     aria-current={
                       "active" in item && item.active ? "location" : undefined
@@ -169,7 +155,7 @@ export function AgentDemoView({ email }: { email: string | null | undefined }) {
                     className="block rounded-[0.58rem] px-2 py-2 text-[0.72rem] font-semibold leading-[1.35] text-mist hover:bg-wash-blue hover:text-cobalt aria-[current]:bg-wash-blue aria-[current]:text-cobalt"
                   >
                     {item.label}
-                  </a>
+                  </Link>
                 </li>
               ))}
             </ul>
@@ -541,6 +527,6 @@ export function AgentDemoView({ email }: { email: string | null | undefined }) {
           </div>
         </WorkspacePane>
       </WorkspaceContent>
-    </WorkspaceShell>
+    </>
   );
 }
