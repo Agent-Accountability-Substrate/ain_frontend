@@ -41,4 +41,16 @@ describe("SiteWordmark", () => {
     expect(container.textContent).toContain("Subra");
     expect(container.innerHTML).toContain("#F0803C");
   });
+
+  it("renders the approved wordmark in high-contrast white", () => {
+    const { container } = render(
+      <SiteWordmark variant="white" showProduct={false} />,
+    );
+
+    const logo = screen.getByRole("img", { name: "Subra" });
+    expect(logo.getAttribute("src")).toContain("subra-logo.png");
+    expect(logo.className).toContain("brightness-0");
+    expect(logo.className).toContain("invert");
+    expect(container.textContent).toBe("");
+  });
 });

@@ -1,76 +1,110 @@
-import { SiteWordmark } from "@/lib/brand/site-mark";
-import {
-  PARTNER_EMAIL,
-  SECTION_LINKS,
-} from "@/domains/marketing/landing-content";
+import Link from "next/link";
 
-const COLUMNS = [
+import { PARTNER_EMAIL } from "@/domains/marketing/landing-content";
+import { SiteWordmark } from "@/lib/brand/site-mark";
+
+const FOOTER_COLUMNS = [
   {
     heading: "Product",
-    // The same three the nav offers, from the same list — a footer that names
-    // the sections differently to the header is two vocabularies for one page.
-    links: SECTION_LINKS,
+    links: [
+      { label: "Product", href: "/#top" },
+      { label: "Evidence flow", href: "/#how-it-works" },
+      { label: "Compatibility", href: "/#compatibility" },
+      { label: "Integrity", href: "/#integrity" },
+      { label: "Use cases", href: "/#use-cases" },
+      { label: "Security", href: "/#security" },
+    ],
   },
   {
     heading: "Company",
     links: [
-      { label: "About", href: "#record" },
-      { label: "Beta", href: "#request" },
-      { label: PARTNER_EMAIL, href: `mailto:${PARTNER_EMAIL}` },
+      { label: "About", href: "/about" },
+      { label: "Contact", href: `mailto:${PARTNER_EMAIL}` },
     ],
   },
   {
     heading: "Legal",
     links: [
-      { label: "Privacy notice", href: "#request" },
-      { label: "Terms", href: "#request" },
-      { label: "Cookies", href: "#request" },
+      { label: "Privacy Notice", href: "/privacy" },
+      { label: "Terms of Service", href: "/terms" },
+      { label: "Cookie Policy", href: "/cookies" },
     ],
   },
 ] as const;
 
 export function SiteFooter() {
+  const year = new Date().getFullYear();
+
   return (
-    <footer className="site-dots relative overflow-clip bg-site-ink pt-[84px] pb-10 text-site-cream">
+    <footer
+      role="contentinfo"
+      className="site-dots relative overflow-hidden bg-site-ink pt-[clamp(72px,8vw,112px)] pb-9 text-site-cream"
+    >
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute top-[-0.18em] right-[-0.04em] font-site-sans text-[clamp(112px,19vw,290px)] leading-none font-semibold tracking-[-0.075em] text-site-cream/[0.025] uppercase select-none"
+      >
+        Subra
+      </div>
+
       <div className="relative z-[1] mx-auto max-w-[1320px] px-[clamp(20px,3.05vw,44px)]">
-        <div className="grid gap-[70px] pb-[60px] [grid-template-columns:minmax(0,1fr)_minmax(0,1.15fr)] max-[1000px]:grid-cols-[minmax(0,1fr)] max-[1000px]:gap-11">
-          <div>
-            <SiteWordmark className="text-site-cream" variant="inverse" />
-            <p className="mt-[22px] max-w-[44ch] text-[15px] leading-[1.65] text-site-cream-soft">
-              The accountability register for autonomous agents. Built for UK
-              regulated firms, and never in your agents’ runtime path.
+        <div className="grid gap-[clamp(52px,7vw,96px)] pb-[clamp(54px,6vw,82px)] [grid-template-columns:minmax(0,1.1fr)_minmax(0,1.35fr)] max-[900px]:grid-cols-1">
+          <div className="max-w-[480px]">
+            <SiteWordmark variant="white" showProduct={false} />
+            <p className="mt-7 max-w-[39ch] text-[clamp(19px,2.1vw,27px)] leading-[1.35] tracking-[-0.025em] text-site-cream/90">
+              Evidence and accountability for AI agent actions that matter.
+            </p>
+            <p className="mt-5 max-w-[48ch] text-[14px] leading-[1.7] text-site-cream/58">
+              Signed records that connect identity, authority, ownership and
+              action context for independent verification later.
             </p>
           </div>
 
           <nav
-            aria-label="Footer"
-            className="grid grid-cols-3 gap-8 max-[700px]:grid-cols-2 max-[700px]:gap-x-5 max-[700px]:gap-y-[30px]"
+            aria-label="Footer navigation"
+            className="grid grid-cols-3 gap-x-[clamp(28px,5vw,76px)] gap-y-10 max-[640px]:grid-cols-1"
           >
-            {COLUMNS.map((column) => (
+            {FOOTER_COLUMNS.map((column) => (
               <div key={column.heading}>
-                <div className="mb-[18px] font-site-mono text-[9.5px] uppercase tracking-[0.14em] text-site-cream-dim select-none">
+                <h2 className="mb-5 font-site-mono text-[9.5px] uppercase tracking-[0.17em] text-site-accent">
                   {column.heading}
-                </div>
-                {column.links.map((link) => (
-                  <a
-                    key={link.label}
-                    href={link.href}
-                    className="mb-3 block text-[14.5px] text-site-cream-soft select-none hover:text-site-accent"
-                  >
-                    {link.label}
-                  </a>
-                ))}
+                </h2>
+                <ul className="space-y-3.5">
+                  {column.links.map((link) => (
+                    <li key={link.label}>
+                      {link.href.startsWith("mailto:") ? (
+                        <a
+                          href={link.href}
+                          className="text-[14.5px] text-site-cream/68 transition-colors duration-200 hover:text-site-cream"
+                        >
+                          {link.label}
+                        </a>
+                      ) : (
+                        <Link
+                          href={link.href}
+                          className="text-[14.5px] text-site-cream/68 transition-colors duration-200 hover:text-site-cream"
+                        >
+                          {link.label}
+                        </Link>
+                      )}
+                    </li>
+                  ))}
+                </ul>
               </div>
             ))}
           </nav>
         </div>
 
-        <div className="flex flex-wrap justify-between gap-10 border-t border-site-hair pt-[26px] font-site-mono text-[10.5px] leading-[1.7] text-site-cream-dim">
-          <span>© 2026 Subra Inc. All rights reserved.</span>
-          <span>
-            Subra is not regulatory advice and is not endorsed by or affiliated
-            with any regulator.
-          </span>
+        <div className="border-t border-site-hair pt-7">
+          <div className="flex flex-wrap items-start justify-between gap-x-10 gap-y-3 font-site-mono text-[10px] leading-[1.7] text-site-cream/65">
+            <p>© {year} Subra. All rights reserved.</p>
+            <p>Subra is not a certified or regulated financial service.</p>
+          </div>
+          <p className="mt-5 max-w-[92ch] text-[12.5px] leading-[1.7] text-site-cream/64">
+            Subra provides evidence and accountability tooling for AI-agent
+            actions. It is not a certification, regulatory approval, or legal
+            compliance guarantee.
+          </p>
         </div>
       </div>
     </footer>

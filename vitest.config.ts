@@ -1,4 +1,5 @@
 import react from "@vitejs/plugin-react";
+import { fileURLToPath } from "node:url";
 import tsconfigPaths from "vite-tsconfig-paths";
 import { defineConfig } from "vitest/config";
 
@@ -8,8 +9,9 @@ export default defineConfig({
     alias: {
       // See test/stubs/server-only.ts — Next resolves this internally and
       // discards the package body; only Vitest needs something to import.
-      "server-only": new URL("./test/stubs/server-only.ts", import.meta.url)
-        .pathname,
+      "server-only": fileURLToPath(
+        new URL("./test/stubs/server-only.ts", import.meta.url),
+      ),
     },
   },
   test: {

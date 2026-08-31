@@ -1,12 +1,31 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
-import LandingPage from "@/app/page";
+import { metadata, default as LandingPage } from "@/app/page";
+import {
+  LANDING_DESCRIPTION,
+  LANDING_TITLE,
+} from "@/domains/marketing/landing-content";
 
 const auth = vi.fn();
 vi.mock("@/auth", () => ({ auth: () => auth() }));
 
 describe("LandingPage", () => {
+  it("publishes the approved search title and description", () => {
+    expect(metadata).toMatchObject({
+      title: { absolute: LANDING_TITLE },
+      description: LANDING_DESCRIPTION,
+      openGraph: {
+        title: LANDING_TITLE,
+        description: LANDING_DESCRIPTION,
+      },
+      twitter: {
+        title: LANDING_TITLE,
+        description: LANDING_DESCRIPTION,
+      },
+    });
+  });
+
   it("renders every section in the order the page argues them", () => {
     const { container } = render(<LandingPage />);
 
@@ -19,8 +38,13 @@ describe("LandingPage", () => {
     expect(ids).toEqual([
       "record",
       "problem",
-      "scope",
+      "how-it-works",
+      "compatibility",
+      "action-receipt",
+      "evidence-package",
       "integrity",
+      "use-cases",
+      "security",
       "questions",
       "request",
     ]);
@@ -48,6 +72,13 @@ describe("LandingPage", () => {
 
     // More than one is the usual way a landing page loses its outline.
     expect(screen.getAllByRole("heading", { level: 1 }).length).toBe(1);
+  });
+
+  it("uses the closing CTA as the break before security", () => {
+    render(<LandingPage />);
+
+    const cta = screen.getByTestId("closing-cta");
+    expect(cta.nextElementSibling?.id).toBe("security");
   });
 
   it("points every call to action at the one form", () => {

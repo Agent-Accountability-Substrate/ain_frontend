@@ -30,10 +30,15 @@ import { resetRateLimits } from "@/lib/rate-limit";
  * thing they are each testing rather than about form completeness.
  */
 function form(fields: Record<string, string>) {
+  const { company, ...provided } = fields;
   const data = new FormData();
   for (const [key, value] of Object.entries({
     name: "Ada Lovelace",
-    ...fields,
+    organisation: "Example Financial Services",
+    role: "Head of Risk",
+    workflow: "Payments operations",
+    website: company ?? "",
+    ...provided,
   })) {
     data.append(key, value);
   }
@@ -88,6 +93,11 @@ describe("requestAccessAction", () => {
     ]);
     // Reply-to means answering the notification answers the prospect.
     expect(payload["replyTo"]).toBe("head.of.risk@firm.co.uk");
+    expect(payload["text"]).toContain(
+      "Organisation: Example Financial Services",
+    );
+    expect(payload["text"]).toContain("Role: Head of Risk");
+    expect(payload["text"]).toContain("Agent workflow: Payments operations");
   });
 
   it("stops one caller looping the form", async () => {
@@ -188,11 +198,10 @@ describe("requestAccessAction", () => {
       form({ email: "not-an-address", company: "" }),
     );
 
-    expect(result).toEqual({
+    expect(result).toMatchObject({
       status: "error",
-      message: "Enter a work email address so we can reply.",
-      name: "Ada Lovelace",
-      email: "not-an-address",
+      fieldErrors: { email: "Enter a valid work email address." },
+      values: { name: "Ada Lovelace", email: "not-an-address" },
     });
     expect(send).not.toHaveBeenCalled();
   });
@@ -205,7 +214,10 @@ describe("requestAccessAction", () => {
 
     expect(result.status).toBe("error");
     expect(result).toMatchObject({
-      message: "Enter your name and a work email address so we can reply.",
+      fieldErrors: {
+        name: "This field is required.",
+        email: "This field is required.",
+      },
     });
   });
 
@@ -216,7 +228,7 @@ describe("requestAccessAction", () => {
     );
 
     expect(result).toMatchObject({
-      message: "Enter your name so we can reply.",
+      fieldErrors: { name: "This field is required." },
     });
   });
 
@@ -233,7 +245,7 @@ describe("requestAccessAction", () => {
     // The address here is perfectly good. Inferring the message from an empty
     // name reported this as a bad email — the one field with nothing wrong.
     expect(result).toMatchObject({
-      message: "That name is longer than the 200 characters we can store.",
+      fieldErrors: { name: "Keep this under 200 characters." },
     });
     expect(send).not.toHaveBeenCalled();
   });
@@ -252,8 +264,10 @@ describe("requestAccessAction", () => {
     // full sends them back for the address alone, and they learn about the
     // ceiling on the next attempt — two round trips for one form.
     expect(result).toMatchObject({
-      message:
-        "That name is longer than the 200 characters we can store, and we need a work email address so we can reply.",
+      fieldErrors: {
+        name: "Keep this under 200 characters.",
+        email: "Enter a valid work email address.",
+      },
     });
     expect(send).not.toHaveBeenCalled();
   });
@@ -383,7 +397,9 @@ describe("requestAccessAction · the name field", () => {
     // Two required fields and one message, so the message has to name the one
     // at fault — "enter a work email" beside a filled email box is worse than
     // no message at all.
-    expect(result.status === "error" && result.message).toContain("name");
+    expect(result).toMatchObject({
+      fieldErrors: { name: "This field is required." },
+    });
     expect(send).not.toHaveBeenCalled();
   });
 
@@ -424,8 +440,13 @@ describe("requestAccessAction · the name field", () => {
     // send that dropped these would empty the boxes the visitor just filled.
     expect(result).toMatchObject({
       status: "error",
-      name: "Ada Lovelace",
-      email: "ada@firm.co.uk",
+      values: {
+        name: "Ada Lovelace",
+        email: "ada@firm.co.uk",
+        organisation: "Example Financial Services",
+        role: "Head of Risk",
+        workflow: "Payments operations",
+      },
     });
   });
 

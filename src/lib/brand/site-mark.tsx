@@ -54,11 +54,11 @@ export function SiteWordmark({
   className?: string;
   showProduct?: boolean;
   productClassName?: string;
-  variant?: "official" | "inverse";
+  variant?: "official" | "inverse" | "white";
 }) {
   return (
     <span className={cn("flex items-center gap-[13px]", className)}>
-      {variant === "official" ? (
+      {variant === "official" || variant === "white" ? (
         <Image
           src="/media/subra-logo.png"
           alt="Subra"
@@ -66,7 +66,10 @@ export function SiteWordmark({
           height={373}
           unoptimized
           sizes="(max-width: 700px) 108px, 118px"
-          className="h-auto w-[118px] max-[700px]:w-[108px]"
+          className={cn(
+            "h-auto w-[118px] max-[700px]:w-[108px]",
+            variant === "white" && "brightness-0 invert",
+          )}
         />
       ) : (
         <>

@@ -8,14 +8,14 @@ import { cn } from "@/lib/utils";
 
 const HEADER_LINKS = [
   { label: "Product", href: "#top" },
-  { label: "how it works", href: "#record" },
+  { label: "how it works", href: "#how-it-works" },
   { label: "Integrity", href: "#integrity" },
-  { label: "Use cases", href: "#scope" },
-  { label: "Security", href: "#questions" },
+  { label: "Use cases", href: "#use-cases" },
+  { label: "Security", href: "#security" },
 ] as const;
 
 const MOBILE_LINKS = HEADER_LINKS.map((link) =>
-  link.href === "#record" ? { ...link, label: "Evidence flow" } : link,
+  link.href === "#how-it-works" ? { ...link, label: "Evidence flow" } : link,
 );
 
 /**

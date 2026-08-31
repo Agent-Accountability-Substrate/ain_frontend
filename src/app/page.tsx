@@ -1,26 +1,44 @@
 import type { Metadata } from "next";
 
 import { AccessForm } from "@/domains/marketing/access-form";
+import { ActionReceipt } from "@/domains/marketing/action-receipt";
 import { BuyerProblem } from "@/domains/marketing/buyer-problem";
+import { CompatibilityRail } from "@/domains/marketing/compatibility-rail";
 import { CtaBand } from "@/domains/marketing/cta-band";
+import { EvidenceFlow } from "@/domains/marketing/evidence-flow";
+import { EvidencePackage } from "@/domains/marketing/evidence-package";
 import { IntegrityChain } from "@/domains/marketing/integrity-chain";
+import {
+  LANDING_DESCRIPTION,
+  LANDING_TITLE,
+} from "@/domains/marketing/landing-content";
 import { RecordBand } from "@/domains/marketing/record-band";
-import { ScopeArtifact } from "@/domains/marketing/scope-artifact";
 import { SiteFaq } from "@/domains/marketing/site-faq";
 import { SiteFooter } from "@/domains/marketing/site-footer";
 import { SiteHero } from "@/domains/marketing/site-hero";
 import { SiteNav } from "@/domains/marketing/site-nav";
 import { SiteStage } from "@/domains/marketing/site-stage";
+import { SecurityBoundaries } from "@/domains/marketing/security-boundaries";
+import { UseCaseStories } from "@/domains/marketing/use-case-stories";
 
 export const metadata: Metadata = {
   // `absolute` bypasses the root template: this is the page a search result
   // and a shared link land on, so it states the whole proposition rather than
   // "AIN Registry · Subra".
   title: {
-    absolute: "Subra: The accountability register for autonomous agents",
+    absolute: LANDING_TITLE,
   },
+  description: LANDING_DESCRIPTION,
   alternates: { canonical: "/" },
-  openGraph: { url: "/" },
+  openGraph: {
+    url: "/",
+    title: LANDING_TITLE,
+    description: LANDING_DESCRIPTION,
+  },
+  twitter: {
+    title: LANDING_TITLE,
+    description: LANDING_DESCRIPTION,
+  },
 };
 
 /**
@@ -54,9 +72,14 @@ export default function LandingPage() {
       </SiteStage>
 
       <BuyerProblem />
-      <ScopeArtifact />
+      <EvidenceFlow />
+      <CompatibilityRail />
+      <ActionReceipt />
+      <EvidencePackage />
       <IntegrityChain />
+      <UseCaseStories />
       <CtaBand />
+      <SecurityBoundaries />
       <SiteFaq />
       <AccessForm />
       <SiteFooter />

@@ -1,12 +1,13 @@
 "use client";
 
 import { Accordion } from "@base-ui/react/accordion";
+import { ArrowUpRight } from "lucide-react";
 
 import { RevealHeading } from "@/domains/marketing/reveal";
 import { FAQ_ENTRIES } from "@/domains/marketing/landing-content";
 
 /**
- * What firms ask first.
+ * Questions from compliance, risk and engineering teams.
  *
  * Base UI's accordion gives the one-open-at-a-time behaviour, the measured
  * height to animate against, and the `aria-controls`/`aria-expanded` wiring
@@ -28,18 +29,17 @@ export function SiteFaq() {
         <div className="grid gap-20 [grid-template-columns:minmax(0,0.72fr)_minmax(0,1.28fr)] max-[1000px]:grid-cols-[minmax(0,1fr)] max-[1000px]:gap-[30px]">
           <div>
             <div className="mb-[26px] font-site-mono text-[10.5px] uppercase tracking-[0.16em] text-site-muted select-none">
-              Questions
+              Frequently asked
             </div>
             <RevealHeading
-              lead="What firms"
-              accent="ask first."
-              className="max-w-[26ch] text-[clamp(30px,4.6vw,50px)] leading-[1.06] font-medium tracking-[-0.035em] text-site-ink"
+              lead="Questions we get from compliance, risk and engineering teams."
+              className="max-w-[15ch] text-[clamp(30px,4.6vw,50px)] leading-[1.06] font-medium tracking-[-0.035em] text-site-ink"
             />
           </div>
 
           <Accordion.Root
             // The first answer is open on arrival, so the section reads as
-            // answers rather than as four closed rows a visitor has to guess at.
+            // answers rather than as closed rows a visitor has to guess at.
             defaultValue={[FAQ_ENTRIES[0]?.question]}
             // Renders every panel and hides the closed ones with
             // `hidden="until-found"`, which `globals.css` already assumes.
@@ -72,6 +72,20 @@ export function SiteFaq() {
               </Accordion.Item>
             ))}
           </Accordion.Root>
+        </div>
+
+        <div className="mt-[clamp(38px,5vw,64px)] flex justify-end border-t border-site-rule pt-7 max-[1000px]:justify-start">
+          <a
+            href="#request"
+            className="group inline-flex items-center gap-3 text-[15px] font-medium text-site-ink underline decoration-site-rule underline-offset-[6px] transition-colors hover:text-site-accent focus-visible:rounded-sm focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-site-accent"
+          >
+            Request private preview
+            <ArrowUpRight
+              aria-hidden="true"
+              className="h-4 w-4 transition-transform duration-300 ease-site group-hover:-translate-y-0.5 group-hover:translate-x-0.5"
+              strokeWidth={1.7}
+            />
+          </a>
         </div>
       </div>
     </section>

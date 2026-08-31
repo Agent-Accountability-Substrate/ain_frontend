@@ -5,6 +5,28 @@ import { SiteFaq } from "@/domains/marketing/site-faq";
 import { FAQ_ENTRIES } from "@/domains/marketing/landing-content";
 
 describe("SiteFaq", () => {
+  it("introduces the reordered buyer questions and private preview next step", () => {
+    const { container } = render(<SiteFaq />);
+
+    expect(screen.getByText("Frequently asked")).toBeDefined();
+    expect(screen.getByRole("heading", { level: 2 }).textContent).toBe(
+      "Questions we get from compliance, risk and engineering teams.",
+    );
+    expect(FAQ_ENTRIES).toHaveLength(8);
+    expect(FAQ_ENTRIES[0]?.question).toBe(
+      "What exactly is captured in an action receipt?",
+    );
+    expect(FAQ_ENTRIES.at(-1)?.question).toBe(
+      "Is Subra a regulator or a compliance certification service?",
+    );
+    expect(
+      screen
+        .getByRole("link", { name: "Request private preview" })
+        .getAttribute("href"),
+    ).toBe("#request");
+    expect(container.textContent).not.toContain("—");
+  });
+
   it("offers every question as a trigger", () => {
     render(<SiteFaq />);
 
@@ -18,7 +40,7 @@ describe("SiteFaq", () => {
   it("opens the first answer on arrival and leaves the rest closed", () => {
     render(<SiteFaq />);
 
-    // Four closed rows read as a list of things a visitor has to guess at.
+    // Closed rows alone read as a list of things a visitor has to guess at.
     // One open answer shows what the section is for before anything is clicked.
     const [first, ...rest] = FAQ_ENTRIES;
     expect(
@@ -43,12 +65,12 @@ describe("SiteFaq", () => {
     // The section is server-rendered, so an answer that exists only once its
     // panel has been opened is absent from the HTML a crawler indexes, a
     // printed copy carries, and find-in-page searches. The `<details>` this
-    // replaced kept all four; unmounting three would be a regression.
+    // replaced kept every answer; unmounting the closed ones would regress it.
     for (const entry of FAQ_ENTRIES) {
       expect(screen.getByText(entry.answer)).toBeDefined();
     }
 
-    // Present, not shown: the closed three are hidden rather than unmounted.
+    // Present, not shown: the closed answers are hidden rather than unmounted.
     const [, ...rest] = FAQ_ENTRIES;
     for (const entry of rest) {
       expect(screen.getByText(entry.answer).closest("[hidden]")).not.toBeNull();
@@ -77,7 +99,7 @@ describe("SiteFaq", () => {
     fireEvent.click(screen.getByRole("button", { name: first!.question }));
     fireEvent.click(screen.getByRole("button", { name: second!.question }));
 
-    // Four answers open at once turns a scannable list into a wall of prose.
+    // Several answers open at once turns a scannable list into a wall of prose.
     expect(
       screen
         .getByRole("button", { name: first!.question })

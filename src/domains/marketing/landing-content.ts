@@ -3,9 +3,9 @@
  *
  * Extracted from the components for two reasons. The page is the product's
  * public claim about what it does, so the copy is reviewed as prose rather
- * than read out of JSX; and the passport deck and diff are *illustrations* of
- * a real record, so they need to stay obviously fictional and obviously
- * consistent with each other. `EXAMPLE-ORG` and the example key id are load
+ * than read out of JSX; and the passport deck is an *illustration* of a real
+ * record, so it needs to stay obviously fictional. `EXAMPLE-ORG` and the
+ * example key id are load
  * bearing — an AIN that looked real would be quoted back at us.
  *
  * Nothing here is fetched. The public page shows no tenant data and needs no
@@ -22,104 +22,61 @@ export {
   type PassportVersion,
 } from "@/lib/brand/example-agent";
 
-type DiffLine = { kind: "context" | "added" | "removed"; text: string };
-
-/**
- * A scope amendment as it appears on the record: v8 superseded by v9.
- *
- * The sign is a real character in the markup rather than a colour, so the diff
- * still reads when it is pasted into a questionnaire in black and white.
- */
-export const SCOPE_DIFF: readonly DiffLine[] = [
-  { kind: "context", text: '"action_classes": [' },
-  { kind: "context", text: '  "customer_comms.send",' },
-  { kind: "added", text: '  "payments.initiate"' },
-  { kind: "context", text: "]," },
-  { kind: "added", text: '"constraints": {' },
-  { kind: "added", text: '  "payments.initiate": { "max_value_gbp": 5000 }' },
-  { kind: "added", text: "}," },
-  { kind: "removed", text: '"risk_level": "medium",' },
-  { kind: "added", text: '"risk_level": "high",' },
-  { kind: "context", text: '"regulatory_mappings": ["FCA CONC 7"]' },
-];
-
-type ChainEntry = {
-  sequence: number;
-  event: string;
-  hash: string;
-  /** What the entry chains back to — genesis for the first. */
-  previous: string;
-  signedOn: string;
-  verdict: "Verified" | "Altered" | "Broken";
-};
-
-/**
- * The tamper demonstration: entry 2 has been edited, so it no longer matches
- * its own hash and every entry after it fails with it.
- */
-export const CHAIN_ENTRIES: readonly ChainEntry[] = [
-  {
-    sequence: 1,
-    event: "registered",
-    hash: "sha256:3c81a4…9de2",
-    previous: "genesis · AIN-LIFECYCLE-GENESIS-v1",
-    signedOn: "2026-05-07",
-    verdict: "Verified",
-  },
-  {
-    sequence: 2,
-    event: "approved",
-    hash: "sha256:7b02f5…41ac",
-    previous: "← prev 3c81a4…9de2",
-    signedOn: "2026-05-24",
-    verdict: "Altered",
-  },
-  {
-    sequence: 3,
-    event: "updated",
-    hash: "sha256:d914e0…6f37",
-    previous: "← prev 7b02f5…41ac",
-    signedOn: "2026-06-11",
-    verdict: "Broken",
-  },
-  {
-    sequence: 4,
-    event: "updated",
-    hash: "sha256:9f41c2…7ab0",
-    previous: "← prev d914e0…6f37",
-    signedOn: "2026-07-16",
-    verdict: "Broken",
-  },
-];
-
 export const FAQ_ENTRIES: readonly { question: string; answer: string }[] = [
   {
-    question: "Does the check slow the agent down?",
+    question: "What exactly is captured in an action receipt?",
     answer:
-      "It is a lookup against the scope in force, not an inference call. The register returns a decision and records the authority the decision relied on.",
+      "The identity presented, the organisation, the accountable owner, the action and its intent, the declared authority and scope result, the policy and model versions in force, and a signature over the whole record.",
   },
   {
-    question: "Is it a record or a control?",
+    question: "Can evidence be verified without Subra?",
     answer:
-      "A record that answers in real time. It says whether an action is inside the authorised scope and keeps that answer; blocking the action stays your runtime’s job.",
+      "Yes. Verification recalculates the record from its contents rather than trusting a stored result. Evidence packages are designed to be checked independently, including when the originating system is unavailable.",
   },
   {
-    question: "What happens when the person in the role leaves?",
+    question:
+      "How is declared scope different from a runtime permission check?",
     answer:
-      "The record binds a role and its regulatory identifier, so the successor inherits it with an effective date. Every prior version keeps the identifier that was accountable at the time.",
+      'Scope result is a classification recorded on the evidence, "inside declared scope" or "outside declared scope", not a decision Subra makes about whether the action is allowed to happen.',
   },
   {
-    question: "What does it hold about our customers?",
+    question:
+      "What happens when scope, policy, model or accountable owner changes?",
     answer:
-      "The record of authority, not the customer data an agent touches. Your runtime logs are referenced by pointer and never ingested, and no other firm can read your records.",
+      "The change is recorded as a new version. Historical receipts remain bound to the version that was in force when the action occurred.",
+  },
+  {
+    question: "Does Subra replace our identity or IAM system?",
+    answer:
+      "No. Subra accepts the identity your systems already present through ARIA, DID/VC, OAuth/OIDC or your enterprise IAM, and builds accountability and evidence around it.",
+  },
+  {
+    question: "Does Subra sit in the agent's runtime path?",
+    answer:
+      "No. Subra is never a required dependency for an agent to act. It records evidence after an action has occurred.",
+  },
+  {
+    question: "What customer data does Subra store?",
+    answer:
+      "The minimum evidence necessary for the record, including identity references, accountability, scope, version and receipt data. Runtime logs are referenced by pointer, not copied in.",
+  },
+  {
+    question: "Is Subra a regulator or a compliance certification service?",
+    answer:
+      "No. Subra produces evidence intended to help your organisation answer accountability questions. It does not certify compliance and is not a regulator.",
   },
 ];
 
 export const SECTION_LINKS: readonly { label: string; href: string }[] = [
-  { label: "How it works", href: "#record" },
+  { label: "How it works", href: "#how-it-works" },
   { label: "Integrity", href: "#integrity" },
   { label: "Questions", href: "#questions" },
 ];
 
 /** Where a demo request lands. Shown on the page, so it is stated once. */
 export const PARTNER_EMAIL = "partner@subrahq.com";
+
+export const LANDING_TITLE =
+  "Subra — Evidence and Accountability for High-Stakes AI-Agent Actions";
+export const LANDING_DESCRIPTION =
+  "Subra turns high-stakes AI-agent actions into signed, independently verifiable evidence — built for regulated organisations, currently in private preview.";

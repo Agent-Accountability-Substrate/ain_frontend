@@ -10,6 +10,12 @@
 
 /** The addresses people type for a login. All four forward to Auth0. */
 const AUTH_ENTRY_PATHS = new Set(["/signin", "/login", "/signup", "/register"]);
+const PUBLIC_INFORMATION_PATHS = new Set([
+  "/about",
+  "/cookies",
+  "/privacy",
+  "/terms",
+]);
 
 /**
  * Next's file-based metadata routes, which are generated from files beside
@@ -52,6 +58,7 @@ export function isPublicPath(pathname: string): boolean {
   // Auth.js's own routes must stay public or sign-in loops.
   if (pathname.startsWith("/api/auth")) return true;
   if (AUTH_ENTRY_PATHS.has(pathname)) return true;
+  if (PUBLIC_INFORMATION_PATHS.has(pathname)) return true;
   if (METADATA_ROUTES.has(pathname.replace(GROUP_HASH, ""))) return true;
   return pathname === "/";
 }

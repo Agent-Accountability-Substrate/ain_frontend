@@ -1,18 +1,19 @@
-import { render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
 import { CtaBand } from "@/domains/marketing/cta-band";
+import { ActionReceipt } from "@/domains/marketing/action-receipt";
 import { BuyerProblem } from "@/domains/marketing/buyer-problem";
+import { CompatibilityRail } from "@/domains/marketing/compatibility-rail";
+import { EvidenceFlow } from "@/domains/marketing/evidence-flow";
+import { EvidencePackage } from "@/domains/marketing/evidence-package";
 import { IntegrityChain } from "@/domains/marketing/integrity-chain";
 import { RecordBand } from "@/domains/marketing/record-band";
-import { ScopeArtifact } from "@/domains/marketing/scope-artifact";
+import { SecurityBoundaries } from "@/domains/marketing/security-boundaries";
+import { SECURITY_BOUNDARIES } from "@/domains/marketing/security-content";
 import { SiteFooter } from "@/domains/marketing/site-footer";
 import { SiteHero } from "@/domains/marketing/site-hero";
-import {
-  CHAIN_ENTRIES,
-  SCOPE_DIFF,
-  SECTION_LINKS,
-} from "@/domains/marketing/landing-content";
+import { UseCaseStories } from "@/domains/marketing/use-case-stories";
 
 describe("SiteHero", () => {
   it("leads with the claim the whole page rests on", () => {
@@ -206,78 +207,432 @@ describe("BuyerProblem", () => {
   });
 });
 
-describe("ScopeArtifact", () => {
-  it("renders every line of the diff", () => {
-    const { container } = render(<ScopeArtifact />);
-    expect(container.querySelectorAll("ol li").length).toBe(SCOPE_DIFF.length);
-  });
+describe("EvidenceFlow", () => {
+  it("explains the six evidence outcomes before their mechanisms", () => {
+    const { container } = render(<EvidenceFlow />);
 
-  it("carries the sign as a character, not only as a colour", () => {
-    const { container } = render(<ScopeArtifact />);
-    const signs = Array.from(
-      container.querySelectorAll("ol li > span:first-child"),
-    )
-      .map((node) => node.textContent)
-      .filter((sign) => sign !== " ");
-
-    // The diff has to survive being pasted into a compliance questionnaire in
-    // black and white, which is where a document like this usually ends up.
-    expect(signs).toContain("+");
-    expect(signs).toContain("−");
-  });
-
-  it("names who is accountable for the change and what it did to the risk class", () => {
-    render(<ScopeArtifact />);
-
-    expect(screen.getByText("Head of Collections")).toBeDefined();
+    expect(screen.getByText("How Subra works")).toBeDefined();
+    expect(screen.getByRole("heading", { level: 2 }).textContent).toBe(
+      "From external identity to independently verifiable evidence.",
+    );
     expect(
-      screen.getByText("SMF24-000123 · collections operations"),
+      screen.getByText(
+        "Subra doesn't replace the systems you already use to establish identity and authority. It sits alongside them, and turns each completed action into a signed record.",
+      ),
     ).toBeDefined();
-    expect(screen.getByText("high")).toBeDefined();
-  });
 
-  it("says the superseded version is kept", () => {
-    render(<ScopeArtifact />);
-    // The claim the section exists to make: nothing is edited in place.
-    expect(screen.getByText("v8, retained in full")).toBeDefined();
-  });
-
-  it("sends the reader to the demo, not to a sign-up they are told to skip", () => {
-    render(<ScopeArtifact />);
-
-    // The sign-up screen tells firms to book a demo first, so offering
-    // "Create your account" here would point at a door its own page closes.
+    const sequence = screen.getByRole("list", {
+      name: "Six-step evidence flow",
+    });
+    expect(within(sequence).getAllByRole("listitem")).toHaveLength(6);
     expect(
-      screen.getByRole("link", { name: /Book a demo/ }).getAttribute("href"),
+      within(sequence).getByText(
+        "The action is recorded after it happens, not before",
+      ),
+    ).toBeDefined();
+    expect(
+      within(sequence).getByText(
+        "This is post-action attestation. Subra records what happened after it happened. It does not authorise or block the action.",
+      ),
+    ).toBeDefined();
+    expect(container.textContent).not.toContain("—");
+  });
+
+  it("names one concrete output for every step", () => {
+    render(<EvidenceFlow />);
+
+    for (const output of [
+      "Accepted identity reference",
+      "Bound authority context",
+      "Action attestation",
+      "Version snapshot",
+      "Signed receipt",
+      "Verifiable evidence package",
+    ]) {
+      expect(screen.getByText(output)).toBeDefined();
+    }
+  });
+
+  it("links directly to the public action-receipt specimen", () => {
+    render(<EvidenceFlow />);
+
+    expect(
+      screen
+        .getByRole("link", { name: "See a sample action receipt" })
+        .getAttribute("href"),
+    ).toBe("#action-receipt");
+  });
+});
+
+describe("CompatibilityRail", () => {
+  it("positions Subra between existing systems and evidence consumers", () => {
+    render(<CompatibilityRail />);
+
+    expect(screen.getByText("Compatibility")).toBeDefined();
+    expect(screen.getByRole("heading", { level: 2 }).textContent).toBe(
+      "Keep the identity and control systems you already trust.",
+    );
+
+    const rail = screen.getByRole("group", {
+      name: "Compatibility without competition",
+    });
+    expect(
+      within(rail).getByRole("list", { name: "Existing identity systems" }),
+    ).toBeDefined();
+    expect(within(rail).getByText("Evidence layer")).toBeDefined();
+    expect(
+      within(rail).getByRole("list", { name: "Evidence consumers" }),
+    ).toBeDefined();
+  });
+
+  it("states the three compatibility boundaries without protocol logos or em dashes", () => {
+    const { container } = render(<CompatibilityRail />);
+    const boundaries = screen.getByRole("list", {
+      name: "Subra compatibility boundaries",
+    });
+
+    expect(within(boundaries).getAllByRole("listitem")).toHaveLength(3);
+    for (const boundary of [
+      "Does not replace your IAM",
+      "Does not orchestrate agents",
+      "Does not become a runtime gateway",
+    ]) {
+      expect(within(boundaries).getByText(boundary)).toBeDefined();
+    }
+    expect(container.querySelector("img")).toBeNull();
+    expect(container.textContent).not.toContain("—");
+  });
+});
+
+describe("ActionReceipt", () => {
+  it("presents one synthetic action as a human-readable evidence record", () => {
+    const { container } = render(<ActionReceipt />);
+
+    expect(screen.getByText("The action receipt")).toBeDefined();
+    expect(screen.getByRole("heading", { level: 2 }).textContent).toBe(
+      "One action. One evidence record.",
+    );
+    expect(
+      screen.getByText(
+        "Every action produces a receipt like this. Human-readable first, with the underlying cryptography available one layer down for anyone who needs to check it.",
+      ),
+    ).toBeDefined();
+    expect(
+      screen.getByRole("article", {
+        name: "Supplier payment action receipt",
+      }),
+    ).toBeDefined();
+    expect(screen.queryByText(/synthetic/i)).toBeNull();
+
+    for (const label of [
+      "External identity reference",
+      "Organisation",
+      "Accountable owner",
+      "Declared authority",
+      "Policy version",
+      "Model version",
+      "Occurred",
+      "Recorded",
+    ]) {
+      expect(screen.getByText(label)).toBeDefined();
+    }
+    expect(container.textContent).not.toContain("—");
+  });
+
+  it("treats scope as evidence classification rather than an enforcement decision", () => {
+    render(<ActionReceipt />);
+
+    expect(screen.getAllByText("Inside declared scope").length).toBe(2);
+    expect(screen.getByText("Outside declared scope")).toBeDefined();
+    expect(
+      screen.getByText(
+        "Scope result is a classification of the evidence, not an access-control decision made by Subra.",
+      ),
+    ).toBeDefined();
+  });
+
+  it("keeps hashes and signing details in an expandable technical layer", () => {
+    const { container } = render(<ActionReceipt />);
+    const details = container.querySelector("details");
+
+    expect(details).not.toBeNull();
+    expect(
+      within(details as HTMLElement).getByText("Technical proof"),
+    ).toBeDefined();
+    expect(
+      within(details as HTMLElement).getByText("Previous receipt hash"),
+    ).toBeDefined();
+    expect(
+      within(details as HTMLElement).getByText("Receipt hash"),
+    ).toBeDefined();
+    expect(
+      within(details as HTMLElement).getByText("Signer key"),
+    ).toBeDefined();
+    expect(
+      within(details as HTMLElement).getByText("Signature valid"),
+    ).toBeDefined();
+  });
+});
+
+describe("EvidencePackage", () => {
+  it("assembles the eight records an auditor receives into one artefact", () => {
+    const { container } = render(<EvidencePackage />);
+
+    expect(screen.getByText("Evidence packages")).toBeDefined();
+    expect(screen.getByRole("heading", { level: 2 }).textContent).toBe(
+      "The evidence an auditor asks for, assembled around the action.",
+    );
+    expect(
+      screen.getByText(
+        "A package brings the identity, accountability, scope, receipts, versions and verification results for a given period into one signed manifest. It is reviewable on its own, without needing access to Subra.",
+      ),
+    ).toBeDefined();
+
+    const contents = screen.getByRole("list", {
+      name: "Evidence package contents",
+    });
+    expect(within(contents).getAllByRole("listitem")).toHaveLength(8);
+    expect(container.textContent).not.toContain("—");
+  });
+
+  it("switches between the compliance summary and technical manifest", () => {
+    render(<EvidencePackage />);
+
+    const summaryTab = screen.getByRole("tab", {
+      name: "Compliance summary",
+    });
+    const manifestTab = screen.getByRole("tab", {
+      name: "Technical manifest",
+    });
+
+    expect(summaryTab.getAttribute("aria-selected")).toBe("true");
+    expect(
+      screen.getByRole("tabpanel", { name: "Compliance summary" }),
+    ).toBeDefined();
+
+    fireEvent.click(manifestTab);
+
+    expect(manifestTab.getAttribute("aria-selected")).toBe("true");
+    expect(
+      screen.getByRole("tabpanel", { name: "Technical manifest" }),
+    ).toBeDefined();
+    expect(screen.getByText("manifest_digest")).toBeDefined();
+  });
+
+  it("states the narrative boundary and links to the private preview", () => {
+    render(<EvidencePackage />);
+
+    expect(
+      screen.getByText(
+        "Package narrative is templated, not AI-generated. No model is used to decide what a record means.",
+      ),
+    ).toBeDefined();
+    expect(
+      screen
+        .getByRole("link", { name: "Request private preview" })
+        .getAttribute("href"),
     ).toBe("#request");
-    expect(screen.queryByText(/Create your account/)).toBeNull();
   });
 });
 
 describe("IntegrityChain", () => {
-  it("renders one row per entry", () => {
+  it("introduces independent verification as its own addressable section", () => {
     const { container } = render(<IntegrityChain />);
-    expect(container.querySelectorAll("tbody tr").length).toBe(
-      CHAIN_ENTRIES.length,
+
+    expect(container.querySelector("#integrity")).not.toBeNull();
+    expect(screen.getByText("Integrity")).toBeDefined();
+    expect(screen.getByRole("heading", { level: 2 }).textContent).toBe(
+      "Evidence should remain verifiable after the originating system is unavailable.",
     );
+    expect(
+      screen.getByText(
+        "A record you can argue with is not evidence. Each receipt is linked to the one before it. Changing any field breaks the chain, visibly.",
+      ),
+    ).toBeDefined();
+    expect(container.textContent).not.toContain("—");
   });
 
-  it("shows the break propagating from the edited entry", () => {
-    render(<IntegrityChain />);
-
-    // One edit, and everything chained after it fails with it — the only
-    // thing this table is here to demonstrate.
-    expect(screen.getByText("Altered")).toBeDefined();
-    expect(screen.getAllByText("Broken").length).toBe(2);
-    expect(screen.getByText("Verified")).toBeDefined();
-  });
-
-  it("spells out the consequence in words as well as in the table", () => {
+  it("starts with four intact records and no raw cryptography in the main view", () => {
     render(<IntegrityChain />);
 
     expect(
-      screen.getByText(/2 entries after it fail\s+verification/),
+      within(screen.getByRole("list", { name: "Receipt chain" })).getAllByRole(
+        "listitem",
+      ),
+    ).toHaveLength(4);
+    expect(screen.getByTestId("integrity-state").textContent).toBe(
+      "✓Verified4 of 4 records intact",
+    );
+    expect(screen.queryByText(/sha256:/i)).toBeNull();
+    expect(screen.queryByText(/key id/i)).toBeNull();
+  });
+
+  it("recalculates the chain after one field is changed", () => {
+    render(<IntegrityChain />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Change one field" }));
+
+    expect(screen.getByTestId("integrity-state").textContent).toBe(
+      "!Integrity failurechain broken from record 2 onward",
+    );
+    expect(screen.getByText("Amount changed: £84,200")).toBeDefined();
+    expect(screen.getByText("Field changed")).toBeDefined();
+    expect(screen.getAllByText("Chain broken")).toHaveLength(2);
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "Restore original field" }),
+    );
+    expect(screen.getByText("Amount: £24,800")).toBeDefined();
+    expect(screen.getByText("4 of 4 records intact")).toBeDefined();
+  });
+
+  it("explains the calculation progressively and keeps the technical claim explicit", () => {
+    render(<IntegrityChain />);
+
+    expect(screen.getByText("How this is calculated")).toBeDefined();
+    for (const term of ["Canonicalisation", "Hashing", "Signatures"]) {
+      expect(screen.getByText(term)).toBeDefined();
+    }
+    expect(
+      screen.getByText(
+        "Verification recalculates the record. Nothing is simply trusted from storage.",
+      ),
     ).toBeDefined();
+  });
+
+  it("offers both requested next steps", () => {
+    render(<IntegrityChain />);
+
+    expect(
+      screen
+        .getByRole("link", { name: "Request private preview" })
+        .getAttribute("href"),
+    ).toBe("#request");
+    expect(
+      screen
+        .getByRole("link", { name: "Read the security overview" })
+        .getAttribute("href"),
+    ).toBe("#security");
+  });
+});
+
+describe("UseCaseStories", () => {
+  it("grounds the product in three action-led stories", () => {
+    const { container } = render(<UseCaseStories />);
+
+    expect(container.querySelector("#use-cases")).not.toBeNull();
+    expect(screen.getByText("Where this applies")).toBeDefined();
+    expect(screen.getByRole("heading", { level: 2 }).textContent).toBe(
+      "Built for organisations where an agent's action carries a consequence.",
+    );
+
+    const stories = screen.getByRole("list", { name: "Use-case stories" });
+    expect(within(stories).getAllByRole("listitem")).toHaveLength(3);
+    for (const title of [
+      "Payments and refunds",
+      "Lending and underwriting operations",
+      "Insurance claims",
+    ]) {
+      expect(within(stories).getByText(title)).toBeDefined();
+    }
+    expect(container.textContent).not.toContain("—");
+  });
+
+  it("shows the action, risk, accountable function and evidence for every story", () => {
+    render(<UseCaseStories />);
+
+    expect(screen.getAllByText("Action")).toHaveLength(3);
+    expect(screen.getAllByText("Risk")).toHaveLength(3);
+    expect(screen.getAllByText("Accountable function")).toHaveLength(3);
+    expect(screen.getAllByText("Evidence produced")).toHaveLength(3);
+    expect(screen.getByText("Operations")).toBeDefined();
+    expect(screen.getByText("Credit Risk")).toBeDefined();
+    expect(screen.getByText("Claims Operations")).toBeDefined();
+  });
+
+  it("names the primary buyer group and the teams involved", () => {
+    render(<UseCaseStories />);
+
+    expect(screen.getByText("Primary ICP")).toBeDefined();
+    expect(
+      screen.getByRole("heading", {
+        level: 3,
+        name: "Regulated organisations deploying consequential AI agents",
+      }),
+    ).toBeDefined();
+    expect(screen.getByText("Compliance and AI governance")).toBeDefined();
+    expect(screen.getByText("Internal audit")).toBeDefined();
+    expect(screen.getByText("Agent infrastructure leaders")).toBeDefined();
+  });
+
+  it("places three relatable agent types after the main use-case stories", () => {
+    render(<UseCaseStories />);
+
+    const adjacent = screen.getByRole("complementary", {
+      name: "The same evidence model applies wherever agents communicate or act",
+    });
+    expect(within(adjacent).getAllByRole("listitem")).toHaveLength(3);
+    expect(within(adjacent).getByText("Call agents")).toBeDefined();
+    expect(within(adjacent).getByText("Chat agents")).toBeDefined();
+    expect(within(adjacent).getByText("Operations agents")).toBeDefined();
+
+    const stories = screen.getByRole("list", { name: "Use-case stories" });
+    expect(
+      stories.compareDocumentPosition(adjacent) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+  });
+});
+
+describe("SecurityBoundaries", () => {
+  it("states all ten checkable security and product boundaries", () => {
+    const { container } = render(<SecurityBoundaries />);
+
+    expect(container.querySelector("#security")).not.toBeNull();
+    expect(screen.getByText("Security and boundaries")).toBeDefined();
+    expect(screen.getByRole("heading", { level: 2 }).textContent).toBe(
+      "What Subra stores, and what it deliberately does not.",
+    );
+    const list = screen.getByRole("list", {
+      name: "Security and product boundaries",
+    });
+    expect(within(list).getAllByRole("listitem")).toHaveLength(10);
+    expect(container.textContent).not.toContain("—");
+  });
+
+  it("keeps each explanation in one contextual detail card", () => {
+    render(<SecurityBoundaries />);
+
+    for (const boundary of SECURITY_BOUNDARIES) {
+      expect(
+        screen.getByRole("button", { name: boundary.label }),
+      ).toBeDefined();
+    }
+
+    const detail = document.getElementById("security-boundary-detail");
+    expect(detail?.textContent).toContain(SECURITY_BOUNDARIES[0].detail);
+    expect(
+      screen.queryByRole("link", { name: /evidence recorded/i }),
+    ).toBeNull();
+
+    const finalBoundary = SECURITY_BOUNDARIES.at(-1)!;
+    fireEvent.click(screen.getByRole("button", { name: finalBoundary.label }));
+    expect(
+      document.getElementById("security-boundary-detail")?.textContent,
+    ).toContain(finalBoundary.detail);
+    expect(
+      screen
+        .getByRole("button", { name: finalBoundary.label })
+        .getAttribute("aria-pressed"),
+    ).toBe("true");
+  });
+
+  it("omits a public data-region claim until operations verify it", () => {
+    render(<SecurityBoundaries />);
+
+    expect(screen.queryByText(/data residency/i)).toBeNull();
+    expect(screen.queryByText(/UK \/ EU/i)).toBeNull();
+    expect(screen.queryByText(/compliance badge/i)).toBeNull();
   });
 });
 
@@ -296,18 +651,34 @@ describe("CtaBand", () => {
 });
 
 describe("SiteFooter", () => {
-  it("gives the contact address as a mailto", () => {
+  it("provides a direct contact route", () => {
     render(<SiteFooter />);
 
-    const link = screen.getByRole("link", { name: "partner@subrahq.com" });
+    const link = screen.getByRole("link", { name: "Contact" });
     expect(link.getAttribute("href")).toBe("mailto:partner@subrahq.com");
+  });
+
+  it("links the legal column to real standalone pages", () => {
+    render(<SiteFooter />);
+
+    for (const [name, href] of [
+      ["Privacy Notice", "/privacy"],
+      ["Terms of Service", "/terms"],
+      ["Cookie Policy", "/cookies"],
+    ] as const) {
+      expect(screen.getByRole("link", { name }).getAttribute("href")).toBe(
+        href,
+      );
+    }
   });
 
   it("carries the disclaimer a regulated buyer's compliance team looks for", () => {
     render(<SiteFooter />);
 
     expect(
-      screen.getByText(/not endorsed by or affiliated\s+with any regulator/),
+      screen.getByText(
+        /not a certification, regulatory approval, or legal compliance guarantee/,
+      ),
     ).toBeDefined();
   });
 
@@ -315,19 +686,26 @@ describe("SiteFooter", () => {
     render(<SiteFooter />);
 
     for (const heading of ["Product", "Company", "Legal"]) {
-      expect(screen.getByText(heading)).toBeDefined();
+      expect(
+        screen.getByRole("heading", { level: 2, name: heading }),
+      ).toBeDefined();
     }
   });
 
-  it("names the sections exactly as the nav does", () => {
+  it("links every product label to its landing-page section", () => {
     render(<SiteFooter />);
 
-    // Two vocabularies for one page is how "The record" and "How it works"
-    // end up meaning the same section to everyone except the reader.
-    for (const link of SECTION_LINKS) {
-      expect(
-        screen.getByRole("link", { name: link.label }).getAttribute("href"),
-      ).toBe(link.href);
+    for (const [name, href] of [
+      ["Product", "/#top"],
+      ["Evidence flow", "/#how-it-works"],
+      ["Compatibility", "/#compatibility"],
+      ["Integrity", "/#integrity"],
+      ["Use cases", "/#use-cases"],
+      ["Security", "/#security"],
+    ] as const) {
+      expect(screen.getByRole("link", { name }).getAttribute("href")).toBe(
+        href,
+      );
     }
   });
 });

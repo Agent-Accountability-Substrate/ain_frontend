@@ -171,10 +171,10 @@ describe("SiteNav", () => {
     ]);
     expect(links.map((link) => link.getAttribute("href"))).toEqual([
       "#top",
-      "#record",
+      "#how-it-works",
       "#integrity",
-      "#scope",
-      "#questions",
+      "#use-cases",
+      "#security",
     ]);
     expect(
       screen

@@ -56,6 +56,9 @@ describe("isPublicPath", () => {
 
   it("lets the landing page and Auth.js's own routes through", () => {
     expect(isPublicPath("/")).toBe(true);
+    for (const path of ["/about", "/cookies", "/privacy", "/terms"]) {
+      expect(isPublicPath(path)).toBe(true);
+    }
     expect(isPublicPath("/api/auth/callback/auth0")).toBe(true);
   });
 
