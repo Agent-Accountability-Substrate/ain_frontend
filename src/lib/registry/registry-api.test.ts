@@ -16,10 +16,12 @@ import {
   identityAssurance,
   inviteMember,
   leaveOrganisation,
+  getAgent,
   listMembers,
   listReviewQueue,
   recordVerification,
   submitAgent,
+  transitionAgent,
   listAgents,
   listOrganisations,
   loadAccountWorkspace,
@@ -752,5 +754,142 @@ describe("registry writes", () => {
     await expect(leaveOrganisation(ORG_ID)).rejects.toBeInstanceOf(
       RegistryUnavailableError,
     );
+  });
+});
+
+describe("the single-agent read", () => {
+  const AIN =
+    "did:ain:gb:01ARZ3NDEKTSV4RRFFQ69G5FAV:01BX5ZZKBKACTAV9WEVGEMMVRZ";
+
+  const RECORD = {
+    ...AGENT,
+    document: {
+      document_version: 3,
+      document_hash: "9f2c7a",
+      kid: "ain-registry-2026-07",
+      valid_from: "2026-07-16T12:00:00Z",
+    },
+    scope: {
+      action_classes: ["payments.initiate"],
+      constraints: { "payments.initiate": { max_value_gbp: 5000 } },
+      risk_level: "high",
+      regulatory_mappings: ["FCA CONC 7"],
+    },
+    accountability: {
+      role_title: "Head of Collections",
+      responsibility_area: "collections",
+      regulatory_identifier: "SMF24-000123",
+    },
+    external_identities: [
+      { ref_type: "spiffe", ref_value: "spiffe://x/y", verified: false },
+    ],
+    lifecycle: [
+      {
+        seq: 1,
+        event_type: "registered",
+        occurred_at: "2026-07-16T11:00:00Z",
+        event_hash: "aa",
+        previous_event_hash: null,
+      },
+    ],
+    resolver_url: `https://resolver.example/${AIN}`,
+  };
+
+  it("escapes the identifier into one path segment", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(jsonResponse(RECORD));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await getAgent(ORG_ID, AIN);
+
+    const [url] = fetchMock.mock.calls[0] as [URL];
+    // An AIN is opaque and byte-exact once minted, so it is escaped rather
+    // than trusted to contain nothing that would split the path.
+    expect(url.pathname).toBe(
+      `/orgs/${ORG_ID}/agents/${encodeURIComponent(AIN)}`,
+    );
+  });
+
+  it("carries the scope, the owner and the chain through", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(jsonResponse(RECORD)));
+
+    const record = await getAgent(ORG_ID, AIN);
+
+    expect(record?.scope?.constraints).toEqual({
+      "payments.initiate": { max_value_gbp: 5000 },
+    });
+    expect(record?.accountability?.regulatoryIdentifier).toBe("SMF24-000123");
+    expect(record?.lifecycle[0]?.previousEventHash).toBeNull();
+    expect(record?.document?.documentVersion).toBe(3);
+  });
+
+  it("drops the keys a draft has nothing for, rather than carrying nulls", async () => {
+    // An absent scope and an empty one are different claims: an empty scope
+    // says "authorised to do nothing".
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        jsonResponse({
+          ...RECORD,
+          status: "draft",
+          document: null,
+          scope: null,
+          accountability: null,
+          lifecycle: [],
+          resolver_url: null,
+        }),
+      ),
+    );
+
+    const record = await getAgent(ORG_ID, AIN);
+
+    expect(record).toBeDefined();
+    expect("scope" in record!).toBe(false);
+    expect("document" in record!).toBe(false);
+    expect("resolverUrl" in record!).toBe(false);
+  });
+
+  it("reports an agent this organisation does not have as absent", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(jsonResponse({}, 404)));
+
+    await expect(getAgent(ORG_ID, AIN)).resolves.toBeNull();
+  });
+
+  it("treats a registry with no single-agent read as having no record", async () => {
+    // `PATCH` is the only method registered on this path today, so a `GET`
+    // answers 405. Nothing is wrong and retrying cannot help, so a screen that
+    // merely offers the record stops offering it rather than falling over.
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(jsonResponse({}, 405)));
+
+    await expect(getAgent(ORG_ID, AIN)).resolves.toBeNull();
+  });
+
+  it("still fails an outage closed", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(jsonResponse({}, 500)));
+
+    await expect(getAgent(ORG_ID, AIN)).rejects.toBeInstanceOf(
+      RegistryUnavailableError,
+    );
+  });
+
+  it("posts a withdrawal to its own verb sub-path, with the reason", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      jsonResponse({
+        ain: AIN,
+        status: "suspended",
+        event_type: "suspended",
+        seq: 3,
+        chain_head: "cc",
+      }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    await transitionAgent(ORG_ID, AIN, "suspend", "Model replaced");
+
+    const [url, init] = fetchMock.mock.calls[0] as [URL, RequestInit];
+    expect(url.pathname).toBe(
+      `/orgs/${ORG_ID}/agents/${encodeURIComponent(AIN)}/suspend`,
+    );
+    expect(init.method).toBe("POST");
+    expect(JSON.parse(String(init.body))).toEqual({ reason: "Model replaced" });
   });
 });

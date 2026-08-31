@@ -13,6 +13,10 @@ import type { ReactNode } from "react";
 
 import { CopyableAin } from "@/domains/agents/copyable-ain";
 import {
+  ScopeConstraintsField,
+  type ConstraintRow,
+} from "@/domains/agents/scope-constraints-field";
+import {
   patchAgentAction,
   registerAgentAction,
   submitAgentAction,
@@ -101,6 +105,7 @@ export function AgentCreationWizard({
   organisationName,
   organisationUlid,
   organisationVerified,
+  draft,
   onBack,
 }: {
   /** `null` when no organisation is selected — the wizard then refuses to run. */
@@ -108,6 +113,15 @@ export function AgentCreationWizard({
   organisationName: string | null;
   organisationUlid: string | null;
   organisationVerified: boolean;
+  /**
+   * A draft the registry already holds, resolved by the page.
+   *
+   * Present when the wizard was opened to continue one. Its AIN is permanent
+   * and already minted, so the identity step is behind us — starting blank
+   * would mint a second identifier for the same agent, and an AIN is never
+   * recycled.
+   */
+  draft?: { ain: string; name: string } | null;
   onBack?: () => void;
 }) {
   // Every way out of the wizard leads back to the register it was opened
@@ -132,6 +146,7 @@ export function AgentCreationWizard({
     role: "",
     riskClass: "high",
   });
+  const [constraints, setConstraints] = useState<readonly ConstraintRow[]>([]);
   const [declaration, setDeclaration] = useState({
     actionClasses: "",
     riskLevel: "high",
@@ -212,8 +227,21 @@ export function AgentCreationWizard({
 
   const identityErrors = registered.status === "error" ? registered.errors : {};
   const declarationErrors = declared.status === "error" ? declared.errors : {};
-  const ain = registered.status === "done" ? registered.ain : null;
+  // A resumed draft is already past step 1 — its identifier exists and is
+  // permanent, so the wizard opens on the declaration rather than re-minting.
+  const ain =
+    draft?.ain ?? (registered.status === "done" ? registered.ain : null);
   const declarationAttached = declared.status === "done";
+  // A bound must name a declared class, so the selector reads what has been
+  // typed above rather than a list of its own.
+  const declaredClasses = [
+    ...new Set(
+      declaration.actionClasses
+        .split(/[,\n]/)
+        .map((entry) => entry.trim())
+        .filter(Boolean),
+    ),
+  ].sort();
   const step = ain === null ? 1 : declarationAttached ? 3 : 2;
 
   return (
@@ -338,6 +366,14 @@ export function AgentCreationWizard({
         <form action={patchAction} className="flex flex-col gap-5">
           <input type="hidden" name="organisationId" value={organisationId} />
           <input type="hidden" name="ain" value={ain} />
+          {draft ? (
+            <Note>
+              Continuing the draft <strong>{draft.name}</strong>. Its identifier
+              below was minted when the draft was opened and is permanent — this
+              declares scope and accountability against that identifier rather
+              than creating a second one.
+            </Note>
+          ) : null}
           <CopyableAin value={ain} />
           <div className="grid gap-4 sm:grid-cols-2">
             <TextField
@@ -357,6 +393,14 @@ export function AgentCreationWizard({
               placeholder={"payments.initiate\ncustomer_comms.send"}
               description="One per line. Anything you do not list here is not authorised."
               error={declarationErrors["actionClasses"]}
+            />
+            <ScopeConstraintsField
+              actionClasses={declaredClasses}
+              rows={constraints}
+              onChange={setConstraints}
+              {...(declarationErrors["constraints"] !== undefined && {
+                error: declarationErrors["constraints"],
+              })}
             />
             <SelectField
               label="Operational risk level"

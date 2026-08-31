@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 
 import {
   ACCOUNT_SETTINGS,
+  agentHref,
+  ainFromParam,
   isOrganisationUlid,
   landingHref,
   NEW_ORGANISATION,
@@ -61,5 +63,24 @@ describe("workspace routes", () => {
     expect(landingHref([])).toBe(NEW_ORGANISATION);
     expect(landingHref([ALPHA])).toBe(orgHref(ALPHA.ulid));
     expect(landingHref([ALPHA, BETA])).toBe(orgHref(ALPHA.ulid));
+  });
+});
+
+describe("ainFromParam", () => {
+  const AIN =
+    "did:ain:gb:01ARZ3NDEKTSV4RRFFQ69G5FAV:01BX5ZZKBKACTAV9WEVGEMMVRZ";
+
+  it("reads back the identifier a route segment carries", () => {
+    // Next hands a dynamic param over still percent-encoded, on a server
+    // render and a client navigation alike. Passing it straight to the API
+    // client encodes it twice, and the registry then answers 404 for an
+    // identifier nobody minted.
+    expect(ainFromParam(agentHref("X", AIN).split("/agents/")[1]!)).toBe(AIN);
+  });
+
+  it("leaves an already-decoded identifier alone", () => {
+    // An AIN is `did:ain:` plus two Crockford base32 ULIDs — an alphabet with
+    // no `%` in it — so this keeps working if Next ever starts decoding.
+    expect(ainFromParam(AIN)).toBe(AIN);
   });
 });

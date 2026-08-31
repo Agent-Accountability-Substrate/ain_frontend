@@ -1,10 +1,14 @@
 import Link from "next/link";
-import { ArrowRight, Bot } from "lucide-react";
+import { ArrowRight, Bot, ChevronRight } from "lucide-react";
 
 import type {
   OrganisationSummary,
   WorkspaceAgent,
 } from "@/domains/workspace/account-workspace";
+import {
+  agentDraftHref,
+  agentHref,
+} from "@/domains/workspace/workspace-routes";
 import { Card } from "@/lib/ui/card";
 import { EmptyState } from "@/lib/ui/empty-state";
 import { Eyebrow } from "@/lib/ui/eyebrow";
@@ -33,12 +37,17 @@ export function AgentRegister({
   limit,
 }: {
   agents: readonly WorkspaceAgent[];
-  organisations: readonly Pick<OrganisationSummary, "id" | "name">[];
+  /**
+   * `ulid` is what a row links by: the record's address is the organisation's
+   * public identifier, like every other workspace screen.
+   */
+  organisations: readonly Pick<OrganisationSummary, "id" | "name" | "ulid">[];
   /** Where the full register lives, when this is a summary of it. */
   href?: string;
   limit?: number;
 }) {
   const organisationName = new Map(organisations.map((o) => [o.id, o.name]));
+  const organisationUlid = new Map(organisations.map((o) => [o.id, o.ulid]));
   // One organisation means the column would repeat one value on every row.
   const showOrganisation = organisations.length > 1;
   const shown = limit === undefined ? agents : agents.slice(0, limit);
@@ -75,35 +84,64 @@ export function AgentRegister({
         </EmptyState>
       ) : (
         <ul className="mt-5 flex flex-col gap-2.5">
-          {shown.map((agent) => (
-            <li
-              key={agent.ain}
-              className="flex flex-col gap-2 rounded-2xl border border-line bg-panel px-4 py-3.5"
-            >
-              <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-                <span className="text-sm font-semibold text-ink">
-                  {agent.name}
-                </span>
-                {showOrganisation ? (
-                  <span className="text-[11px] font-medium text-mist">
-                    {organisationName.get(agent.organisationId) ?? "—"}
+          {shown.map((agent) => {
+            const ulid = organisationUlid.get(agent.organisationId);
+            const isDraft = agent.status === "draft";
+            return (
+              <li
+                key={agent.ain}
+                className="flex flex-col gap-2 rounded-2xl border border-line bg-panel px-4 py-3.5 transition-colors duration-(--dur-hover) focus-within:border-line-strong hover:border-line-strong"
+              >
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+                  {/* The name is the link, and the row is not: a whole-row
+                      anchor would swallow the AIN below it, which is the one
+                      thing on the row somebody needs to select and copy. */}
+                  {ulid ? (
+                    <Link
+                      href={agentHref(ulid, agent.ain)}
+                      className="rounded text-sm font-semibold text-ink hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink"
+                    >
+                      {agent.name}
+                    </Link>
+                  ) : (
+                    <span className="text-sm font-semibold text-ink">
+                      {agent.name}
+                    </span>
+                  )}
+                  {showOrganisation ? (
+                    <span className="text-[11px] font-medium text-mist">
+                      {organisationName.get(agent.organisationId) ?? "—"}
+                    </span>
+                  ) : null}
+                  <StatusPill tone={TONE[agent.status] ?? "neutral"}>
+                    {agent.status}
+                  </StatusPill>
+                  <span className="ml-auto text-[11px] font-medium text-mist">
+                    {agent.riskClass} risk
                   </span>
+                </div>
+                <p className="text-[11px] leading-4 text-mist">{agent.role}</p>
+                {/* `select-all` because the whole string is the only useful
+                    selection, and `break-all` because 62 characters wrap. */}
+                <code className="select-all break-all font-mono text-[11px] leading-4 text-ink-soft">
+                  {agent.ain}
+                </code>
+                {/* A draft holds a permanent identifier and no signed
+                    document. Its only useful next step is finishing it, and
+                    without this the row is a dead end that invites minting a
+                    second identifier for the same agent. */}
+                {isDraft && ulid ? (
+                  <Link
+                    href={agentDraftHref(ulid, agent.ain)}
+                    className="inline-flex w-fit items-center gap-1 rounded text-[11px] font-semibold text-cobalt hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink"
+                  >
+                    Continue this draft
+                    <ChevronRight className="h-3.5 w-3.5" aria-hidden="true" />
+                  </Link>
                 ) : null}
-                <StatusPill tone={TONE[agent.status] ?? "neutral"}>
-                  {agent.status}
-                </StatusPill>
-                <span className="ml-auto text-[11px] font-medium text-mist">
-                  {agent.riskClass} risk
-                </span>
-              </div>
-              <p className="text-[11px] leading-4 text-mist">{agent.role}</p>
-              {/* `select-all` because the whole string is the only useful
-                  selection, and `break-all` because 62 characters wrap. */}
-              <code className="select-all break-all font-mono text-[11px] leading-4 text-ink-soft">
-                {agent.ain}
-              </code>
-            </li>
-          ))}
+              </li>
+            );
+          })}
         </ul>
       )}
     </Card>

@@ -81,6 +81,48 @@ export function orgHref(ulid: string, section: OrganisationSection = "") {
 }
 
 /**
+ * One agent's record.
+ *
+ * The AIN is percent-encoded, so its colons survive as one path segment rather
+ * than being read as three. Read it back with `ainFromParam` — Next hands the
+ * segment over still encoded, and an AIN is opaque after minting because it is
+ * hashed and signed as written.
+ */
+export function agentHref(ulid: string, ain: string) {
+  return `/o/${ulid}/agents/${encodeURIComponent(ain)}`;
+}
+
+/**
+ * The wizard, continuing a draft the registry already holds.
+ *
+ * A draft is a real row with a permanent AIN already minted, so re-entering
+ * the wizard blank would mint a second one for the same agent. The identifier
+ * travels in the query rather than the path because the screen is still
+ * "register an agent" — it is the same step, resumed.
+ */
+export function agentDraftHref(ulid: string, ain: string) {
+  return `${orgHref(ulid, "agents/new")}?draft=${encodeURIComponent(ain)}`;
+}
+
+/**
+ * The AIN a `[ain]` route segment carries, as the registry knows it.
+ *
+ * **Next does not decode a dynamic route param.** `params.ain` arrives exactly
+ * as it sits in the address — `did%3Aain%3A…` — on a server render and on a
+ * client navigation alike, verified in a browser rather than assumed. Passing
+ * it straight to the API client encodes it a second time, and the registry
+ * then looks up an identifier nobody minted and answers 404.
+ *
+ * Safe to apply whichever form arrives: an AIN is `did:ain:` plus two Crockford
+ * base32 ULIDs, an alphabet with no `%` in it, so decoding an already-decoded
+ * identifier is a no-op. That matters more than the current behaviour does —
+ * it means this keeps working if Next ever starts decoding.
+ */
+export function ainFromParam(param: string): string {
+  return decodeURIComponent(param);
+}
+
+/**
  * Where an authenticated arrival belongs.
  *
  * Into an organisation, or into registering one. Never onto a chooser: the
