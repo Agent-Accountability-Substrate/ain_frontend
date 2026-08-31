@@ -1,6 +1,6 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { useEffect, type ReactNode } from "react";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { Settings } from "lucide-react";
@@ -14,6 +14,7 @@ import type { IndividualAssuranceStatus } from "@/domains/identity/identity-assu
 import { menuItemsFor } from "@/domains/workspace/workspace-navigation";
 import {
   isOrganisationUlid,
+  rememberOrganisation,
   SETTINGS,
 } from "@/domains/workspace/workspace-routes";
 import { cn } from "@/lib/utils";
@@ -74,6 +75,16 @@ export function WorkspaceShell({
     organisations.find((entry) => entry.id === selectedOrganisationId) ??
     organisations[0] ??
     null;
+
+  // Arriving at an organisation is being in it, whichever way you arrived —
+  // the switcher, a link on the register-a-company panel, or a redirect. Only
+  // the switcher used to record it, so reaching one any other way left the
+  // account-level screens resolving a different company: `/settings` would
+  // offer *its* Members link, and an invitation sent from there would land a
+  // person in the organisation the user had not been looking at.
+  useEffect(() => {
+    if (named !== null) rememberOrganisation(named);
+  }, [named]);
 
   const navigationItems = menuItemsFor(isOperator, selected?.ulid ?? null);
   const hasNavigation = navigationItems.length > 0;

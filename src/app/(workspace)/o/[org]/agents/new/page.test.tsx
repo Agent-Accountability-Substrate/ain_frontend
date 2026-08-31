@@ -16,7 +16,10 @@ const { authMock, redirectMock, notFoundMock, loadWorkspaceMock } = vi.hoisted(
   }),
 );
 
-vi.mock("@/auth", () => ({ auth: authMock }));
+vi.mock("@/auth", () => ({
+  auth: authMock,
+  currentSession: authMock,
+}));
 vi.mock("@/domains/workspace/workspace-page", () => ({
   loadWorkspace: loadWorkspaceMock,
 }));

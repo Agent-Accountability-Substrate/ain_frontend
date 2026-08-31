@@ -17,7 +17,10 @@ const { authMock, redirectMock, notFoundMock, loadWorkspaceMock } = vi.hoisted(
   }),
 );
 
-vi.mock("@/auth", () => ({ auth: authMock }));
+vi.mock("@/auth", () => ({
+  auth: authMock,
+  currentSession: authMock,
+}));
 
 // Mocked so these stay tests of the route's own behaviour — fail closed, 404 an
 // organisation you are not in, render the outage — rather than of the DAL.
