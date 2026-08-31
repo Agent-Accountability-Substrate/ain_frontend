@@ -20,7 +20,11 @@ import {
   type RegisterAgentState,
   type SubmitAgentState,
 } from "@/domains/agents/agent-actions";
-import { orgHref, WORKSPACE } from "@/domains/workspace/workspace-routes";
+import {
+  ORGANISATION_SETTINGS,
+  orgHref,
+  WORKSPACE,
+} from "@/domains/workspace/workspace-routes";
 import { Callout } from "@/lib/ui/callout";
 import { Button, ButtonLink } from "@/lib/ui/button";
 import { Eyebrow } from "@/lib/ui/eyebrow";
@@ -147,7 +151,7 @@ export function AgentCreationWizard({
         eyebrow="Agent workspace"
         title="Choose an organisation to continue"
         action={
-          <ButtonLink href="/organisations">
+          <ButtonLink href={ORGANISATION_SETTINGS}>
             <ArrowLeft className="h-4 w-4" aria-hidden="true" />
             Choose organisation
           </ButtonLink>
@@ -319,7 +323,7 @@ export function AgentCreationWizard({
                 Back
               </Button>
             ) : (
-              <ButtonLink href="/organisations">
+              <ButtonLink href={ORGANISATION_SETTINGS}>
                 <ArrowLeft className="h-4 w-4" aria-hidden="true" />
                 Choose organisation
               </ButtonLink>
