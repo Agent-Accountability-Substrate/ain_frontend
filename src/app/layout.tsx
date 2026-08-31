@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { IBM_Plex_Mono, Inter, Poppins } from "next/font/google";
 
+import { SITE_ORIGIN } from "@/lib/brand/site-origin";
+
 import "./globals.css";
 
 // Self-hosted at build time, never fetched from Google at runtime: a runtime
@@ -32,7 +34,7 @@ const ibmPlexMono = IBM_Plex_Mono({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://subrahq.com"),
+  metadataBase: new URL(SITE_ORIGIN),
   applicationName: "AIN Registry",
   title: {
     // Applies to every authenticated route, none of which sets its own title.

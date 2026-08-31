@@ -1,4 +1,7 @@
-import { normalizeMetadataRoute } from "next/dist/lib/metadata/get-metadata-route";
+import {
+  normalizeMetadataPageToRoute,
+  normalizeMetadataRoute,
+} from "next/dist/lib/metadata/get-metadata-route";
 import { describe, expect, it } from "vitest";
 
 import { isPublicPath } from "@/domains/auth/public-paths";
@@ -14,7 +17,8 @@ const METADATA_FILE =
  * Asked of Next rather than worked out here. The mapping is not the tidy one
  * it looks like — `robots.tsx` is served at `/robots.txt`, and a file under a
  * `(group)` or an `@slot` carries a hash of its parent path in its name, so
- * `(marketing)/opengraph-image.tsx` answers at `/opengraph-image-pwu6ef`.
+ * `(marketing)/opengraph-image.tsx` answers at `/opengraph-image-pwu6ef`, and
+ * `sitemap.ts` answers at `/sitemap.xml` though its page path is `/sitemap`.
  * Re-deriving that here is how a guard comes to check a path nothing serves:
  * it would go green on `/opengraph-image` while every social scraper was being
  * redirected to Auth0 — the exact failure this file exists to catch. The
@@ -26,10 +30,14 @@ function routeFor(file: AppFile): string {
   // A code file generates its route without an extension — `opengraph-image.tsx`
   // is served at `/opengraph-image`. An asset keeps its own.
   const base = file.name.replace(/\.(tsx?|jsx?|mjs)$/, "");
-  const route = normalizeMetadataRoute(`${parent}/${base}`).replace(
-    /\/route$/,
-    "",
-  );
+  // Two steps, because Next splits the mapping across two functions and only
+  // the second knows a sitemap is served with an `.xml` extension. Stopping at
+  // the first produced `/sitemap`, which nothing serves, so the guard passed
+  // while `/sitemap.xml` sat behind the session gate.
+  const route = normalizeMetadataPageToRoute(
+    normalizeMetadataRoute(`${parent}/${base}`),
+    false,
+  ).replace(/\/route$/, "");
   // Groups and slots contribute no URL segment of their own.
   return `/${route
     .split("/")
