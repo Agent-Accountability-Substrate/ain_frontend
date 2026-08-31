@@ -20,8 +20,15 @@ import { Menu, MenuItem, MenuLinkItem, MenuSeparator } from "@/lib/ui/menu";
  * out. Leaving is destructive and irreversible from this side, so it asks.
  */
 export function OrganisationRowMenu({
+  email,
   organisation,
 }: {
+  /**
+   * The signed-in address. The registry ends a membership by id and has no
+   * `/me` alias, so the action looks the caller's own row up by the address
+   * their session carries — the same verified address a membership binds by.
+   */
+  email: string;
   organisation: OrganisationSummary;
 }) {
   const [confirming, setConfirming] = useState(false);
@@ -81,6 +88,7 @@ export function OrganisationRowMenu({
           value={organisation.id}
           readOnly
         />
+        <input type="hidden" name="email" value={email} readOnly />
         {result.status === "error" ? (
           <p role="alert" className="text-[11px] leading-4 text-destructive">
             {result.message}

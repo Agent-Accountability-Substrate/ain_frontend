@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 
 vi.mock("@/domains/organisations/organisation-actions", () => ({
   inviteMemberAction: vi.fn(),
+  removeMemberAction: vi.fn(),
 }));
 
 import { OrganisationMembersView } from "@/domains/organisations/organisation-members-view";
@@ -14,11 +15,13 @@ const MEMBERS = [
     id: "1f4f4c6e-0000-4000-8000-000000000001",
     email: "founder@example.com",
     role: "owner",
+    status: "active",
   },
   {
     id: "1f4f4c6e-0000-4000-8000-000000000002",
     email: "auditor@example.com",
     role: "auditor",
+    status: "pending",
   },
 ];
 
@@ -36,6 +39,10 @@ describe("OrganisationMembersView", () => {
     expect(within(rows[0]!).getByText("founder@example.com")).toBeDefined();
     expect(within(rows[0]!).getByText("Owner")).toBeDefined();
     expect(within(rows[1]!).getByText("Auditor")).toBeDefined();
+    // An invitation binds on the invitee's first verified login, so "invited"
+    // and "has access" must not read alike.
+    expect(within(rows[0]!).getByText("Active")).toBeDefined();
+    expect(within(rows[1]!).getByText("Invited")).toBeDefined();
   });
 
   it("says the list is unavailable rather than saying nobody is here", () => {

@@ -72,6 +72,12 @@ export type OrganisationMember = {
   id: string;
   email: string;
   role: string;
+  /**
+   * `pending` until the invitee's first verified login binds their subject to
+   * the row, `active` afterwards. An invitation that nobody has claimed grants
+   * nothing, so the two must not read alike.
+   */
+  status: string;
 };
 
 export type OrganisationActivity = {

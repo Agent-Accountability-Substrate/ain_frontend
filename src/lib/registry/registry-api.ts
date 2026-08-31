@@ -692,6 +692,11 @@ const memberSchema = z.object({
   member_id: z.uuid(),
   email: z.email(),
   role: z.string(),
+  // 'pending' until the invitee's first verified login binds their subject to
+  // the row; 'active' after. The distinction is the difference between
+  // "invited" and "has access", and a list that showed only addresses could
+  // not tell an admin which they were looking at.
+  status: z.string(),
 });
 
 const memberListSchema = z.object({ members: z.array(memberSchema) });
@@ -735,9 +740,9 @@ function isUnsupportedRoute(error: unknown): boolean {
 /**
  * `GET /orgs/{id}/members` — who else can act for this organisation.
  *
- * The registry does not serve this yet. Returns `null` rather than an empty
- * array when the route is absent, so the page can say "not available" instead
- * of "nobody" — different claims, and only one of them true.
+ * Returns `null` only when the registry does not serve the route at all, so
+ * the page can say "not available" instead of "nobody" — different claims, and
+ * only one of them true. Everything else is rethrown.
  */
 export async function listMembers(
   organisationId: string,
@@ -750,39 +755,34 @@ export async function listMembers(
       id: member.member_id,
       email: member.email,
       role: member.role,
+      status: member.status,
     }));
   } catch (error) {
-    // Only "the registry does not serve this route" becomes `null`. An expired
-    // session, an outage, or a payload that fails the schema are all different
-    // claims, and laundering them into "not available yet" would state as fact
-    // something this module has no evidence for — and would swallow the loud
-    // failure that contract drift is supposed to produce here.
     if (isUnsupportedRoute(error)) return null;
     throw error;
   }
 }
 
 /**
- * `DELETE /orgs/{id}/members/me` — give up your own access to a company.
+ * `DELETE /orgs/{id}/members/{member_id}` — end a membership.
  *
- * The registry removes a member by id and cannot yet name the caller's own, so
- * this route does not answer — see `isUnsupportedRoute` for the three ways it
- * says so, 422 being the one it actually sends. That comes back as
- * `"unsupported"` rather than an outage: nothing is wrong, so "try again
- * shortly" would be a promise nothing can keep.
+ * A `DELETE` in the API and an `UPDATE` in the database: the row's `status`
+ * becomes `removed`, because a membership that authorised an action has to
+ * stay evidenceable afterwards.
+ *
+ * One call serves both removals the registry allows — an admin removing
+ * someone, and anyone removing themselves — because they are the same
+ * transition. It takes the member's id rather than a `/me` alias, which is not
+ * a route the registry has; the caller's own id comes from the member list.
  */
-export async function leaveOrganisation(
+export async function removeMember(
   organisationId: string,
-): Promise<"left" | "unsupported"> {
-  try {
-    await request(`/orgs/${encodeURIComponent(organisationId)}/members/me`, {
-      method: "DELETE",
-    });
-    return "left";
-  } catch (error) {
-    if (isUnsupportedRoute(error)) return "unsupported";
-    throw error;
-  }
+  memberId: string,
+): Promise<void> {
+  await request(
+    `/orgs/${encodeURIComponent(organisationId)}/members/${encodeURIComponent(memberId)}`,
+    { method: "DELETE" },
+  );
 }
 
 const transitionSchema = z.object({

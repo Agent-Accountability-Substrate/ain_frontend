@@ -15,11 +15,11 @@ import {
   createOrganisation,
   identityAssurance,
   inviteMember,
-  leaveOrganisation,
   getAgent,
   listMembers,
   listReviewQueue,
   recordVerification,
+  removeMember,
   submitAgent,
   transitionAgent,
   listAgents,
@@ -31,6 +31,7 @@ import {
 } from "@/lib/registry/registry-api";
 
 const ORG_ID = "6a1f6f38-0d3f-4c86-9a53-8c8f7a1e2b4d";
+const MEMBER_ID = "1f4f4c6e-0000-4000-8000-000000000001";
 
 const WHOAMI = {
   subject: "auth0|abc",
@@ -654,6 +655,7 @@ describe("registry writes", () => {
               member_id: "1f4f4c6e-0000-4000-8000-000000000001",
               email: "auditor@example.com",
               role: "auditor",
+              status: "pending",
             },
           ],
         }),
@@ -665,6 +667,7 @@ describe("registry writes", () => {
         id: "1f4f4c6e-0000-4000-8000-000000000001",
         email: "auditor@example.com",
         role: "auditor",
+        status: "pending",
       },
     ]);
   });
@@ -703,55 +706,28 @@ describe("registry writes", () => {
     await expect(listMembers(ORG_ID)).rejects.toBeTruthy();
   });
 
-  it("gives up access with a delete that expects no body", async () => {
+  it("ends a membership by id, with a delete that expects no body", async () => {
     const fetchMock = vi
       .fn()
       .mockResolvedValue(new Response(null, { status: 204 }));
     vi.stubGlobal("fetch", fetchMock);
 
-    await expect(leaveOrganisation(ORG_ID)).resolves.toBe("left");
+    await expect(removeMember(ORG_ID, MEMBER_ID)).resolves.toBeUndefined();
 
     const [url, init] = fetchMock.mock.calls[0] as [URL, RequestInit];
-    expect(url.pathname).toBe(`/orgs/${ORG_ID}/members/me`);
+    // By id, because `/members/me` is not a route the registry serves — which
+    // is why the previous client could only ever be refused, and why the 422
+    // above was the shape of that refusal.
+    expect(url.pathname).toBe(`/orgs/${ORG_ID}/members/${MEMBER_ID}`);
     expect(init.method).toBe("DELETE");
     // No body, so no content-type to declare one.
     expect(init.body).toBeUndefined();
   });
 
-  it("reports a missing capability as missing, not as an outage", async () => {
-    // A 404 or 405 here means the route is not there. Nothing is wrong with
-    // the registry, so "try again shortly" would be advice that cannot work.
-    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(jsonResponse({}, 405)));
-
-    await expect(leaveOrganisation(ORG_ID)).resolves.toBe("unsupported");
-  });
-
-  it("reads the 422 the registry actually sends as a missing capability", async () => {
-    // `/orgs/{id}/members/me` is matched by the registry's
-    // `/orgs/{organisation_id}/members/{member_id}`, whose `member_id` is a
-    // UUID — so the literal "me" fails validation before any handler runs and
-    // FastAPI answers 422 with an array `detail`. No string survives
-    // `refusalDetail`, so it arrives as an unavailability; reading it as one
-    // told every non-owner to retry something that can never succeed.
-    vi.stubGlobal(
-      "fetch",
-      vi
-        .fn()
-        .mockResolvedValue(
-          jsonResponse(
-            { detail: [{ loc: ["path", "member_id"], msg: "invalid uuid" }] },
-            422,
-          ),
-        ),
-    );
-
-    await expect(leaveOrganisation(ORG_ID)).resolves.toBe("unsupported");
-  });
-
-  it("still fails an outage closed while leaving", async () => {
+  it("still fails an outage closed while removing", async () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(jsonResponse({}, 500)));
 
-    await expect(leaveOrganisation(ORG_ID)).rejects.toBeInstanceOf(
+    await expect(removeMember(ORG_ID, MEMBER_ID)).rejects.toBeInstanceOf(
       RegistryUnavailableError,
     );
   });
