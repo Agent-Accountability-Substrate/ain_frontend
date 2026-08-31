@@ -19,6 +19,7 @@ describe("SiteFooter", () => {
       ["Use cases", "/#use-cases"],
       ["Security", "/#security"],
       ["About", "/about"],
+      ["Insights", "/blog"],
       ["Contact", "mailto:partner@subrahq.com"],
       ["Privacy Notice", "/privacy"],
       ["Terms of Service", "/terms"],

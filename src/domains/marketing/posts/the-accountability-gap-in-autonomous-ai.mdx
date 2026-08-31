@@ -1,0 +1,80 @@
+export const meta = {
+  slug: "the-accountability-gap-in-autonomous-ai",
+  title: "The accountability gap in autonomous AI",
+  summary:
+    "Organisations are deploying agents faster than they can answer for what those agents did. That gap is not a logging problem, and another dashboard will not close it.",
+  publishedAt: "2026-08-31",
+  standfirst:
+    "Autonomy has outrun answerability. Most organisations can now say what an agent did. Very few can prove what it was authorised to do at the moment it acted, or name the person who answers for that. This is the gap Subra was built to close.",
+};
+
+## Autonomy arrived before answerability
+
+Agents already open tickets, move money, file reports and touch production
+systems. Adoption happens at the edges of an organisation, inside a team's
+existing SaaS tool or a business-led pilot, while responsibility stays at the
+top. When something goes wrong, the question is never which model was used. It
+is who authorised this, under what scope, and can you show me. Most
+organisations can answer the first part from memory and none of it from
+evidence.
+
+## Logs are not evidence
+
+Every runtime keeps logs. Logs are written by the system being questioned,
+stored in a format that system controls, and editable by anyone who can reach
+the store. They record what a system believes happened. Evidence has to
+establish what can still be proven happened, months later, to somebody who has
+no reason to trust the system that produced it. A log becomes evidence only
+once it is signed, chained to the record before it, and verifiable when the
+system that wrote it is unavailable.
+
+## Authority has to be declared before it can be checked
+
+An agent's permissions usually live scattered across an IAM role, a system
+prompt, a tool allowlist and a gateway rule. None of that is a statement of
+what the organisation actually authorised, and none of it survives being asked
+about six months later. Accountability needs the authority written down as a
+declaration: versioned, signed, and bound to a named human who answers for it.
+Anything less turns an audit into archaeology.
+
+## The version problem nobody plans for
+
+Scope changes. Models are replaced. Owners move on. An action taken in March
+was judged against the policy and the model in force in March, not the ones in
+force when somebody asks about it in November. A record that points only at the
+current policy is already answering the wrong question. Every receipt has to
+carry the version it was judged against, and every superseded version has to
+remain readable.
+
+## Attest, do not gate
+
+The reflex is to put a control in the path: a gateway that stops the agent when
+something looks wrong. That makes the accountability layer a dependency of the
+thing it observes, so an outage in the recorder becomes an outage in the
+business, and it puts a vendor in the position of deciding what another
+organisation's agents may do. Subra is never in the runtime path. It records
+what happened and makes it provable. Enforcement stays where it already lives,
+in the systems the organisation runs itself.
+
+## What closing the gap actually requires
+
+Four things have to hold at once:
+
+- An identity minted once and never reused, so the subject of a record cannot
+  quietly become a different agent.
+- Authority declared in advance and recorded as a result on the evidence, where
+  unknown never shades into allowed.
+- A named human bound to that authority.
+- A receipt for every action that is signed, hash-chained and independently
+  verifiable, carrying the versions that were in force when it was written.
+
+Any three of those without the fourth leaves the same question unanswered.
+
+## Why this is worth building before it is demanded
+
+Regulated organisations feel this first, because they are already required to
+show their work. The expectation is spreading outward from them. Building the
+evidence trail while the actions are happening costs a fraction of
+reconstructing it afterwards, and reconstruction is usually impossible: the
+logs have rotated, the policy has moved on, and the person who authorised the
+work has left.

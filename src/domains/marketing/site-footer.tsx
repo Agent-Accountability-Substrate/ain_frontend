@@ -19,6 +19,7 @@ const FOOTER_COLUMNS = [
     heading: "Company",
     links: [
       { label: "About", href: "/about" },
+      { label: "Insights", href: "/blog" },
       { label: "Contact", href: `mailto:${PARTNER_EMAIL}` },
     ],
   },

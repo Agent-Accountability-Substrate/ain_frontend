@@ -56,10 +56,23 @@ describe("isPublicPath", () => {
 
   it("lets the landing page and Auth.js's own routes through", () => {
     expect(isPublicPath("/")).toBe(true);
-    for (const path of ["/about", "/cookies", "/privacy", "/terms"]) {
+    for (const path of ["/about", "/blog", "/cookies", "/privacy", "/terms"]) {
       expect(isPublicPath(path)).toBe(true);
     }
     expect(isPublicPath("/api/auth/callback/auth0")).toBe(true);
+  });
+
+  it("lets every blog post through, not just the index", () => {
+    // The set above is exact, so a dynamic `/blog/<slug>` falls past it to
+    // deny-by-default: every post, and every crawler that found one, sent to
+    // Auth0 while `/blog` itself looked fine.
+    expect(isPublicPath("/blog/the-accountability-gap-in-autonomous-ai")).toBe(
+      true,
+    );
+    expect(isPublicPath("/blog/anything-published-later")).toBe(true);
+
+    // The prefix is a path segment, not five characters.
+    expect(isPublicPath("/blogging-tools")).toBe(false);
   });
 
   it("lets all four login addresses through", () => {

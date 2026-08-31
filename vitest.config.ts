@@ -1,10 +1,23 @@
+import mdx from "@mdx-js/rollup";
 import react from "@vitejs/plugin-react";
 import { fileURLToPath } from "node:url";
 import tsconfigPaths from "vite-tsconfig-paths";
 import { defineConfig } from "vitest/config";
 
 export default defineConfig({
-  plugins: [react(), tsconfigPaths()],
+  plugins: [
+    // Ahead of `react()`, so `.mdx` is compiled to JSX before the React plugin
+    // is asked to transform it. Vitest does not go through the Next loader, so
+    // without this every post import fails to resolve.
+    //
+    // This compiles the same files the build does, but it does not inject
+    // `src/mdx-components.tsx` the way `@next/mdx` does: a post rendered in a
+    // test emits bare `<h2>` and `<p>`. Tests assert the semantics; the class
+    // map has its own test.
+    { enforce: "pre", ...mdx() },
+    react(),
+    tsconfigPaths(),
+  ],
   resolve: {
     alias: {
       // See test/stubs/server-only.ts — Next resolves this internally and

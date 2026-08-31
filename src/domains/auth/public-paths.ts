@@ -12,10 +12,24 @@
 const AUTH_ENTRY_PATHS = new Set(["/signin", "/login", "/signup", "/register"]);
 const PUBLIC_INFORMATION_PATHS = new Set([
   "/about",
+  "/blog",
   "/cookies",
   "/privacy",
   "/terms",
 ]);
+
+/**
+ * The blog's post routes, which are dynamic and so cannot be enumerated here.
+ *
+ * Matched as a prefix rather than added to the set above, because the set is
+ * exact and `/blog/<slug>` would fall through it to deny-by-default: every
+ * post, and every crawler that found one, redirected to Auth0 while `/blog`
+ * itself looked fine. The trailing slash is load bearing. A bare `startsWith`
+ * would also open anything merely beginning with those five characters.
+ */
+function isBlogPost(pathname: string): boolean {
+  return pathname.startsWith("/blog/");
+}
 
 /**
  * Next's file-based metadata routes, which are generated from files beside
@@ -59,6 +73,7 @@ export function isPublicPath(pathname: string): boolean {
   if (pathname.startsWith("/api/auth")) return true;
   if (AUTH_ENTRY_PATHS.has(pathname)) return true;
   if (PUBLIC_INFORMATION_PATHS.has(pathname)) return true;
+  if (isBlogPost(pathname)) return true;
   if (METADATA_ROUTES.has(pathname.replace(GROUP_HASH, ""))) return true;
   return pathname === "/";
 }
