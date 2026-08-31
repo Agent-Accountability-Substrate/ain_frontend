@@ -1,6 +1,6 @@
 import { CloudOff } from "lucide-react";
 
-import { ButtonLink } from "@/lib/ui/button";
+import { RetryLink } from "@/domains/workspace/retry-link";
 import { Eyebrow } from "@/lib/ui/eyebrow";
 
 /**
@@ -47,10 +47,8 @@ export function WorkspaceUnavailable({
         <div className="flex">
           {/* A plain link rather than a router refresh: this was server-
               rendered from a failed read, so the only thing that helps is
-              asking the server again. */}
-          <ButtonLink variant="primary" href="/o">
-            Try again
-          </ButtonLink>
+              asking the server again — for the page that failed. */}
+          <RetryLink>Try again</RetryLink>
         </div>
       </section>
     </main>

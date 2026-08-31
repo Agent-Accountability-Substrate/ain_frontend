@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { Building2, Clock } from "lucide-react";
 
 import { ReviewDecisionForm } from "@/domains/operations/review-decision-form";
@@ -115,7 +116,12 @@ export function OperationsView({
                 const open = item.organisation_id === selected?.organisation_id;
                 return (
                   <li key={item.organisation_id}>
-                    <a
+                    {/* `next/link`, not an anchor: an anchor throws the
+                        document away and rebuilds the shell with it, which is
+                        the whole reason the shell moved into a layout — and
+                        this is the control an operator clicks most, once per
+                        company they triage. */}
+                    <Link
                       href={`/operations?org=${item.organisation_id}`}
                       aria-current={open ? "true" : undefined}
                       className={
@@ -144,7 +150,7 @@ export function OperationsView({
                           </StatusPill>
                         ) : null}
                       </span>
-                    </a>
+                    </Link>
                   </li>
                 );
               })}

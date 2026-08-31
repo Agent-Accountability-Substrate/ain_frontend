@@ -27,14 +27,21 @@ describe("WorkspaceUnavailable", () => {
     expect(screen.queryByText(/organisations owned/i)).toBeNull();
   });
 
-  it("offers a retry that asks the server again", () => {
-    // A router refresh would not help: this was server-rendered from a failed
-    // read, so only another request can succeed.
+  it("offers a retry that asks the server again, for the page that failed", () => {
+    // Two properties, and the outage screen is useless without either. A
+    // router transition would not help — this was server-rendered from a
+    // failed read, so only another document request can succeed — and a fixed
+    // `/o` would answer a question nobody asked, sending someone whose members
+    // page failed somewhere else entirely.
     render(<WorkspaceUnavailable detail="down" email="owner@example.com" />);
 
-    expect(
-      screen.getByRole("link", { name: "Try again" }).getAttribute("href"),
-    ).toBe("/o");
+    const retry = screen.getByRole("link", { name: "Try again" });
+    // `usePathname` is stubbed at "/" — the point is that it is the caller's
+    // path rather than a constant.
+    expect(retry.getAttribute("href")).toBe("/");
+    // `next/link` sets neither of these, and would soft-navigate inside the
+    // very layout segment that is rendering this instead of its children.
+    expect(retry.getAttribute("data-prefetch")).toBeNull();
   });
 
   it("says nothing about who is signed in when nobody is", () => {
