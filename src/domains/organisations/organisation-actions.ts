@@ -5,13 +5,11 @@ import { z } from "zod";
 
 import { JURISDICTION_CODES } from "@/domains/organisations/jurisdictions";
 import { logger } from "@/lib/logger";
+import { registryErrorReporter } from "@/lib/registry/action-errors";
 import {
   createOrganisation,
   inviteMember,
   leaveOrganisation,
-  NotAuthenticatedError,
-  RegistryRefusedError,
-  RegistryUnavailableError,
 } from "@/lib/registry/registry-api";
 
 /**
@@ -66,6 +64,12 @@ const UNAVAILABLE =
   "The registry is not reachable right now. Nothing was submitted — try again shortly.";
 const SIGNED_OUT = "Your session expired. Sign in again and resubmit.";
 
+const toErrorState = registryErrorReporter({
+  signedOut: SIGNED_OUT,
+  unavailable: UNAVAILABLE,
+  unavailableEvent: "organisation.registry_unavailable",
+});
+
 function text(formData: FormData, key: string): string {
   const value = formData.get(key);
   return typeof value === "string" ? value : "";
@@ -110,34 +114,15 @@ export async function createOrganisationAction(
       organisationUlid: created.org_ulid,
     };
   } catch (error) {
-    if (error instanceof NotAuthenticatedError) {
-      return { status: "error", message: SIGNED_OUT, errors: {} };
-    }
-    if (error instanceof RegistryRefusedError) {
-      logger.warn("organisation.registration_refused", {
-        status: error.status,
-      });
-      // The registry's own wording, which is written to be shown: "company
-      // already registered", "your verified email is not a usable address".
-      // A 409 is attached to the number, since that is the field at fault.
-      return {
-        status: "error",
-        message: error.detail,
-        errors:
-          error.status === 409 ? { registrationNumber: error.detail } : {},
-      };
-    }
-    if (error instanceof RegistryUnavailableError) {
-      logger.error("organisation.registry_unavailable");
-      // A 503 naming an unconfigured subsystem is more use than "try again",
-      // which for that case is advice that can never work.
-      return {
-        status: "error",
-        message: error.detail ?? UNAVAILABLE,
-        errors: {},
-      };
-    }
-    throw error;
+    // The registry's own wording is written to be shown: "company already
+    // registered", "your verified email is not a usable address". A 409 is
+    // attached to the number, since that is the field at fault.
+    return toErrorState(
+      error,
+      "organisation.registration_refused",
+      (refusal) =>
+        refusal.status === 409 ? { registrationNumber: refusal.detail } : {},
+    );
   }
 }
 
@@ -192,13 +177,10 @@ export async function inviteMemberAction(
       parsed.data.role,
     );
   } catch (error) {
-    if (error instanceof RegistryRefusedError) {
-      return { status: "error", message: error.detail, errors: {} };
-    }
-    throw error;
+    return toErrorState(error, "organisation.invite_refused");
   }
 
-  revalidatePath(`/o`, "layout");
+  revalidatePath("/o", "layout");
   return { status: "invited", email: parsed.data.email };
 }
 
@@ -233,17 +215,9 @@ export async function leaveOrganisationAction(
       return { status: "error", message: NOT_SUPPORTED };
     }
   } catch (error) {
-    if (error instanceof NotAuthenticatedError) {
-      return { status: "error", message: SIGNED_OUT };
-    }
-    if (error instanceof RegistryRefusedError) {
-      return { status: "error", message: error.detail };
-    }
-    if (error instanceof RegistryUnavailableError) {
-      logger.error("organisation.registry_unavailable");
-      return { status: "error", message: error.detail ?? UNAVAILABLE };
-    }
-    throw error;
+    // This state carries no field errors, so only the message crosses over.
+    const { message } = toErrorState(error, "organisation.leave_refused");
+    return { status: "error", message };
   }
 
   logger.info("organisation.left");

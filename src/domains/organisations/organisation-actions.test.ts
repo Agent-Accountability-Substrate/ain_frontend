@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
   createOrganisationMock,
+  inviteMemberMock,
   leaveOrganisationMock,
   revalidatePathMock,
   NotAuthenticatedError,
@@ -20,6 +21,7 @@ const {
   }
   return {
     createOrganisationMock: vi.fn(),
+    inviteMemberMock: vi.fn(),
     leaveOrganisationMock: vi.fn(),
     revalidatePathMock: vi.fn(),
     NotAuthenticatedError,
@@ -30,7 +32,7 @@ const {
 
 vi.mock("@/lib/registry/registry-api", () => ({
   createOrganisation: createOrganisationMock,
-  inviteMember: vi.fn(),
+  inviteMember: inviteMemberMock,
   leaveOrganisation: leaveOrganisationMock,
   NotAuthenticatedError,
   RegistryRefusedError,
@@ -45,6 +47,7 @@ vi.mock("@/lib/logger", () => ({
 
 import {
   createOrganisationAction,
+  inviteMemberAction,
   leaveOrganisationAction,
 } from "@/domains/organisations/organisation-actions";
 
@@ -255,5 +258,73 @@ describe("leaveOrganisationAction", () => {
 
     expect(state.status).toBe("error");
     expect(revalidatePathMock).not.toHaveBeenCalled();
+  });
+});
+
+describe("inviteMemberAction", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    inviteMemberMock.mockResolvedValue(undefined);
+  });
+
+  function invite(overrides: Record<string, string> = {}): FormData {
+    const data = new FormData();
+    const fields = {
+      organisationId: "6a1f6f38-0d3f-4c86-9a53-8c8f7a1e2b4d",
+      email: "auditor@example.com",
+      role: "auditor",
+      ...overrides,
+    };
+    for (const [key, value] of Object.entries(fields)) data.set(key, value);
+    return data;
+  }
+
+  it("invites and says who was invited", async () => {
+    const result = await inviteMemberAction({ status: "idle" }, invite());
+
+    expect(result).toEqual({
+      status: "invited",
+      email: "auditor@example.com",
+    });
+  });
+
+  it("relays a refusal in the registry's own words", async () => {
+    inviteMemberMock.mockRejectedValue(
+      new RegistryRefusedError(422, "that address cannot receive invitations"),
+    );
+
+    const result = await inviteMemberAction({ status: "idle" }, invite());
+
+    expect(result).toEqual({
+      status: "error",
+      message: "that address cannot receive invitations",
+      errors: {},
+    });
+  });
+
+  it("asks an expired session to sign in rather than losing the page", async () => {
+    // This used to rethrow: the whole members screen was replaced by the
+    // generic error boundary, taking the list and the typed address with it,
+    // because only `RegistryRefusedError` was handled here while both sibling
+    // actions handled all four outcomes.
+    inviteMemberMock.mockRejectedValue(new NotAuthenticatedError("expired"));
+
+    const result = await inviteMemberAction({ status: "idle" }, invite());
+
+    expect(result.status).toBe("error");
+    expect(result).toMatchObject({
+      message: expect.stringMatching(/sign in/i),
+    });
+  });
+
+  it("reports an outage as an outage", async () => {
+    inviteMemberMock.mockRejectedValue(new RegistryUnavailableError("down"));
+
+    const result = await inviteMemberAction({ status: "idle" }, invite());
+
+    expect(result.status).toBe("error");
+    expect(result).toMatchObject({
+      message: expect.stringMatching(/not reachable/i),
+    });
   });
 });

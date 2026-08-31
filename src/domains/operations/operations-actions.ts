@@ -3,12 +3,8 @@
 import { z } from "zod";
 
 import { logger } from "@/lib/logger";
-import {
-  NotAuthenticatedError,
-  recordVerification,
-  RegistryRefusedError,
-  RegistryUnavailableError,
-} from "@/lib/registry/registry-api";
+import { registryErrorReporter } from "@/lib/registry/action-errors";
+import { recordVerification } from "@/lib/registry/registry-api";
 
 /**
  * Recording what trust operations decided about a company.
@@ -66,6 +62,12 @@ const UNAVAILABLE =
   "The registry is not reachable right now. Nothing was recorded.";
 const SIGNED_OUT = "Your session expired. Sign in again and re-record this.";
 
+const toErrorState = registryErrorReporter({
+  signedOut: SIGNED_OUT,
+  unavailable: UNAVAILABLE,
+  unavailableEvent: "operations.registry_unavailable",
+});
+
 function text(formData: FormData, key: string): string {
   const value = formData.get(key);
   return typeof value === "string" ? value : "";
@@ -118,23 +120,8 @@ export async function recordDecisionAction(
     // fetches it fresh.
     return { status: "recorded", outcome: parsed.data.outcome };
   } catch (error) {
-    if (error instanceof NotAuthenticatedError) {
-      return { status: "error", message: SIGNED_OUT, errors: {} };
-    }
-    if (error instanceof RegistryRefusedError) {
-      logger.warn("operations.decision_refused", { status: error.status });
-      // 409 is the one worth reading closely: somebody else decided this while
-      // the operator had it open, and the registry refused to overwrite them.
-      return { status: "error", message: error.detail, errors: {} };
-    }
-    if (error instanceof RegistryUnavailableError) {
-      logger.error("operations.registry_unavailable");
-      return {
-        status: "error",
-        message: error.detail ?? UNAVAILABLE,
-        errors: {},
-      };
-    }
-    throw error;
+    // 409 is the one worth reading closely: somebody else decided this while
+    // the operator had it open, and the registry refused to overwrite them.
+    return toErrorState(error, "operations.decision_refused");
   }
 }
