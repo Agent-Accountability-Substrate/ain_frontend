@@ -15,7 +15,10 @@ const { authMock, redirectMock, loadWorkspaceMock } = vi.hoisted(() => ({
   loadWorkspaceMock: vi.fn(),
 }));
 
-vi.mock("@/auth", () => ({ auth: authMock }));
+vi.mock("@/auth", () => ({
+  auth: authMock,
+  currentSession: authMock,
+}));
 
 // Mocked so these stay tests of the route's own behaviour — fail closed, keep
 // the chrome, render the outage — rather than of the DAL.

@@ -2,7 +2,7 @@ import "server-only";
 
 import { notFound } from "next/navigation";
 
-import { auth } from "@/auth";
+import { currentSession } from "@/auth";
 import type {
   AccountWorkspaceState,
   OrganisationSummary,
@@ -35,7 +35,7 @@ export type OrganisationPage =
 export async function loadOrganisationPage(
   org: string,
 ): Promise<OrganisationPage> {
-  const session = await auth();
+  const session = await currentSession();
   if (!session?.user) return { status: "unavailable" };
 
   const workspace = await loadWorkspace(org);

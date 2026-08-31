@@ -57,6 +57,7 @@ describe("loadWorkspace", () => {
       // The remembered organisation answers a question the address already
       // answered, so it is not consulted here.
       null,
+      {},
     );
   });
 
@@ -119,6 +120,20 @@ describe("loadWorkspace", () => {
     expect(loadAccountWorkspaceMock).toHaveBeenCalledWith(
       null,
       "01ARZ3NDEKTSV4RRFFQ69G5FAV",
+      {},
     );
+  });
+
+  it("passes the caller's read options through", async () => {
+    // The shell renders no agent rows, so it asks for none — which is what
+    // keeps every authenticated route from paying one request per
+    // organisation before first byte for rows nothing on it renders.
+    loadAccountWorkspaceMock.mockResolvedValue({});
+
+    await loadWorkspace(null, { withAgents: false });
+
+    expect(loadAccountWorkspaceMock).toHaveBeenCalledWith(null, null, {
+      withAgents: false,
+    });
   });
 });

@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 
-import { auth } from "@/auth";
+import { currentSession } from "@/auth";
 import { loadWorkspace } from "@/domains/workspace/workspace-page";
 import {
   landingHref,
@@ -20,7 +20,7 @@ import {
 export const dynamic = "force-dynamic";
 
 export default async function WorkspaceRootPage() {
-  const session = await auth();
+  const session = await currentSession();
   if (!session?.user) return redirect("/");
 
   const workspace = await loadWorkspace(null);

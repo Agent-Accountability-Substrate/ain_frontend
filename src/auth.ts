@@ -1,5 +1,6 @@
 import "server-only";
 
+import { cache } from "react";
 import NextAuth from "next-auth";
 import Auth0 from "next-auth/providers/auth0";
 
@@ -106,3 +107,16 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     },
   },
 });
+
+/**
+ * `auth()` for the lifetime of one request.
+ *
+ * Every call decrypts the session cookie — an HKDF derive plus an AES-256-CBC
+ * decrypt — and holds no memo of its own, so the layout, the page loader and
+ * every registry request underneath them were each paying for the same JWE.
+ * A three-organisation page did it seven times.
+ *
+ * Only the no-argument form is wrapped: `auth` is overloaded and also wraps
+ * route handlers, which must not be memoised.
+ */
+export const currentSession = cache(() => auth());

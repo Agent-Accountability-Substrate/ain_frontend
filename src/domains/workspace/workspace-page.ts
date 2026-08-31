@@ -35,6 +35,8 @@ const GENERIC =
 
 export async function loadWorkspace(
   selectedOrganisationId: string | null = null,
+  /** Passed through: the shell renders no agent rows, so it asks for none. */
+  options: { withAgents?: boolean } = {},
 ): Promise<WorkspaceLoad> {
   try {
     return {
@@ -48,6 +50,7 @@ export async function loadWorkspace(
         selectedOrganisationId === null
           ? ((await cookies()).get(ORGANISATION_PREFERENCE)?.value ?? null)
           : null,
+        options,
       ),
     };
   } catch (error) {

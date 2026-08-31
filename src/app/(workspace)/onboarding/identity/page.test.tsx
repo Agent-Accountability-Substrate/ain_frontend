@@ -11,6 +11,7 @@ const { authMock, redirectMock, loadWorkspaceMock } = vi.hoisted(() => ({
 
 vi.mock("@/auth", () => ({
   auth: authMock,
+  currentSession: authMock,
 }));
 
 vi.mock("next/navigation", () => ({

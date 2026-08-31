@@ -1,13 +1,13 @@
 import { redirect } from "next/navigation";
 
-import { auth } from "@/auth";
+import { currentSession } from "@/auth";
 import { IdentityOnboardingView } from "@/domains/identity/identity-onboarding-view";
 import { loadWorkspace } from "@/domains/workspace/workspace-page";
 
 export const dynamic = "force-dynamic";
 
 export default async function IdentityOnboardingPage() {
-  const session = await auth();
+  const session = await currentSession();
 
   if (!session?.user) redirect("/");
 

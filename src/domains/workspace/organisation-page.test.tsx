@@ -6,7 +6,10 @@ const { authMock, notFoundMock, loadWorkspaceMock } = vi.hoisted(() => ({
   loadWorkspaceMock: vi.fn(),
 }));
 
-vi.mock("@/auth", () => ({ auth: authMock }));
+vi.mock("@/auth", () => ({
+  auth: authMock,
+  currentSession: authMock,
+}));
 vi.mock("next/navigation", () => ({ notFound: notFoundMock }));
 vi.mock("@/domains/workspace/workspace-page", () => ({
   loadWorkspace: loadWorkspaceMock,

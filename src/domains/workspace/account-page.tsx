@@ -1,6 +1,6 @@
 import "server-only";
 
-import { auth } from "@/auth";
+import { currentSession } from "@/auth";
 import {
   contextOrganisation,
   type AccountWorkspaceState,
@@ -26,7 +26,7 @@ export type AccountPage =
   | { status: "unavailable" };
 
 export async function loadAccountPage(): Promise<AccountPage> {
-  const session = await auth();
+  const session = await currentSession();
   if (!session?.user) return { status: "unavailable" };
 
   const workspace = await loadWorkspace(null);

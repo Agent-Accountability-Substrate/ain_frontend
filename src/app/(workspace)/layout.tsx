@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { redirect } from "next/navigation";
 
-import { auth } from "@/auth";
+import { currentSession } from "@/auth";
 import { WorkspaceShell } from "@/domains/workspace/workspace-shell";
 import { WorkspaceUnavailable } from "@/domains/workspace/workspace-unavailable";
 import { loadWorkspace } from "@/domains/workspace/workspace-page";
@@ -23,10 +23,13 @@ export default async function WorkspaceLayout({
 }: {
   children: ReactNode;
 }) {
-  const session = await auth();
+  const session = await currentSession();
   if (!session?.user) redirect("/");
 
-  const workspace = await loadWorkspace(null);
+  // No agents: the shell renders the switcher, the rail and the account menu,
+  // none of which reads a register. Asking for them here made every route
+  // behind the sign-in pay one request per organisation before first byte.
+  const workspace = await loadWorkspace(null, { withAgents: false });
   if (workspace.status === "unavailable") {
     return (
       <WorkspaceUnavailable

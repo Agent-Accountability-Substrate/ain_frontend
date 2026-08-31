@@ -14,7 +14,10 @@ const { authMock, cookieMock, redirectMock, loadWorkspaceMock } = vi.hoisted(
   }),
 );
 
-vi.mock("@/auth", () => ({ auth: authMock }));
+vi.mock("@/auth", () => ({
+  auth: authMock,
+  currentSession: authMock,
+}));
 vi.mock("next/headers", () => ({
   cookies: async () => ({ get: cookieMock }),
 }));
