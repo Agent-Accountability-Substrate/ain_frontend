@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { IBM_Plex_Mono, Inter, Poppins } from "next/font/google";
 
 import { SITE_ORIGIN } from "@/lib/brand/site-origin";
+import { CookieNotice } from "@/lib/cookie-notice";
 
 import "./globals.css";
 
@@ -78,7 +79,10 @@ export default function RootLayout({
       lang="en"
       className={`h-full antialiased ${poppins.variable} ${inter.variable} ${ibmPlexMono.variable}`}
     >
-      <body className="flex min-h-full flex-col">{children}</body>
+      <body className="flex min-h-full flex-col">
+        {children}
+        <CookieNotice />
+      </body>
     </html>
   );
 }
