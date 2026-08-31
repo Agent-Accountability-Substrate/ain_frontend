@@ -5,7 +5,10 @@ const { authMock, getServerEnvMock } = vi.hoisted(() => ({
   getServerEnvMock: vi.fn(),
 }));
 
-vi.mock("@/auth", () => ({ auth: authMock }));
+vi.mock("@/auth", () => ({
+  auth: authMock,
+  currentSession: authMock,
+}));
 vi.mock("@/lib/config/server-env", () => ({ getServerEnv: getServerEnvMock }));
 
 import {
@@ -117,6 +120,36 @@ describe("registry api", () => {
 
     const [url] = fetchMock.mock.calls[0] as [URL];
     expect(url.toString()).toBe("https://api.subrahq.com/auth/whoami");
+  });
+
+  it("keeps a base URL's own path prefix", async () => {
+    // `new URL("/auth/whoami", "https://host/registry")` drops "/registry",
+    // because an absolute path replaces the base's. A registry behind a
+    // gateway would 404 every call while still forwarding the bearer token to
+    // a path nobody meant, and nothing would complain at boot.
+    getServerEnvMock.mockReturnValue({
+      AIN_API_BASE_URL: "https://api.subrahq.com/registry",
+    });
+    const fetchMock = vi.fn().mockResolvedValue(jsonResponse(WHOAMI));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await whoAmI();
+
+    const [url] = fetchMock.mock.calls[0] as [URL];
+    expect(url.toString()).toBe("https://api.subrahq.com/registry/auth/whoami");
+  });
+
+  it("does not double the separator on a base URL that ends in one", async () => {
+    getServerEnvMock.mockReturnValue({
+      AIN_API_BASE_URL: "https://api.subrahq.com/registry/",
+    });
+    const fetchMock = vi.fn().mockResolvedValue(jsonResponse(WHOAMI));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await whoAmI();
+
+    const [url] = fetchMock.mock.calls[0] as [URL];
+    expect(url.toString()).toBe("https://api.subrahq.com/registry/auth/whoami");
   });
 
   it("refuses to call the registry without a token", async () => {
@@ -634,6 +667,40 @@ describe("registry writes", () => {
     ]);
   });
 
+  it("does not report an outage as a missing members route", async () => {
+    // `null` means "the registry does not serve this yet", which the page
+    // turns into "anyone already invited still has access". Said during an
+    // outage that is a claim with nothing behind it.
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(jsonResponse({}, 503)));
+
+    await expect(listMembers(ORG_ID)).rejects.toBeInstanceOf(
+      RegistryUnavailableError,
+    );
+  });
+
+  it("does not report an expired session as a missing members route", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(jsonResponse({}, 401)));
+
+    await expect(listMembers(ORG_ID)).rejects.toBeInstanceOf(
+      NotAuthenticatedError,
+    );
+  });
+
+  it("lets contract drift fail loudly rather than reading as unserved", async () => {
+    // `member_id` renamed. The module's whole promise is that drift surfaces
+    // here rather than as `undefined` rendering halfway down a page.
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        jsonResponse({
+          members: [{ id: "1", email: "auditor@example.com", role: "auditor" }],
+        }),
+      ),
+    );
+
+    await expect(listMembers(ORG_ID)).rejects.toBeTruthy();
+  });
+
   it("gives up access with a delete that expects no body", async () => {
     const fetchMock = vi
       .fn()
@@ -653,6 +720,28 @@ describe("registry writes", () => {
     // A 404 or 405 here means the route is not there. Nothing is wrong with
     // the registry, so "try again shortly" would be advice that cannot work.
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(jsonResponse({}, 405)));
+
+    await expect(leaveOrganisation(ORG_ID)).resolves.toBe("unsupported");
+  });
+
+  it("reads the 422 the registry actually sends as a missing capability", async () => {
+    // `/orgs/{id}/members/me` is matched by the registry's
+    // `/orgs/{organisation_id}/members/{member_id}`, whose `member_id` is a
+    // UUID — so the literal "me" fails validation before any handler runs and
+    // FastAPI answers 422 with an array `detail`. No string survives
+    // `refusalDetail`, so it arrives as an unavailability; reading it as one
+    // told every non-owner to retry something that can never succeed.
+    vi.stubGlobal(
+      "fetch",
+      vi
+        .fn()
+        .mockResolvedValue(
+          jsonResponse(
+            { detail: [{ loc: ["path", "member_id"], msg: "invalid uuid" }] },
+            422,
+          ),
+        ),
+    );
 
     await expect(leaveOrganisation(ORG_ID)).resolves.toBe("unsupported");
   });

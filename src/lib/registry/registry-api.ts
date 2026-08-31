@@ -3,7 +3,7 @@ import "server-only";
 import { cache } from "react";
 import { z } from "zod";
 
-import { auth } from "@/auth";
+import { currentSession } from "@/auth";
 import type {
   AccountWorkspaceState,
   OrganisationMember,
@@ -151,6 +151,19 @@ function baseUrl(): string {
 }
 
 /**
+ * The registry's address for one path.
+ *
+ * Concatenated rather than `new URL(path, base)`: every path here is absolute,
+ * and an absolute path replaces the base's own, so a registry mounted under a
+ * prefix — `https://host/registry` behind a gateway — silently loses it. That
+ * 404s every call in the deployment while still forwarding the caller's bearer
+ * token to a path nobody meant, and nothing complains at boot.
+ */
+function apiUrl(path: string): URL {
+  return new URL(`${baseUrl().replace(/\/+$/, "")}${path}`);
+}
+
+/**
  * Statuses whose `detail` is written for a person and is theirs to act on.
  *
  * An allowlist rather than "any 4xx", because most 4xx are not the caller's at
@@ -186,14 +199,14 @@ async function request(
   path: string,
   init?: { method: "POST" | "PATCH" | "DELETE"; body?: unknown },
 ): Promise<unknown> {
-  const session = await auth();
+  const session = await currentSession();
   // Absent covers both "not signed in" and "access token expired": neither is
   // fixed by retrying, and both are fixed by signing in again.
   if (!session?.accessToken) throw new NotAuthenticatedError();
 
   let response: Response;
   try {
-    response = await fetch(new URL(path, baseUrl()), {
+    response = await fetch(apiUrl(path), {
       method: init?.method ?? "GET",
       headers: {
         authorization: `Bearer ${session.accessToken}`,
@@ -559,6 +572,25 @@ export async function inviteMember(
 }
 
 /**
+ * Whether a failure means "the registry does not serve this route", rather
+ * than anything being wrong.
+ *
+ * A **404** is the route not existing and a **405** the path existing for
+ * another verb. A **422** is this shape too, and is the one that actually
+ * answers today: `/orgs/{id}/members/me` is matched by the registry's
+ * `/orgs/{organisation_id}/members/{member_id}`, whose `member_id` is a UUID,
+ * so the literal `me` fails validation before any handler runs. FastAPI's 422
+ * body is an array of per-field objects, so no detail survives `refusalDetail`
+ * and it arrives here as an unavailability — which it is not.
+ */
+function isUnsupportedRoute(error: unknown): boolean {
+  return (
+    error instanceof RegistryUnavailableError &&
+    (error.status === 404 || error.status === 405 || error.status === 422)
+  );
+}
+
+/**
  * `GET /orgs/{id}/members` — who else can act for this organisation.
  *
  * The registry does not serve this yet. Returns `null` rather than an empty
@@ -577,8 +609,14 @@ export async function listMembers(
       email: member.email,
       role: member.role,
     }));
-  } catch {
-    return null;
+  } catch (error) {
+    // Only "the registry does not serve this route" becomes `null`. An expired
+    // session, an outage, or a payload that fails the schema are all different
+    // claims, and laundering them into "not available yet" would state as fact
+    // something this module has no evidence for — and would swallow the loud
+    // failure that contract drift is supposed to produce here.
+    if (isUnsupportedRoute(error)) return null;
+    throw error;
   }
 }
 
@@ -586,9 +624,10 @@ export async function listMembers(
  * `DELETE /orgs/{id}/members/me` — give up your own access to a company.
  *
  * The registry removes a member by id and cannot yet name the caller's own, so
- * this route may not answer. A 404 or 405 comes back as `"unsupported"` rather
- * than an outage: nothing is wrong, so "try again shortly" would be a promise
- * nothing can keep.
+ * this route does not answer — see `isUnsupportedRoute` for the three ways it
+ * says so, 422 being the one it actually sends. That comes back as
+ * `"unsupported"` rather than an outage: nothing is wrong, so "try again
+ * shortly" would be a promise nothing can keep.
  */
 export async function leaveOrganisation(
   organisationId: string,
@@ -599,12 +638,7 @@ export async function leaveOrganisation(
     });
     return "left";
   } catch (error) {
-    if (
-      error instanceof RegistryUnavailableError &&
-      (error.status === 404 || error.status === 405)
-    ) {
-      return "unsupported";
-    }
+    if (isUnsupportedRoute(error)) return "unsupported";
     throw error;
   }
 }
@@ -652,9 +686,17 @@ export async function loadAccountWorkspace(
    * resolves is ignored, where a URL naming the same organisation would 404.
    */
   rememberedOrganisationUlid: string | null = null,
+  /**
+   * Whether the per-organisation agent registers are wanted.
+   *
+   * Off for the shell, which renders none of them. On by default, so a screen
+   * that needs them gets them by asking for nothing.
+   */
+  { withAgents = true }: { withAgents?: boolean } = {},
 ): Promise<AccountWorkspaceState> {
-  const { summaries, isOperator, individualAssurance, agentLists } =
-    await fetchWorkspace();
+  const { summaries, isOperator, individualAssurance } =
+    await fetchMemberships();
+  const agentLists = withAgents ? await fetchAgentLists() : [];
 
   const named =
     selectedOrganisationUlid === null
@@ -701,7 +743,7 @@ export async function loadAccountWorkspace(
 }
 
 /**
- * The registry side of the workspace, fetched once per request.
+ * The memberships side of the workspace, fetched once per request.
  *
  * `cache` rather than a module-level variable: per-request memoisation, so the
  * shell and the page inside it share one round trip and two different requests
@@ -710,17 +752,40 @@ export async function loadAccountWorkspace(
  * Nothing about the caller's *choice* of organisation is in here — that is a
  * pure function of this data and the URL, so it belongs where the URL is known.
  */
-const fetchWorkspace = cache(async () => {
+const fetchMemberships = cache(async () => {
   const [organisations, individualAssurance] = await Promise.all([
     listOrganisations(),
     identityAssurance(),
   ]);
+
+  const summaries = organisations.map(toSummary);
+  // Read off the raw roles before `toSummary` drops them. The console's
+  // navigation entry keys on this; the registry refuses the routes regardless,
+  // so this decides what is *offered*, never what is permitted.
+  const isOperator = organisations.some((organisation) =>
+    organisation.roles.includes("trust_ops"),
+  );
+
+  return { organisations, summaries, isOperator, individualAssurance };
+});
+
+/**
+ * The agent registers, which cost one request per organisation.
+ *
+ * Its own memoised read rather than part of the one above, because the shell
+ * needs none of it. The workspace layout wraps every authenticated route, so
+ * folding the fan-out into the shared fetch made `/demo`, the account settings
+ * and the identity check each pay a request per organisation for rows nothing
+ * on those pages renders.
+ */
+const fetchAgentLists = cache(async () => {
+  const { organisations } = await fetchMemberships();
   // allSettled, not all: one organisation's agent list failing must not throw
   // away the memberships, statuses and assurance already fetched and send the
   // whole page to the outage screen. Nothing authorisation- or
   // correctness-bearing reads these, so an empty register is the right way to
   // degrade.
-  const agentLists = (
+  return (
     await Promise.allSettled(
       organisations.map(async (organisation) => ({
         organisationId: organisation.organisation_id,
@@ -735,14 +800,4 @@ const fetchWorkspace = cache(async () => {
           agents: [] as RegistryAgent[],
         },
   );
-
-  const summaries = organisations.map(toSummary);
-  // Read off the raw roles before `toSummary` drops them. The console's
-  // navigation entry keys on this; the registry refuses the routes regardless,
-  // so this decides what is *offered*, never what is permitted.
-  const isOperator = organisations.some((organisation) =>
-    organisation.roles.includes("trust_ops"),
-  );
-
-  return { summaries, isOperator, individualAssurance, agentLists };
 });
