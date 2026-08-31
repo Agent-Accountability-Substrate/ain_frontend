@@ -82,7 +82,11 @@ export function OrganisationMembersView({
           </Callout>
         ) : null}
 
-        {members.length === 0 ? (
+        {/* An unread list is not an empty one. "Only you can act for this
+            organisation" is a claim about the tenant's membership, and the
+            callout above has just said we cannot read it — so for any company
+            with people in it that pairing states a falsehood as fact. */}
+        {membersUnavailable ? null : members.length === 0 ? (
           <EmptyState icon={UsersRound}>
             Only you can act for this organisation. Anyone invited here can read
             its register; what else they can do depends on the role you give

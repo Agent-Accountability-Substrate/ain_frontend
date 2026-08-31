@@ -309,7 +309,14 @@ export function OrganisationCreationView({
                     Save and return
                   </ButtonLink>
                 )}
-                {step === 1 ? (
+                {/* `shownStep`, not `step`: a server-side refusal on a
+                    step-one field collapses the form back to step one, and
+                    keying the primary action off the raw `step` left the
+                    step-one fields sitting under step two's submit button
+                    while the control beside it had already switched to step
+                    one's. Continuing re-enters step two, which is where the
+                    corrected field was headed. */}
+                {shownStep === 1 ? (
                   <Button
                     type="button"
                     onClick={() => setStep(2)}

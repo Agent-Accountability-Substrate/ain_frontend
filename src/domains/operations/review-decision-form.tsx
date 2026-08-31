@@ -78,6 +78,12 @@ export function ReviewDecisionForm({
     INITIAL,
   );
   const [outcome, setOutcome] = useState<string>("verified");
+  // Controlled, like both organisation forms and for the same reason: React
+  // resets a form once its action resolves, so a refusal would hand the reason
+  // back with the box already wiped. `outcome` survived that because it is
+  // state; this did not. It is the one irreversible write in the product, and
+  // a 409 from a concurrent decision is the case that hits it.
+  const [reason, setReason] = useState("");
   const chosen = OUTCOMES.find((entry) => entry.value === outcome);
   const errors = result.status === "error" ? result.errors : {};
 
@@ -141,6 +147,8 @@ export function ReviewDecisionForm({
           multiline
           rows={3}
           required
+          value={reason}
+          onChange={(event) => setReason(event.target.value)}
           placeholder={
             outcome === "rejected"
               ? "The company number belongs to a dissolved entity."
