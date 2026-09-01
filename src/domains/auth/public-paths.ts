@@ -25,7 +25,8 @@ export const AUTH_ENTRY_PATHS = new Set([
  * through are the same set. An array, so the sitemap's order is this order.
  *
  * Posts are not here: they are dynamic, matched by prefix below, and the
- * sitemap reads them off `BLOG_POSTS`.
+ * sitemap reads them off `listPosts()` in `marketing/blog-content.ts`, which
+ * scans the posts directory. There is no registry constant.
  */
 export const PUBLIC_PAGE_PATHS = [
   "/",

@@ -297,7 +297,11 @@ export function AccessRequestForm() {
                   defaultValue={values.workflow}
                   placeholder="Tell us where stronger evidence would matter most."
                   aria-invalid={Boolean(fieldError("workflow"))}
-                  aria-describedby="access-workflow-description"
+                  aria-describedby={
+                    fieldError("workflow")
+                      ? "access-workflow-description"
+                      : undefined
+                  }
                   onChange={() => clearError("workflow")}
                   className={`${inputClass} resize-y leading-[1.55]`}
                 />

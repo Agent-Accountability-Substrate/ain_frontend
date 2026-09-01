@@ -1,11 +1,17 @@
 import { render, screen, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
-import { listPosts } from "@/domains/marketing/blog-content";
+import {
+  findPost,
+  formatPublishedDate,
+  listPosts,
+} from "@/domains/marketing/blog-content";
 import { BlogPostPage } from "@/domains/marketing/blog-post";
 
-// `blog-content.test.ts` holds the list non-empty.
-const post = (await listPosts())[0]!;
+// `blog-content.test.ts` holds the list non-empty. `listPosts` carries no body,
+// so the page's own post is loaded through `findPost`.
+const published = await listPosts();
+const post = (await findPost(published[0]!.slug))!;
 
 describe("BlogPostPage", () => {
   it("renders the post as a standalone public page", () => {
@@ -26,21 +32,29 @@ describe("BlogPostPage", () => {
     const { container } = render(<BlogPostPage post={post} />);
     const article = container.querySelector("article")!;
 
-    // Asserted against the text rather than a count: a body that failed to
-    // compile would still be an article with an h1 in it.
-    expect(
-      within(article)
-        .getAllByRole("heading", { level: 2 })
-        .map((node) => node.textContent),
-    ).toEqual([
-      "Autonomy arrived before answerability",
-      "Logs are not evidence",
-      "Authority has to be declared before it can be checked",
-      "The version problem nobody plans for",
-      "Attest, do not gate",
-      "What closing the gap actually requires",
-      "Why this is worth building before it is demanded",
-    ]);
+    // Sectioned, and every section named: a body that failed to compile is an
+    // article with an h1 above it and nothing under it. Named rather than
+    // listed, because pinning the titles here means publishing anything newer
+    // reddens this file, and `posts/README.md` promises the opposite.
+    const headings = within(article)
+      .getAllByRole("heading", { level: 2 })
+      .map((node) => node.textContent);
+
+    expect(headings.length).toBeGreaterThan(1);
+    for (const heading of headings) expect(heading?.trim()).not.toBe("");
+  });
+
+  it("names the article after the title the layout puts above it", () => {
+    const { container } = render(<BlogPostPage post={post} />);
+    const article = container.querySelector("article")!;
+
+    // The h1 paints on the dark stage, which is a different element, so the
+    // article carries no heading of its own. Unnamed, the landmark a screen
+    // reader lands on says nothing about which post it is.
+    const labelledBy = article.getAttribute("aria-labelledby")!;
+    expect(container.querySelector(`[id="${labelledBy}"]`)!.textContent).toBe(
+      post.title,
+    );
   });
 
   it("renders the body through the site's own component map", () => {
@@ -56,17 +70,24 @@ describe("BlogPostPage", () => {
     expect(article.querySelector("h2 + p")!.className).toContain("text-[19px]");
   });
 
-  it("anchors every section, uniquely", () => {
-    const { container } = render(<BlogPostPage post={post} />);
-    const ids = Array.from(
-      container.querySelectorAll("article h2, article h3"),
-    ).map((node) => node.id);
+  it("anchors every section, uniquely, in every post", async () => {
+    // Every post, not just the newest: a collision in an older piece is
+    // permanent and goes quiet the moment anything is published after it.
+    for (const summary of published) {
+      const { container, unmount } = render(
+        <BlogPostPage post={(await findPost(summary.slug))!} />,
+      );
+      const ids = Array.from(
+        container.querySelectorAll("article h2, article h3"),
+      ).map((node) => node.id);
 
-    // A slug is derived from the heading's text, so two headings differing
-    // only in punctuation collide and the anchor always lands on the first.
-    expect(ids.length).toBeGreaterThan(0);
-    for (const id of ids) expect(id).not.toBe("");
-    expect(new Set(ids).size).toBe(ids.length);
+      // A slug is derived from the heading's text, so two headings differing
+      // only in punctuation collide and the anchor always lands on the first.
+      expect(ids.length).toBeGreaterThan(0);
+      for (const id of ids) expect(id).not.toBe("");
+      expect(new Set(ids).size).toBe(ids.length);
+      unmount();
+    }
   });
 
   it("numbers nothing", () => {
@@ -83,8 +104,11 @@ describe("BlogPostPage", () => {
     const { container } = render(<BlogPostPage post={post} />);
     const time = container.querySelector("time")!;
 
+    // `datetime` is what a machine parses, the text is what a reader sees, and
+    // the second is the first put through the site's own formatter — spelling
+    // the date out here would redden this file the day anything newer ships.
     expect(time.getAttribute("datetime")).toBe(post.publishedAt);
-    expect(time.textContent).toBe("31 August 2026");
+    expect(time.textContent).toBe(formatPublishedDate(post.publishedAt));
   });
 
   it("leads back to the index, not the landing page", () => {

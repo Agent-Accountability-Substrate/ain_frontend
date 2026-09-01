@@ -9,6 +9,11 @@ import { siteUrl } from "@/lib/brand/site-origin";
  *
  * `Disallow` matches a prefix, not a path segment, so: a trailing slash where
  * the segment has only children, none where it has a page of its own.
+ *
+ * Written out rather than derived, because a crawler needs prefixes and the
+ * gate answers about one path at a time. `robots.test.ts` walks `src/app` and
+ * fails if a route needing a session is not covered here, so the list cannot
+ * fall behind the routes the way it otherwise would.
  */
 const GATED_PREFIXES = [
   "/api/",

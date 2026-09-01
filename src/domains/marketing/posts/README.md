@@ -43,6 +43,10 @@ failed to compile looks like.
   Adding it is a one-line change in `next.config.ts` if a post needs one.
 - **Headings must be unique within a post.** Anchors are slugged from heading
   text, so two headings differing only in punctuation collide.
+- **Images are plain `<img>`, not `next/image`.** `![alt](/media/x.png)` works
+  and is held inside the reading column, but markdown carries no dimensions, so
+  the file is served as-is and unsized. Write the alt text, keep the file small,
+  and reach for a component if a post needs a real figure.
 - Every element the typography map styles is exercised by
   `test/fixtures/mdx-sample.mdx`. If you use markdown it does not cover, add it
   there.

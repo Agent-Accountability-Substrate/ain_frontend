@@ -9,7 +9,13 @@ describe("BlogIndex", () => {
     render(await BlogIndex());
 
     for (const post of await listPosts()) {
-      const link = screen.getByRole("link", { name: new RegExp(post.title) });
+      // A predicate rather than `new RegExp(post.title)`: a title is prose, and
+      // prose carries `?` and brackets. Compiled as a pattern, "Who is
+      // accountable? (Part 1)" stops matching the link it names, and an
+      // unbalanced bracket throws before the assertion is reached.
+      const link = screen.getByRole("link", {
+        name: (accessibleName) => accessibleName.includes(post.title),
+      });
       expect(link.getAttribute("href")).toBe(`/blog/${post.slug}`);
     }
   });

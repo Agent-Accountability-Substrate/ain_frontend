@@ -40,6 +40,19 @@ describe("useMDXComponents", () => {
     );
   });
 
+  it("holds an image inside the reading column", () => {
+    const { container } = render(<Fixture components={components} />);
+    const image = container.querySelector("img")!;
+
+    // Unstyled, an image runs past the 720px column and scrolls the whole page
+    // sideways on a phone, and with no dimensions it shifts the article as it
+    // loads. The post's own alt text has to survive the default.
+    expect(image.className).toContain("max-w-full");
+    expect(image.className).toContain("h-auto");
+    expect(image.getAttribute("loading")).toBe("lazy");
+    expect(image.getAttribute("alt")).toBe("A diagram");
+  });
+
   it("draws its bullet from the list, so an ordered one is not double-marked", () => {
     const { container } = render(<Fixture components={components} />);
 

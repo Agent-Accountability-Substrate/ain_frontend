@@ -1,4 +1,4 @@
-import { mkdtemp, readFile, writeFile } from "node:fs/promises";
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -80,8 +80,13 @@ beforeEach(async () => {
   vi.stubEnv("ACCESS_REQUEST_TO", "valentin@subrahq.com, innocent@subrahq.com");
 });
 
-afterEach(() => {
+afterEach(async () => {
   process.chdir(REPO_ROOT);
+  // Removed, not just left behind. A kept request is written into this
+  // directory, so a run that only chdir'd out would strew the fixture's name
+  // and email across the temp directory in plaintext, one copy per test — the
+  // data `.gitignore` and the README exist to keep off disk.
+  await rm(root, { recursive: true, force: true });
   vi.unstubAllEnvs();
   vi.restoreAllMocks();
 });
@@ -492,31 +497,11 @@ describe("requestAccessAction · the name field", () => {
   });
 });
 
+// The temporary working directory and `kept()` are the module-level fixture,
+// not a second copy of it. The two shadowed each other: `kept()` closes over
+// the outer `root` while the inner hooks chdir'd into a different one, so an
+// assertion reaching for the wrong helper read a directory nothing had written.
 describe("requestAccessAction · the fallback file", () => {
-  const cwd = process.cwd();
-  let root: string;
-  let sink: string;
-
-  beforeEach(async () => {
-    // The path is fixed relative to the working directory, so the suite moves
-    // the working directory rather than configuring the path.
-    root = await mkdtemp(join(tmpdir(), "subra-access-"));
-    sink = join(root, "var", "access-requests.jsonl");
-    process.chdir(root);
-  });
-
-  afterEach(() => {
-    process.chdir(cwd);
-  });
-
-  /** Every request in the sink, parsed back. */
-  async function written() {
-    return (await readFile(sink, "utf8"))
-      .split("\n")
-      .filter(Boolean)
-      .map((line) => JSON.parse(line) as Record<string, unknown>);
-  }
-
   it("keeps the request when mail is not configured", async () => {
     vi.stubEnv("RESEND_API_KEY", "");
 
@@ -525,8 +510,10 @@ describe("requestAccessAction · the fallback file", () => {
       form({ email: "ada@firm.co.uk" }),
     );
 
+    // Reported as received because it was: the disk confirmed the write before
+    // the visitor was told anything.
     expect(result).toEqual({ status: "sent" });
-    expect(await written()).toEqual([
+    expect(await kept()).toEqual([
       {
         name: "Ada Lovelace",
         email: "ada@firm.co.uk",
@@ -544,7 +531,7 @@ describe("requestAccessAction · the fallback file", () => {
     expect(
       await requestAccessAction(IDLE, form({ email: "ada@firm.co.uk" })),
     ).toEqual({ status: "sent" });
-    expect(await written()).toHaveLength(1);
+    expect(await kept()).toHaveLength(1);
   });
 
   it("keeps the request when the provider throws", async () => {
@@ -553,7 +540,7 @@ describe("requestAccessAction · the fallback file", () => {
     expect(
       await requestAccessAction(IDLE, form({ email: "ada@firm.co.uk" })),
     ).toEqual({ status: "sent" });
-    expect(await written()).toHaveLength(1);
+    expect(await kept()).toHaveLength(1);
   });
 
   it("creates the directory on the first request", async () => {
@@ -562,7 +549,7 @@ describe("requestAccessAction · the fallback file", () => {
     // `var/` is gitignored, so a fresh checkout does not have one.
     await requestAccessAction(IDLE, form({ email: "ada@firm.co.uk" }));
 
-    expect(await written()).toHaveLength(1);
+    expect(await kept()).toHaveLength(1);
   });
 
   it("appends rather than replacing", async () => {
@@ -571,7 +558,7 @@ describe("requestAccessAction · the fallback file", () => {
     await requestAccessAction(IDLE, form({ email: "ada@firm.co.uk" }));
     await requestAccessAction(IDLE, form({ email: "grace@firm.co.uk" }));
 
-    expect((await written()).map((entry) => entry.email)).toEqual([
+    expect((await kept()).map((entry) => entry.email)).toEqual([
       "ada@firm.co.uk",
       "grace@firm.co.uk",
     ]);
@@ -582,7 +569,7 @@ describe("requestAccessAction · the fallback file", () => {
 
     await requestAccessAction(IDLE, form({ email: "ada@firm.co.uk" }));
 
-    expect(Object.keys((await written())[0]!)).not.toContain("website");
+    expect(Object.keys((await kept())[0]!)).not.toContain("website");
   });
 
   it("says a request was kept without saying whose", async () => {
@@ -600,7 +587,7 @@ describe("requestAccessAction · the fallback file", () => {
     // `var` already exists as a file. Reporting success here would tell the
     // visitor we have their request when nothing kept it.
     vi.stubEnv("RESEND_API_KEY", "");
-    await writeFile(join(root, "var"), "not a directory", "utf8");
+    await breakFallback();
 
     expect(
       await requestAccessAction(IDLE, form({ email: "ada@firm.co.uk" })),

@@ -29,7 +29,17 @@ import { SiteFooter } from "@/domains/marketing/site-footer";
  * The closing call to action sits outside `<article>` on purpose: it is site
  * furniture rather than part of what was written, and inside the element it
  * would put a marketing heading into the post's own outline.
+ *
+ * The title is outside `<article>` for the opposite reason — it belongs to the
+ * post but has to paint on the dark stage, which is a different element — so
+ * the article is named from it by `aria-labelledby`. Without that the landmark
+ * a screen reader lands on when it navigates by article is unnamed, and the
+ * title of the piece is not announced with the thing it titles.
  */
+
+/** Ties the `<article>` to the `<h1>` the layout puts above it. */
+const POST_TITLE_ID = "blog-post-title";
+
 export function BlogPostPage({ post }: { post: BlogPost }) {
   return (
     <>
@@ -51,13 +61,19 @@ export function BlogPostPage({ post }: { post: BlogPost }) {
               </time>
             </div>
 
-            <h1 className="mt-9 max-w-[19ch] text-[clamp(38px,5.6vw,68px)] leading-[1.03] font-medium tracking-[-0.042em] text-site-cream">
+            <h1
+              id={POST_TITLE_ID}
+              className="mt-9 max-w-[19ch] text-[clamp(38px,5.6vw,68px)] leading-[1.03] font-medium tracking-[-0.042em] text-site-cream"
+            >
               {post.title}
             </h1>
           </div>
         </div>
 
-        <article className="mx-auto max-w-[1120px] px-[clamp(20px,4vw,48px)]">
+        <article
+          aria-labelledby={POST_TITLE_ID}
+          className="mx-auto max-w-[1120px] px-[clamp(20px,4vw,48px)]"
+        >
           <div className="max-w-[720px]">
             {/* Lifted into the dark block above, so the standfirst is the seam
                 between the title and the body rather than the top of the body.

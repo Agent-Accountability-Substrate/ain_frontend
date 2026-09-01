@@ -68,6 +68,17 @@ If mail is unconfigured, or the send fails, the request is appended to
 {"name":"…","email":"…","organisation":"…","role":"…","workflow":"…","receivedAt":"2026-09-01T09:12:44.031Z"}
 ```
 
+## Publishing a blog post
+
+Add an `.mdx` file to `src/domains/marketing/posts/`. That is the whole
+registration step — the route, the sitemap entry, the index card and the share
+card all follow from the file being there.
+
+The writing constraints and the `meta` export it needs are in
+[`src/domains/marketing/posts/README.md`](src/domains/marketing/posts/README.md).
+Read it before writing one: a few things markdown offers are not wired up, and
+they fail by rendering wrong rather than by failing the build.
+
 ## Authentication
 
 Login is **Auth0 via Auth.js** (generic OIDC — no provider-specific SDK, so the IdP stays swappable; see the `ain_docs` `DECISIONS.md` 2026-07-03 auth entry). Configure a local `.env.local` from `.env.example`:

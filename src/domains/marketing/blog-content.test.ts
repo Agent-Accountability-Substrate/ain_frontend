@@ -74,8 +74,10 @@ describe("blog content", () => {
 
   it("writes the prose without em dashes", async () => {
     // The house rule every rendered page is asserted against. Rendered
-    // rather than read off a field, because the body is markdown.
-    for (const post of await listPosts()) {
+    // rather than read off a field, because the body is markdown, and pulled
+    // through `findPost` because the list carries metadata alone.
+    for (const summary of await listPosts()) {
+      const post = (await findPost(summary.slug))!;
       const { container } = render(createElement(post.Content));
 
       expect(container.textContent).not.toContain("—");
@@ -88,7 +90,8 @@ describe("blog content", () => {
   it("gives every post a body with something in it", async () => {
     // A post whose markdown failed to compile still satisfies the schema,
     // because the schema only sees `meta`.
-    for (const post of await listPosts()) {
+    for (const summary of await listPosts()) {
+      const post = (await findPost(summary.slug))!;
       const { container } = render(createElement(post.Content));
 
       expect(container.querySelectorAll("h2").length).toBeGreaterThan(0);

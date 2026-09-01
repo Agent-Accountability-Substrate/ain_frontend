@@ -152,6 +152,22 @@ const components: MDXComponents = {
       {...props}
     />
   ),
+  // Markdown carries no dimensions, so `next/image` is not available without
+  // an author supplying them per image. A plain tag that cannot overflow the
+  // reading column is the honest floor: unstyled it runs past 720px and forces
+  // the whole page to scroll sideways on a phone. `h-auto` holds the ratio
+  // against that width, and `loading="lazy"` keeps a figure below the fold off
+  // the critical path. `alt` first, so a post's own alt text replaces it and
+  // the a11y rule can still see one.
+  img: (props) => (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      alt=""
+      className="mt-8 h-auto max-w-full rounded-[10px]"
+      loading="lazy"
+      {...props}
+    />
+  ),
   hr: () => <hr className="my-14 border-0 border-t border-site-rule" />,
 };
 
