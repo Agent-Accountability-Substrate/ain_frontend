@@ -1,73 +1,108 @@
 import type { MDXContent } from "mdx/types";
-import { z } from "zod";
-
-import Accountability, {
-  meta as accountability,
-} from "@/domains/marketing/posts/the-accountability-gap-in-autonomous-ai.mdx";
 
 /**
- * Every published post, as a registry over the `.mdx` files beside this one.
+ * The published posts, which are the `.mdx` files in `posts/`.
  *
- * The prose lives in markdown so a post can carry a list, a link or a quote
- * without being escaped into a TypeScript string literal. What markdown cannot
- * carry is the data the rest of the site reads off a post: the index needs a
- * title and a summary, the sitemap needs a slug and a date, and neither should
- * have to parse a document to find them. So each file exports a `meta` const
- * and this module is the one place that knows which files exist.
+ * A file in that directory is a post. `import.meta.glob` hands the bundler the
+ * pattern rather than a list, so the directory is the registry: adding a file
+ * adds a post, and the dev server picks one up as it would any other edit.
  *
- * One `import` per post. That is the cost of not reading the filesystem at
- * build time, and it buys a list the compiler and the tests can both see.
+ * Nothing reads the filesystem at runtime — the glob is resolved at build time
+ * — so this works the same wherever a route runs.
+ *
+ * See `posts/README.md` for how to publish one.
  */
 
+/** The shape of a filename that can be a post, and so of a servable slug. */
+const SLUG = /^[a-z0-9]+(-[a-z0-9]+)*$/;
+
+type PostModule = { readonly meta: unknown; readonly default: MDXContent };
+
+// Typed as `() => Promise<unknown>` by Next, which is the honest type for a
+// glob: nothing has checked what the files export. `meta` stays `unknown`
+// past the cast and is only read through `BlogPostMeta`, which the schema
+// test enforces.
+const POSTS = import.meta.glob("./posts/*.mdx") as Record<
+  string,
+  () => Promise<PostModule>
+>;
+
 /**
- * `tsc` cannot look inside an `.mdx` file, so a misspelled key or a missing
- * date would otherwise surface as `undefined` rendered into the page. Parsed
- * at module load, which fails the build rather than shipping a blank heading.
+ * What every post's `meta` export carries. `slug` is not among them: it is the
+ * filename.
+ *
+ * `tsc` cannot look inside an `.mdx` file — `src/types/mdx.d.ts` types the
+ * export as `unknown` — so this shape is asserted here and checked in
+ * `blog-content.test.ts`, which parses every published post against a Zod
+ * schema. Keeping the schema there leaves the Zod runtime out of the routes.
  */
-const metaSchema = z.object({
-  /** The URL segment. Lower-case, hyphenated, never changed once shared. */
-  slug: z.string().regex(/^[a-z0-9]+(-[a-z0-9]+)*$/),
-  title: z.string().min(1),
+export type BlogPostMeta = {
+  readonly title: string;
   /** One sentence, shown on the index and used as the page description. */
-  summary: z.string().min(1),
+  readonly summary: string;
   /** ISO 8601. Rendered through `formatPublishedDate`, never printed raw. */
-  publishedAt: z.iso.date(),
+  readonly publishedAt: string;
   /** The standfirst, shown above the body on the post itself. */
-  standfirst: z.string().min(1),
-});
+  readonly standfirst: string;
+};
 
-export type BlogPost = z.infer<typeof metaSchema> & {
+export type BlogPost = BlogPostMeta & {
+  /** The filename, which is the URL segment. Permanent once shared. */
+  readonly slug: string;
   /** The compiled markdown body. */
   readonly Content: MDXContent;
 };
 
-function post(meta: unknown, Content: MDXContent): BlogPost {
-  return { ...metaSchema.parse(meta), Content };
+/** `./posts/a-slug.mdx` -> `a-slug`. */
+function slugOf(path: string): string {
+  return path.slice("./posts/".length, -".mdx".length);
 }
 
 /**
- * Newest first, by hand.
+ * The slugs behind `paths`, refusing any filename that cannot be a URL
+ * segment — otherwise the post is published at an address nothing links to
+ * correctly, and nothing says why.
  *
- * Ordered in the source rather than sorted here: with a list this short a
- * comparator is a function no test can reach, and an unreachable comparator is
- * worse than an invariant a test asserts. `blog-content.test.ts` fails if this
- * stops being descending.
+ * Exported for its test: the glob is fixed when the bundle is built, so a test
+ * cannot put a badly named file into it.
  */
-export const BLOG_POSTS: readonly BlogPost[] = [
-  post(accountability, Accountability),
-];
+export function slugsFrom(paths: readonly string[]): string[] {
+  const slugs = paths.map(slugOf);
+  const unusable = slugs.filter((slug) => !SLUG.test(slug));
+
+  if (unusable.length > 0) {
+    throw new Error(
+      `Post filenames must be lower-case and hyphenated: ${unusable.join(", ")}`,
+    );
+  }
+  return slugs;
+}
 
 /** The post at `slug`, or `undefined` when nothing is published there. */
-export function findPost(slug: string): BlogPost | undefined {
-  return BLOG_POSTS.find((entry) => entry.slug === slug);
+export async function findPost(slug: string): Promise<BlogPost | undefined> {
+  // An exact lookup in a map the bundler built, so a slug off the URL selects
+  // a post or nothing at all; it never reaches a module specifier.
+  const load = POSTS[`./posts/${slug}.mdx`];
+  if (!load) return undefined;
+
+  const post = await load();
+  return { ...(post.meta as BlogPostMeta), slug, Content: post.default };
+}
+
+/** Every published post, newest first. */
+export async function listPosts(): Promise<BlogPost[]> {
+  const slugs = slugsFrom(Object.keys(POSTS));
+
+  const posts = (await Promise.all(slugs.map(findPost))).filter(
+    (post): post is BlogPost => post !== undefined,
+  );
+
+  return posts.sort((a, b) => b.publishedAt.localeCompare(a.publishedAt));
 }
 
 /**
- * The publication date as a reader sees it.
- *
- * Locale and time zone are both pinned. Left to the host, `31 August` renders
- * as `30 August` anywhere west of UTC and the server and the browser can
- * disagree about the same post.
+ * Locale and time zone are pinned: left to the host, `31 August` renders as
+ * `30 August` anywhere west of UTC and the server and browser disagree.
  */
 export function formatPublishedDate(publishedAt: string): string {
   return new Date(publishedAt).toLocaleDateString("en-GB", {

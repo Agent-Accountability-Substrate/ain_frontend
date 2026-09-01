@@ -12,28 +12,22 @@ const METADATA_FILE =
   /^(favicon\.ico|icon|apple-icon|opengraph-image|twitter-image|robots|sitemap|manifest)\d*(\.[a-z0-9]+)?$/;
 
 /**
- * The path a metadata file is actually served at.
+ * The path a metadata file is actually served at, asked of Next rather than
+ * worked out here. The mapping is not the tidy one it looks like: `robots.tsx`
+ * answers at `/robots.txt`, `sitemap.ts` at `/sitemap.xml`, and a file under a
+ * `(group)` carries a hash of its parent path in its name. Re-deriving it here
+ * is how a guard comes to check a path nothing serves.
  *
- * Asked of Next rather than worked out here. The mapping is not the tidy one
- * it looks like — `robots.tsx` is served at `/robots.txt`, and a file under a
- * `(group)` or an `@slot` carries a hash of its parent path in its name, so
- * `(marketing)/opengraph-image.tsx` answers at `/opengraph-image-pwu6ef`, and
- * `sitemap.ts` answers at `/sitemap.xml` though its page path is `/sitemap`.
- * Re-deriving that here is how a guard comes to check a path nothing serves:
- * it would go green on `/opengraph-image` while every social scraper was being
- * redirected to Auth0 — the exact failure this file exists to catch. The
- * import reaches into Next's internals deliberately; if it moves, this fails
- * loudly at the import rather than quietly at the assertion.
+ * The import reaches into Next's internals deliberately: if it moves, this
+ * fails loudly at the import rather than quietly at the assertion.
  */
 function routeFor(file: AppFile): string {
   const parent = file.dir === "/" ? "" : file.dir;
   // A code file generates its route without an extension — `opengraph-image.tsx`
   // is served at `/opengraph-image`. An asset keeps its own.
   const base = file.name.replace(/\.(tsx?|jsx?|mjs)$/, "");
-  // Two steps, because Next splits the mapping across two functions and only
-  // the second knows a sitemap is served with an `.xml` extension. Stopping at
-  // the first produced `/sitemap`, which nothing serves, so the guard passed
-  // while `/sitemap.xml` sat behind the session gate.
+  // Two steps: Next splits the mapping across two functions and only the
+  // second knows a sitemap is served with an `.xml` extension.
   const route = normalizeMetadataPageToRoute(
     normalizeMetadataRoute(`${parent}/${base}`),
     false,
@@ -71,9 +65,8 @@ describe("isPublicPath", () => {
   });
 
   it("lets every blog post through, not just the index", () => {
-    // The set above is exact, so a dynamic `/blog/<slug>` falls past it to
-    // deny-by-default: every post, and every crawler that found one, sent to
-    // Auth0 while `/blog` itself looked fine.
+    // The page list is exact, so a dynamic `/blog/<slug>` falls past it to
+    // deny-by-default unless the prefix arm catches it.
     expect(isPublicPath("/blog/the-accountability-gap-in-autonomous-ai")).toBe(
       true,
     );

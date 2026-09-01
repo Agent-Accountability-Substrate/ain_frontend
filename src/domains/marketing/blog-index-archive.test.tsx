@@ -12,7 +12,7 @@ import { describe, expect, it, vi } from "vitest";
 vi.mock("@/domains/marketing/blog-content", () => ({
   BLOG_TITLE: "Insights",
   formatPublishedDate: (iso: string) => `formatted:${iso}`,
-  BLOG_POSTS: [
+  listPosts: async () => [
     {
       slug: "newest",
       title: "The newest piece",
@@ -43,8 +43,8 @@ vi.mock("@/domains/marketing/blog-content", () => ({
 const { BlogIndex } = await import("@/domains/marketing/blog-index");
 
 describe("BlogIndex with an archive", () => {
-  it("leads with the newest and lists the rest", () => {
-    render(<BlogIndex />);
+  it("leads with the newest and lists the rest", async () => {
+    render(await BlogIndex());
 
     const lead = screen.getByText("Latest").closest("a")!;
     expect(lead.getAttribute("href")).toBe("/blog/newest");
@@ -57,8 +57,8 @@ describe("BlogIndex with an archive", () => {
     ).toEqual(["/blog/middle", "/blog/oldest"]);
   });
 
-  it("keeps the lead out of the list it leads", () => {
-    render(<BlogIndex />);
+  it("keeps the lead out of the list it leads", async () => {
+    render(await BlogIndex());
     const earlier = screen.getByRole("list", { name: "Earlier posts" });
 
     // Rendering the newest post twice is the obvious way to get this wrong.
@@ -66,8 +66,8 @@ describe("BlogIndex with an archive", () => {
     expect(within(earlier).getAllByRole("listitem").length).toBe(2);
   });
 
-  it("dates every row, not just the lead", () => {
-    const { container } = render(<BlogIndex />);
+  it("dates every row, not just the lead", async () => {
+    const { container } = render(await BlogIndex());
 
     expect(
       Array.from(container.querySelectorAll("time")).map((node) =>
@@ -76,8 +76,8 @@ describe("BlogIndex with an archive", () => {
     ).toEqual(["2026-08-31", "2026-07-04", "2026-06-01"]);
   });
 
-  it("summarises each row so the list reads without opening one", () => {
-    render(<BlogIndex />);
+  it("summarises each row so the list reads without opening one", async () => {
+    render(await BlogIndex());
     const earlier = screen.getByRole("list", { name: "Earlier posts" });
 
     expect(within(earlier).getByText("What a row shows.")).toBeDefined();

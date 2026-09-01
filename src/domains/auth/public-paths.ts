@@ -8,40 +8,53 @@
  * Deny-by-default: everything not named here needs a session.
  */
 
-/** The addresses people type for a login. All four forward to Auth0. */
-const AUTH_ENTRY_PATHS = new Set(["/signin", "/login", "/signup", "/register"]);
-const PUBLIC_INFORMATION_PATHS = new Set([
+/**
+ * The addresses people type for a login. All four forward to Auth0, and
+ * `robots.ts` reads them from here so the two cannot disagree.
+ */
+export const AUTH_ENTRY_PATHS = new Set([
+  "/signin",
+  "/login",
+  "/signup",
+  "/register",
+]);
+
+/**
+ * Every page a stranger can reach by typing its address. `sitemap.ts` submits
+ * exactly this list — the set a crawler may index and the set the gate lets
+ * through are the same set. An array, so the sitemap's order is this order.
+ *
+ * Posts are not here: they are dynamic, matched by prefix below, and the
+ * sitemap reads them off `BLOG_POSTS`.
+ */
+export const PUBLIC_PAGE_PATHS = [
+  "/",
   "/about",
   "/blog",
   "/cookies",
   "/privacy",
   "/terms",
-]);
+] as const;
+
+const PUBLIC_PAGE_PATH_SET: ReadonlySet<string> = new Set(PUBLIC_PAGE_PATHS);
 
 /**
- * The blog's post routes, which are dynamic and so cannot be enumerated here.
- *
- * Matched as a prefix rather than added to the set above, because the set is
- * exact and `/blog/<slug>` would fall through it to deny-by-default: every
- * post, and every crawler that found one, redirected to Auth0 while `/blog`
- * itself looked fine. The trailing slash is load bearing. A bare `startsWith`
- * would also open anything merely beginning with those five characters.
+ * Post routes are dynamic, so they are matched by prefix rather than listed.
+ * The trailing slash is load bearing: a bare `startsWith("/blog")` would also
+ * open anything merely beginning with those five characters.
  */
 function isBlogPost(pathname: string): boolean {
   return pathname.startsWith("/blog/");
 }
 
 /**
- * Next's file-based metadata routes, which are generated from files beside
- * `app/layout.tsx` rather than written as pages.
- *
- * These must be public or they are worse than missing. A favicon behind the
- * session gate answers a redirect, and `opengraph-image` behind it sends every
- * social scraper — X, Slack, LinkedIn — to Auth0, so the share card renders
- * nothing.
+ * Next's file-based metadata routes, generated from files beside
+ * `app/layout.tsx` rather than written as pages. These must be public or they
+ * are worse than missing: `opengraph-image` behind the gate sends every social
+ * scraper to Auth0 and the share card renders nothing.
  *
  * `public-paths.test.ts` reads `src/app` and fails if a metadata file is added
- * that this does not cover, so the list cannot fall behind the directory.
+ * that this does not cover.
  */
 const METADATA_ROUTES = new Set([
   "/favicon.ico",
@@ -55,16 +68,12 @@ const METADATA_ROUTES = new Set([
 ]);
 
 /**
- * Next's disambiguating suffix on a metadata file that sits under a `(group)`
- * or an `@slot`: a short hash of the parent path, appended to the name and
- * before any extension — `/opengraph-image` is served at
- * `/opengraph-image-pwu6ef`, `/icon.svg` at `/icon-pwu6ef.svg`.
+ * Next's disambiguating suffix on a metadata file under a `(group)` or
+ * `@slot`: a hash of the parent path before any extension, so
+ * `/opengraph-image` is served at `/opengraph-image-pwu6ef`.
  *
- * Stripped rather than enumerated, because the hash is derived from the
- * group's name: listing it would mean re-deriving every entry the day someone
- * renames a route group, and the list falling silently out of date if they
- * forget. The paths it widens are metadata names that exist only as metadata
- * routes; anything else still answers 404, session or no session.
+ * Stripped rather than enumerated, since the hash changes with the group's
+ * name. It only widens metadata names, which exist only as metadata routes.
  */
 const GROUP_HASH = /-[0-9a-z]{6}(?=$|\.)/;
 
@@ -72,8 +81,8 @@ export function isPublicPath(pathname: string): boolean {
   // Auth.js's own routes must stay public or sign-in loops.
   if (pathname.startsWith("/api/auth")) return true;
   if (AUTH_ENTRY_PATHS.has(pathname)) return true;
-  if (PUBLIC_INFORMATION_PATHS.has(pathname)) return true;
+  if (PUBLIC_PAGE_PATH_SET.has(pathname)) return true;
   if (isBlogPost(pathname)) return true;
   if (METADATA_ROUTES.has(pathname.replace(GROUP_HASH, ""))) return true;
-  return pathname === "/";
+  return false;
 }

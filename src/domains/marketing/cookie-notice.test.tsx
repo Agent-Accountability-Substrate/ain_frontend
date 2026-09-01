@@ -1,13 +1,22 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { CookieNotice, resetCookieNotice } from "@/lib/cookie-notice";
+import {
+  CookieNotice,
+  resetCookieNotice,
+} from "@/domains/marketing/cookie-notice";
 
 const KEY = "subra.cookie-notice.v1";
+
+// `vitest.setup.ts` pins `usePathname` to "/" for every component test; these
+// cases need to move it.
+const pathname = vi.hoisted(() => ({ current: "/" }));
+vi.mock("next/navigation", () => ({ usePathname: () => pathname.current }));
 
 describe("CookieNotice", () => {
   beforeEach(() => {
     window.localStorage.clear();
+    pathname.current = "/";
     // Module state, so it outlives a test unless cleared.
     resetCookieNotice();
   });
@@ -54,6 +63,48 @@ describe("CookieNotice", () => {
     // notice twice is a smaller failure than the page not rendering.
     render(<CookieNotice />);
     expect(screen.getByRole("region", { name: "Cookie notice" })).toBeDefined();
+  });
+
+  it("stays off the pages behind the session gate", () => {
+    // Fixed above a shell that cannot scroll, so on `/onboarding/identity` —
+    // the first screen after sign-in, reached with empty storage by
+    // definition — it would cover the only way out of the page.
+    for (const path of [
+      "/onboarding/identity",
+      "/dashboard",
+      "/agents/new",
+      "/account",
+      "/operations",
+      "/organisations",
+    ]) {
+      pathname.current = path;
+      const { unmount } = render(<CookieNotice />);
+
+      expect(
+        screen.queryByRole("region", { name: "Cookie notice" }),
+      ).toBeNull();
+      unmount();
+    }
+  });
+
+  it("shows on the public pages a stranger can reach", () => {
+    for (const path of [
+      "/",
+      "/about",
+      "/blog",
+      "/blog/the-accountability-gap-in-autonomous-ai",
+      "/cookies",
+      "/privacy",
+      "/terms",
+    ]) {
+      pathname.current = path;
+      const { unmount } = render(<CookieNotice />);
+
+      expect(
+        screen.getByRole("region", { name: "Cookie notice" }),
+      ).toBeDefined();
+      unmount();
+    }
   });
 
   it("dismisses for this view even when storage cannot be written", () => {

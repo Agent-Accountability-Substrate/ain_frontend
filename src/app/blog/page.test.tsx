@@ -8,7 +8,7 @@ const auth = vi.fn();
 vi.mock("@/auth", () => ({ auth: () => auth() }));
 
 describe("BlogPage", () => {
-  it("is canonical to itself and describes the section", () => {
+  it("is canonical to itself and describes the section", async () => {
     expect(metadata).toMatchObject({
       title: BLOG_TITLE,
       description: BLOG_DESCRIPTION,
@@ -17,16 +17,16 @@ describe("BlogPage", () => {
     });
   });
 
-  it("reads no session and no tenant data", () => {
-    render(<BlogPage />);
+  it("reads no session and no tenant data", async () => {
+    render(await BlogPage());
 
     // Public like the landing page, and for the same reason: it renders
     // identically for a signed-in visitor and a stranger.
     expect(auth).not.toHaveBeenCalled();
   });
 
-  it("has exactly one h1", () => {
-    render(<BlogPage />);
+  it("has exactly one h1", async () => {
+    render(await BlogPage());
 
     expect(screen.getAllByRole("heading", { level: 1 }).length).toBe(1);
   });

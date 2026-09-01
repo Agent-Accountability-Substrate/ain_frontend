@@ -7,14 +7,23 @@ import { defineConfig } from "vitest/config";
 export default defineConfig({
   plugins: [
     // Ahead of `react()`, so `.mdx` is compiled to JSX before the React plugin
-    // is asked to transform it. Vitest does not go through the Next loader, so
-    // without this every post import fails to resolve.
+    // transforms it. Vitest does not go through the Next loader.
     //
-    // This compiles the same files the build does, but it does not inject
-    // `src/mdx-components.tsx` the way `@next/mdx` does: a post rendered in a
-    // test emits bare `<h2>` and `<p>`. Tests assert the semantics; the class
-    // map has its own test.
-    { enforce: "pre", ...mdx() },
+    // `providerImportSource` is what `@next/mdx` sets for the build; without it
+    // a post renders bare tags in tests and the class map could be
+    // disconnected, or deleted, with the suite still green.
+    //
+    // `format` pins which extensions count as MDX. Left unset the plugin also
+    // claims `.md` and five more, while the build matches `/\.mdx$/` alone.
+    {
+      enforce: "pre",
+      ...mdx({
+        format: "mdx",
+        providerImportSource: fileURLToPath(
+          new URL("./src/mdx-components.tsx", import.meta.url),
+        ),
+      }),
+    },
     react(),
     tsconfigPaths(),
   ],

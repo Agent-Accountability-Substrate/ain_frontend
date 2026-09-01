@@ -1,11 +1,8 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
-import Page, {
-  generateMetadata,
-  generateStaticParams,
-} from "@/app/blog/[slug]/page";
-import { BLOG_POSTS } from "@/domains/marketing/blog-content";
+import Page, { generateMetadata } from "@/app/blog/[slug]/page";
+import { listPosts } from "@/domains/marketing/blog-content";
 
 const notFound = vi.hoisted(() =>
   vi.fn(() => {
@@ -19,16 +16,18 @@ vi.mock("next/navigation", () => ({ notFound }));
 const auth = vi.fn();
 vi.mock("@/auth", () => ({ auth: () => auth() }));
 
-// `blog-content.test.ts` holds the list non-empty.
-const post = BLOG_POSTS[0]!;
+// `blog-content.test.ts` holds the directory non-empty.
+const post = (await listPosts())[0]!;
 
 describe("the blog post route", () => {
-  it("prerenders every published post", () => {
-    // Without this the posts are built on demand, so the first visitor to each
-    // pays for the render and a build failure in one surfaces in production.
-    expect(generateStaticParams()).toEqual(
-      BLOG_POSTS.map(({ slug }) => ({ slug })),
-    );
+  it("refuses a slug that is not one", async () => {
+    // The slug reaches a module specifier, so its shape is checked before the
+    // lookup rather than left to whatever the lookup happens to resolve.
+    for (const slug of ["../probe", "a/b", "Upper", "trailing-", ""]) {
+      await expect(Page({ params: Promise.resolve({ slug }) })).rejects.toThrow(
+        "NEXT_NOT_FOUND",
+      );
+    }
   });
 
   it("renders the post at its slug", async () => {

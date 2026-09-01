@@ -1,9 +1,6 @@
-import { ArrowLeft } from "lucide-react";
-import Link from "next/link";
-
 import { PARTNER_EMAIL } from "@/domains/marketing/landing-content";
+import { SiteBackHeader } from "@/domains/marketing/site-back-header";
 import { SiteFooter } from "@/domains/marketing/site-footer";
-import { SiteWordmark } from "@/lib/brand/site-mark";
 
 export type InformationSection = {
   title: string;
@@ -30,20 +27,7 @@ export function PublicInformationPage({
   return (
     <>
       <main className="min-h-screen bg-site-paper font-site-sans text-site-ink">
-        <header className="border-b border-site-rule">
-          <div className="mx-auto flex max-w-[1120px] items-center justify-between gap-6 px-[clamp(20px,4vw,48px)] py-6">
-            <Link href="/" aria-label="Subra home">
-              <SiteWordmark />
-            </Link>
-            <Link
-              href="/"
-              className="inline-flex items-center gap-2 text-[14px] text-site-ink-soft hover:text-site-accent"
-            >
-              <ArrowLeft aria-hidden="true" className="h-4 w-4" />
-              Return to Subra
-            </Link>
-          </div>
-        </header>
+        <SiteBackHeader backHref="/" backLabel="Return to Subra" />
 
         <article className="mx-auto max-w-[1120px] px-[clamp(20px,4vw,48px)] py-[clamp(64px,9vw,120px)]">
           <div className="grid gap-[clamp(48px,8vw,112px)] [grid-template-columns:minmax(0,0.72fr)_minmax(0,1.28fr)] max-[820px]:grid-cols-1">

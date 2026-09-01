@@ -1,20 +1,18 @@
 import createMDX from "@next/mdx";
 import type { NextConfig } from "next";
 
-const nextConfig: NextConfig = {
-  // `.mdx` alongside the TypeScript entry points. Blog posts are imported
-  // rather than routed, so nothing is served from an `.mdx` file directly, but
-  // the loader is only wired up for extensions named here.
-  pageExtensions: ["ts", "tsx", "mdx"],
-};
+const nextConfig: NextConfig = {/* config options here */};
 
 /**
- * No remark or rehype plugins, deliberately.
+ * No remark or rehype plugins. Plugin options cross into the bundler as
+ * serializable data, so a plugin must be named as a string and take
+ * serializable options — frontmatter would need one, an exported `meta` const
+ * needs none, which is why posts carry their metadata that way.
  *
- * Turbopack compiles MDX in Rust and cannot receive a JavaScript function, so
- * a plugin has to be named as a string and take serializable options only.
- * Frontmatter would need one; an exported `meta` const needs none, which is
- * why posts carry their metadata that way.
+ * `pageExtensions` is left at Next's default. The MDX loader is wired from
+ * this plugin's `extension` option and never reads that list, and narrowing it
+ * would drop `js`/`jsx` from the resolver that finds `proxy`, `middleware` and
+ * `instrumentation` — where a missing match is silent.
  */
 const withMDX = createMDX({});
 

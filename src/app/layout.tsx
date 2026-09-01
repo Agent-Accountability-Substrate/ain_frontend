@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 import { IBM_Plex_Mono, Inter, Poppins } from "next/font/google";
 
+import { CookieNotice } from "@/domains/marketing/cookie-notice";
 import { SITE_ORIGIN } from "@/lib/brand/site-origin";
-import { CookieNotice } from "@/lib/cookie-notice";
 
 import "./globals.css";
 

@@ -38,6 +38,36 @@ pnpm test       # Vitest, 90% coverage thresholds enforced
 pnpm build      # Next.js production build
 ```
 
+## Where access requests go
+
+A private-preview request is submitted from two places — the landing page's
+`#request` form and the form at the end of a blog post — and both call the same
+server action, `src/domains/marketing/access-request.ts`.
+
+### The normal path
+
+The action mails the request through Resend. Three variables configure it:
+
+| Variable              | Meaning                                |
+| --------------------- | -------------------------------------- |
+| `RESEND_API_KEY`      | Resend API key                         |
+| `ACCESS_REQUEST_TO`   | Recipients, comma-separated            |
+| `ACCESS_REQUEST_FROM` | Sender, on a domain verified in Resend |
+
+These are read per request rather than validated at boot. `server-env.ts` fails
+the process closed when a variable is missing, which is right for auth and wrong
+here: an unset key would take the whole marketing site down, sign-in included,
+because a contact form was not configured.
+
+### The fallback — temporary
+
+If mail is unconfigured, or the send fails, the request is appended to
+`var/access-requests.jsonl` (gitignored), one JSON object per line:
+
+```text
+{"name":"…","email":"…","organisation":"…","role":"…","workflow":"…","receivedAt":"2026-09-01T09:12:44.031Z"}
+```
+
 ## Authentication
 
 Login is **Auth0 via Auth.js** (generic OIDC — no provider-specific SDK, so the IdP stays swappable; see the `ain_docs` `DECISIONS.md` 2026-07-03 auth entry). Configure a local `.env.local` from `.env.example`:

@@ -1,11 +1,11 @@
 import { render, screen, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
-import { BLOG_POSTS } from "@/domains/marketing/blog-content";
+import { listPosts } from "@/domains/marketing/blog-content";
 import { BlogPostPage } from "@/domains/marketing/blog-post";
 
 // `blog-content.test.ts` holds the list non-empty.
-const post = BLOG_POSTS[0]!;
+const post = (await listPosts())[0]!;
 
 describe("BlogPostPage", () => {
   it("renders the post as a standalone public page", () => {
@@ -26,10 +26,8 @@ describe("BlogPostPage", () => {
     const { container } = render(<BlogPostPage post={post} />);
     const article = container.querySelector("article")!;
 
-    // The markdown's own headings, under one h1, so the post has an outline a
-    // reader and a crawler can both follow. Asserted against the text rather
-    // than a count, because a body that failed to compile would still be an
-    // article with an h1 in it.
+    // Asserted against the text rather than a count: a body that failed to
+    // compile would still be an article with an h1 in it.
     expect(
       within(article)
         .getAllByRole("heading", { level: 2 })
@@ -45,12 +43,37 @@ describe("BlogPostPage", () => {
     ]);
   });
 
+  it("renders the body through the site's own component map", () => {
+    const { container } = render(<BlogPostPage post={post} />);
+    const article = container.querySelector("article")!;
+
+    // The map reaches a post through `providerImportSource`, which the build
+    // sets and nothing in the page passes by hand. The fixture is rendered
+    // with the map as a prop, so only a real post exercises that wiring.
+    // `h2 + p` is the body's first paragraph, not the standfirst, which the
+    // page styles directly and would pass whether the map ran or not.
+    expect(article.querySelector("h2")!.className).toContain("text-site-ink");
+    expect(article.querySelector("h2 + p")!.className).toContain("text-[19px]");
+  });
+
+  it("anchors every section, uniquely", () => {
+    const { container } = render(<BlogPostPage post={post} />);
+    const ids = Array.from(
+      container.querySelectorAll("article h2, article h3"),
+    ).map((node) => node.id);
+
+    // A slug is derived from the heading's text, so two headings differing
+    // only in punctuation collide and the anchor always lands on the first.
+    expect(ids.length).toBeGreaterThan(0);
+    for (const id of ids) expect(id).not.toBe("");
+    expect(new Set(ids).size).toBe(ids.length);
+  });
+
   it("numbers nothing", () => {
     render(<BlogPostPage post={post} />);
 
-    // The legal notices index their sections because somebody cites section
-    // four of a policy. Nobody cites section four of an essay, and carrying
-    // the numbering over was the tell that the wrong shell was being reused.
+    // The legal notices number their sections so a clause can be cited.
+    // Nobody cites section four of an essay.
     for (const heading of screen.getAllByRole("heading", { level: 2 })) {
       expect(heading.textContent).not.toMatch(/^\d/);
     }
@@ -76,12 +99,18 @@ describe("BlogPostPage", () => {
     }
   });
 
-  it("closes on the one form the rest of the site points at", () => {
+  it("asks for access where the reader finished", () => {
     render(<BlogPostPage post={post} />);
 
-    expect(
-      screen.getByRole("link", { name: "Request access" }).getAttribute("href"),
-    ).toBe("/#request");
+    // The same form as the landing page, so a request from here carries the
+    // same fields and is not a shape the preview team has to chase.
+    const form = screen.getByRole("form", { name: "Private preview request" });
+    for (const label of ["Name", "Work email", "Organisation", "Role"]) {
+      expect(
+        within(form).getByLabelText(label, { exact: false }),
+      ).toBeDefined();
+    }
+
     expect(
       screen
         .getAllByRole("link", { name: "partner@subrahq.com" })[0]!

@@ -1,47 +1,31 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useSyncExternalStore } from "react";
 
+import { isPublicPath } from "@/domains/auth/public-paths";
+
 /**
- * The cookie notice.
+ * A notice, not a consent gate: the site sets no optional cookies, and PECR
+ * exempts strictly necessary ones from consent while still expecting the
+ * visitor to be told. If an analytics tag is ever added this is the wrong
+ * shape and should be replaced by real consent, not extended.
  *
- * A notice, not a consent gate, because there is nothing here to consent to:
- * the public pages set no analytics, advertising or personalisation cookies,
- * and the only cookies the site writes are the strictly necessary ones the
- * sign-in flow needs. UK PECR and the ePrivacy Directive exempt those from
- * consent while still expecting the visitor to be told, so this informs and
- * gets out of the way. The day an analytics tag is added, this component is
- * the wrong shape and should be replaced by real consent, not extended.
- *
- * Cross-cutting rather than a marketing component: it is mounted once in the
- * root layout so a public page added later cannot forget it, and `marketing/`
- * is a leaf that the authenticated shell cannot import from.
+ * Dismissal lives in `localStorage` rather than a cookie — it is a per-visitor
+ * UI preference, not application state, and a cookie would be sent on every
+ * request to be read once in the browser.
  */
 
 /** Bumped only if the notice's substance changes and should be shown again. */
 const STORAGE_KEY = "subra.cookie-notice.v1";
 
-/**
- * Dismissal is remembered in `localStorage` rather than a cookie: a cookie
- * would be sent on every request to be read once in the browser, and writing
- * one to say we barely use cookies invites the obvious question. It is a
- * per-visitor UI preference, not application state, which is what the
- * no-browser-storage rule is about.
- *
- * Read through `useSyncExternalStore` rather than an effect that calls
- * `setState`, which is what React reads browser state with and what the
- * compiler's rules require. A boolean is compared by identity, so reading
- * storage on each call is stable and needs no cache to keep React still.
- */
 const listeners = new Set<() => void>();
 
 /**
- * Dismissal for this page view, when the browser will not keep it.
- *
- * Without it, a visitor whose storage is blocked clicks "Got it" and the
- * notice stays exactly where it was, because the snapshot is read straight
- * back out of the storage that just refused the write.
+ * Dismissal for this page view, when the browser will not keep it. Without it,
+ * a visitor whose storage is blocked clicks "Got it" and the notice stays put,
+ * because the snapshot is read back out of the storage that refused the write.
  */
 let dismissedThisView = false;
 
@@ -50,18 +34,16 @@ function getSnapshot(): boolean {
   try {
     return window.localStorage.getItem(STORAGE_KEY) === "dismissed";
   } catch {
-    // Private mode, blocked site data, a browser that throws on access. The
-    // notice showing twice is a smaller failure than the page not rendering.
+    // Private mode or blocked site data. Showing the notice twice is a smaller
+    // failure than the page not rendering.
     return false;
   }
 }
 
 /**
- * Dismissed, as far as the server is concerned.
- *
- * The prerendered HTML is shared by everyone, including the visitor who
- * dismissed this months ago, so it must not contain the notice. The client
- * snapshot puts it back for whoever has not.
+ * Prerendered HTML is shared by everyone, including whoever dismissed this
+ * months ago, so it must not contain the notice. The client snapshot puts it
+ * back for whoever has not.
  */
 function getServerSnapshot(): boolean {
   return true;
@@ -95,6 +77,14 @@ export function CookieNotice() {
     getSnapshot,
     getServerSnapshot,
   );
+  const pathname = usePathname();
+
+  // The public site only, read off the same predicate as the session gate. The
+  // bar is fixed at `z-50` over a shell that is `overflow: hidden` and ends in
+  // its own footer row, so on `/onboarding/identity` — the first screen after
+  // any sign-in, reached with empty storage by definition — it would cover the
+  // one control that leads out of the page, with nothing to scroll.
+  if (!isPublicPath(pathname)) return null;
 
   if (dismissed) return null;
 

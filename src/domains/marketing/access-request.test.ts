@@ -1,3 +1,6 @@
+import { mkdtemp, readFile, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const { send, forwardedFor } = vi.hoisted(() => ({
@@ -50,7 +53,15 @@ const IDLE = { status: "idle" } as const;
 /** Every line the logger emitted during a test, parsed back from JSON. */
 let logged: Record<string, unknown>[] = [];
 
-beforeEach(() => {
+/** The project root the fallback resolves `var/` against. */
+const REPO_ROOT = process.cwd();
+let root: string;
+
+beforeEach(async () => {
+  // The fallback writes to `var/` under the working directory. Moved to a
+  // temporary one so the suite never writes a request into the repository.
+  root = await mkdtemp(join(tmpdir(), "subra-access-"));
+  process.chdir(root);
   logged = [];
   // The counters are module state, so they outlive a test unless cleared.
   resetRateLimits();
@@ -70,9 +81,23 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  process.chdir(REPO_ROOT);
   vi.unstubAllEnvs();
   vi.restoreAllMocks();
 });
+
+/** Blocks the fallback, so the paths that end in a user-facing error can run. */
+async function breakFallback() {
+  await writeFile(join(root, "var"), "not a directory", "utf8");
+}
+
+/** Every request kept by the fallback, parsed back. */
+async function kept() {
+  return (await readFile(join(root, "var", "access-requests.jsonl"), "utf8"))
+    .split(String.fromCharCode(10))
+    .filter(Boolean)
+    .map((line) => JSON.parse(line) as Record<string, unknown>);
+}
 
 describe("requestAccessAction", () => {
   it("sends the request to every configured recipient", async () => {
@@ -168,10 +193,11 @@ describe("requestAccessAction", () => {
       form({ email: "head.of.risk@firm.co.uk", company: "" }),
     );
 
-    // Truthy but naming nobody. Reporting it as configured would fail every
-    // submission with a generic message and no hint at the cause.
-    expect(result.status).toBe("error");
+    // Truthy but naming nobody. Read as configured, it would fail every send
+    // with no hint at the cause.
+    expect(result).toEqual({ status: "sent" });
     expect(send).not.toHaveBeenCalled();
+    expect(await kept()).toHaveLength(1);
     const line = logged.find(
       (l) => l["event"] === "access_request.not_configured",
     );
@@ -287,16 +313,17 @@ describe("requestAccessAction", () => {
     ).toBe(true);
   });
 
-  it("degrades to a mail-us message when it is not configured", async () => {
+  it("degrades to a mail-us message when nothing can take the request", async () => {
     vi.stubEnv("RESEND_API_KEY", "");
+    await breakFallback();
 
     const result = await requestAccessAction(
       IDLE,
       form({ email: "head.of.risk@firm.co.uk", company: "" }),
     );
 
-    // The alternative — requiring these at boot — would take the whole
-    // marketing site down because a contact form was not set up yet.
+    // Mail unconfigured and the fallback blocked: the only case left where the
+    // visitor is asked to write to us instead.
     expect(result.status).toBe("error");
     expect(result.status === "error" && result.message).toContain(
       "partner@subrahq.com",
@@ -342,6 +369,7 @@ describe("requestAccessAction", () => {
       data: null,
       error: { name: "validation_error", message: "domain not verified" },
     });
+    await breakFallback();
 
     const result = await requestAccessAction(
       IDLE,
@@ -356,6 +384,7 @@ describe("requestAccessAction", () => {
 
   it("survives the provider throwing", async () => {
     send.mockRejectedValue(new TypeError("fetch failed"));
+    await breakFallback();
 
     const result = await requestAccessAction(
       IDLE,
@@ -372,6 +401,7 @@ describe("requestAccessAction", () => {
 
   it("survives the provider throwing something that is not an Error", async () => {
     send.mockRejectedValue("gateway said no");
+    await breakFallback();
 
     const result = await requestAccessAction(
       IDLE,
@@ -430,6 +460,7 @@ describe("requestAccessAction · the name field", () => {
       data: null,
       error: { name: "application_error" },
     });
+    await breakFallback();
 
     const result = await requestAccessAction(
       IDLE,
@@ -458,5 +489,124 @@ describe("requestAccessAction · the name field", () => {
 
     expect(result).toEqual({ status: "sent" });
     expect(send).not.toHaveBeenCalled();
+  });
+});
+
+describe("requestAccessAction · the fallback file", () => {
+  const cwd = process.cwd();
+  let root: string;
+  let sink: string;
+
+  beforeEach(async () => {
+    // The path is fixed relative to the working directory, so the suite moves
+    // the working directory rather than configuring the path.
+    root = await mkdtemp(join(tmpdir(), "subra-access-"));
+    sink = join(root, "var", "access-requests.jsonl");
+    process.chdir(root);
+  });
+
+  afterEach(() => {
+    process.chdir(cwd);
+  });
+
+  /** Every request in the sink, parsed back. */
+  async function written() {
+    return (await readFile(sink, "utf8"))
+      .split("\n")
+      .filter(Boolean)
+      .map((line) => JSON.parse(line) as Record<string, unknown>);
+  }
+
+  it("keeps the request when mail is not configured", async () => {
+    vi.stubEnv("RESEND_API_KEY", "");
+
+    const result = await requestAccessAction(
+      IDLE,
+      form({ email: "ada@firm.co.uk" }),
+    );
+
+    expect(result).toEqual({ status: "sent" });
+    expect(await written()).toEqual([
+      {
+        name: "Ada Lovelace",
+        email: "ada@firm.co.uk",
+        organisation: "Example Financial Services",
+        role: "Head of Risk",
+        workflow: "Payments operations",
+        receivedAt: expect.any(String),
+      },
+    ]);
+  });
+
+  it("keeps the request when the provider rejects it", async () => {
+    send.mockResolvedValue({ data: null, error: { name: "rate_limit" } });
+
+    expect(
+      await requestAccessAction(IDLE, form({ email: "ada@firm.co.uk" })),
+    ).toEqual({ status: "sent" });
+    expect(await written()).toHaveLength(1);
+  });
+
+  it("keeps the request when the provider throws", async () => {
+    send.mockRejectedValue(new Error("socket hang up"));
+
+    expect(
+      await requestAccessAction(IDLE, form({ email: "ada@firm.co.uk" })),
+    ).toEqual({ status: "sent" });
+    expect(await written()).toHaveLength(1);
+  });
+
+  it("creates the directory on the first request", async () => {
+    vi.stubEnv("RESEND_API_KEY", "");
+
+    // `var/` is gitignored, so a fresh checkout does not have one.
+    await requestAccessAction(IDLE, form({ email: "ada@firm.co.uk" }));
+
+    expect(await written()).toHaveLength(1);
+  });
+
+  it("appends rather than replacing", async () => {
+    vi.stubEnv("RESEND_API_KEY", "");
+
+    await requestAccessAction(IDLE, form({ email: "ada@firm.co.uk" }));
+    await requestAccessAction(IDLE, form({ email: "grace@firm.co.uk" }));
+
+    expect((await written()).map((entry) => entry.email)).toEqual([
+      "ada@firm.co.uk",
+      "grace@firm.co.uk",
+    ]);
+  });
+
+  it("never records the honeypot alongside the request", async () => {
+    vi.stubEnv("RESEND_API_KEY", "");
+
+    await requestAccessAction(IDLE, form({ email: "ada@firm.co.uk" }));
+
+    expect(Object.keys((await written())[0]!)).not.toContain("website");
+  });
+
+  it("says a request was kept without saying whose", async () => {
+    vi.stubEnv("RESEND_API_KEY", "");
+
+    await requestAccessAction(IDLE, form({ email: "ada@firm.co.uk" }));
+
+    expect(logged.map((line) => line.event)).toContain(
+      "access_request.written_to_fallback",
+    );
+    expect(JSON.stringify(logged)).not.toContain("ada@firm.co.uk");
+  });
+
+  it("falls back to the mail-us message when the file cannot be written", async () => {
+    // `var` already exists as a file. Reporting success here would tell the
+    // visitor we have their request when nothing kept it.
+    vi.stubEnv("RESEND_API_KEY", "");
+    await writeFile(join(root, "var"), "not a directory", "utf8");
+
+    expect(
+      await requestAccessAction(IDLE, form({ email: "ada@firm.co.uk" })),
+    ).toMatchObject({ status: "error" });
+    expect(logged.map((line) => line.event)).toContain(
+      "access_request.fallback_failed",
+    );
   });
 });

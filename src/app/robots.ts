@@ -1,29 +1,36 @@
 import type { MetadataRoute } from "next";
 
+import { AUTH_ENTRY_PATHS } from "@/domains/auth/public-paths";
 import { siteUrl } from "@/lib/brand/site-origin";
 
 /**
- * What a crawler may read.
+ * Everything behind the session gate. Listing it keeps a set of redirects out
+ * of the index and out of the crawl budget.
  *
- * Everything public is allowed; everything behind the session gate is named as
- * disallowed. The gate already redirects those paths to Auth0, so a crawler
- * that ignores this file still reaches nothing. Listing them keeps a set of
- * redirects out of the index and out of the crawl budget.
+ * `Disallow` matches a prefix, not a path segment, so: a trailing slash where
+ * the segment has only children, none where it has a page of its own.
+ */
+const GATED_PREFIXES = [
+  "/api/",
+  "/account",
+  "/agents/",
+  "/dashboard",
+  "/onboarding/",
+  "/operations",
+  "/organisations",
+];
+
+/**
+ * Everything public is allowed except the four login addresses. The gate has
+ * to let those through or signing in loops, but each is a redirect to Auth0
+ * linked from the landing page, so a crawler follows all four every pass.
  */
 export default function robots(): MetadataRoute.Robots {
   return {
     rules: {
       userAgent: "*",
       allow: "/",
-      disallow: [
-        "/api/",
-        "/account",
-        "/agents/",
-        "/dashboard",
-        "/onboarding/",
-        "/operations",
-        "/organisations",
-      ],
+      disallow: [...GATED_PREFIXES, ...AUTH_ENTRY_PATHS].sort(),
     },
     sitemap: siteUrl("/sitemap.xml"),
   };

@@ -14,9 +14,6 @@ importers:
       '@mdx-js/loader':
         specifier: 3.1.1
         version: 3.1.1(webpack@5.108.3)
-      '@mdx-js/react':
-        specifier: 3.1.1
-        version: 3.1.1(@types/react@19.2.17)(react@19.2.4)
       '@next/mdx':
         specifier: 16.3.0
         version: 16.3.0(@mdx-js/loader@3.1.1(webpack@5.108.3))(@mdx-js/react@3.1.1(@types/react@19.2.17)(react@19.2.4))
@@ -5217,6 +5214,7 @@ snapshots:
       '@types/mdx': 2.0.14
       '@types/react': 19.2.17
       react: 19.2.4
+    optional: true
 
   '@mdx-js/rollup@3.1.1(rollup@4.62.2)':
     dependencies:

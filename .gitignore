@@ -40,3 +40,7 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Runtime state. Holds access requests when mail is unavailable, so it
+# contains personal data and is never committed.
+/var/

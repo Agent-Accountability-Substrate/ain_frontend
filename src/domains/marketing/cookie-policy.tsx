@@ -15,7 +15,7 @@ const SECTIONS = [
   },
   {
     title: "The notice you saw on arrival",
-    body: "Because the site sets no optional cookies, the notice on your first visit informs rather than asks for consent. Dismissing it records that choice in your browser's local storage so the notice does not return; that record stays on your device, is readable only by this site, and is cleared whenever you clear site data.",
+    body: "Because the site sets no optional cookies, the notice informs rather than asks for consent. Dismissing it attempts to record that choice in your browser's local storage so the notice does not return; that record stays on your device, is readable only by this site, and is cleared whenever you clear site data. If your browser blocks that storage, as private browsing modes often do, nothing is written and the notice appears again on your next visit.",
   },
   {
     title: "Your browser controls",

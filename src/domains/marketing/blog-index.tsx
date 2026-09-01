@@ -1,11 +1,11 @@
 import Link from "next/link";
 
 import {
-  BLOG_POSTS,
   BLOG_TITLE,
   formatPublishedDate,
+  listPosts,
 } from "@/domains/marketing/blog-content";
-import { BlogHeader } from "@/domains/marketing/blog-header";
+import { SiteBackHeader } from "@/domains/marketing/site-back-header";
 import { SiteFooter } from "@/domains/marketing/site-footer";
 
 /**
@@ -17,18 +17,17 @@ import { SiteFooter } from "@/domains/marketing/site-footer";
  * says which one to start with. With a single post published the lead is the
  * whole page, which is the same design rather than a special case.
  *
- * No empty state. The index ships with a post in it and `BLOG_POSTS` is a
- * compile-time constant, so an empty list is not a runtime condition to handle
- * but a commit nobody would make.
+ * No empty state. The index ships with a post in it, and the directory is
+ * read at build time, so an empty list is a commit nobody would make.
  */
-export function BlogIndex() {
-  const [lead, ...rest] = BLOG_POSTS;
+export async function BlogIndex() {
+  const [lead, ...rest] = await listPosts();
 
   return (
     <>
       <main className="bg-site-paper font-site-sans text-site-ink">
         <div className="site-dots relative overflow-hidden bg-site-ink pb-[clamp(56px,7vw,92px)]">
-          <BlogHeader backHref="/" backLabel="Return to Subra" />
+          <SiteBackHeader tone="ink" backHref="/" backLabel="Return to Subra" />
 
           <div className="relative z-[1] mx-auto max-w-[1120px] px-[clamp(20px,4vw,48px)] pt-[clamp(44px,6vw,80px)]">
             <div className="flex items-center gap-[13px] font-site-mono text-[11px] font-medium uppercase tracking-[0.16em] text-site-cream-soft select-none">

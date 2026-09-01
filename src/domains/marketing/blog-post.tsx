@@ -4,8 +4,9 @@ import {
   formatPublishedDate,
   type BlogPost,
 } from "@/domains/marketing/blog-content";
-import { BlogHeader } from "@/domains/marketing/blog-header";
+import { AccessRequestForm } from "@/domains/marketing/access-request-form";
 import { PARTNER_EMAIL } from "@/domains/marketing/landing-content";
+import { SiteBackHeader } from "@/domains/marketing/site-back-header";
 import { SiteFooter } from "@/domains/marketing/site-footer";
 
 /**
@@ -25,16 +26,20 @@ import { SiteFooter } from "@/domains/marketing/site-footer";
  * `src/mdx-components.tsx`, not here, because markdown emits bare tags with no
  * classes of their own.
  *
- * The closing call to action sits outside `<article>` on purpose. It is site
+ * The closing call to action sits outside `<article>` on purpose: it is site
  * furniture rather than part of what was written, and inside the element it
- * put a marketing heading into the post's own outline.
+ * would put a marketing heading into the post's own outline.
  */
 export function BlogPostPage({ post }: { post: BlogPost }) {
   return (
     <>
       <main className="bg-site-paper font-site-sans text-site-ink">
         <div className="site-dots relative overflow-hidden bg-site-ink pb-[clamp(72px,9vw,120px)]">
-          <BlogHeader backHref="/blog" backLabel="All insights" />
+          <SiteBackHeader
+            tone="ink"
+            backHref="/blog"
+            backLabel="All insights"
+          />
 
           <div className="relative z-[1] mx-auto max-w-[1120px] px-[clamp(20px,4vw,48px)] pt-[clamp(44px,6vw,80px)]">
             <div className="flex items-center gap-[13px] font-site-mono text-[11px] font-medium uppercase tracking-[0.16em] text-site-cream-soft select-none">
@@ -85,20 +90,22 @@ export function BlogPostPage({ post }: { post: BlogPost }) {
                   touch if you want to walk through how this works on a real
                   workflow.
                 </p>
-                <div className="mt-8 flex flex-wrap items-center gap-x-7 gap-y-3">
-                  <Link
-                    href="/#request"
-                    className="inline-flex items-center justify-center rounded-full bg-site-cream px-[26px] py-[13px] text-[15px] font-medium tracking-[-0.012em] text-site-ink transition-colors duration-300 hover:bg-[#dfdbd2]"
-                  >
-                    Request access
-                  </Link>
+
+                {/* The same request as the landing page, asked where the
+                    reader finished. */}
+                <div className="mt-8">
+                  <AccessRequestForm />
+                </div>
+
+                <p className="mt-6 font-site-mono text-[12px] uppercase tracking-[0.12em] text-site-cream-soft">
+                  Or email{" "}
                   <a
                     href={`mailto:${PARTNER_EMAIL}`}
-                    className="font-site-mono text-[12px] uppercase tracking-[0.12em] text-site-cream-soft transition-colors duration-200 hover:text-site-accent"
+                    className="underline decoration-site-cream/40 underline-offset-[4px] transition-colors duration-200 ease-site hover:text-site-accent"
                   >
                     {PARTNER_EMAIL}
                   </a>
-                </div>
+                </p>
               </div>
             </aside>
 

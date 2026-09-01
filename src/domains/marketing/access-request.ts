@@ -1,5 +1,7 @@
 "use server";
 
+import { appendFile, mkdir } from "node:fs/promises";
+import { dirname, join } from "node:path";
 import { headers } from "next/headers";
 import { Resend } from "resend";
 import { z } from "zod";
@@ -88,6 +90,56 @@ const PER_CALLER = 5;
  */
 const PER_WINDOW = 60;
 
+/**
+ * Where a request is kept when mail does not take it: one JSON object per line
+ * in `var/`, which holds mutable runtime state and which `.gitignore` excludes.
+ *
+ * Resolved against the working directory the server was started from, and per
+ * call so a test can move it. The directory is created on first write.
+ *
+ * This is temporary, and only as durable as the filesystem under it. See
+ * `README.md`.
+ */
+function fallbackPath(): string {
+  return join(process.cwd(), "var", "access-requests.jsonl");
+}
+
+/**
+ * Appends one request to the fallback file.
+ *
+ * Returns whether it was written. The caller reports success to the visitor
+ * only on `true`, so the claim that we have their request is one the disk has
+ * confirmed.
+ */
+async function writeFallback(
+  values: AccessRequestValues & { website?: string },
+): Promise<boolean> {
+  const path = fallbackPath();
+  const { name, email, organisation, role, workflow } = values;
+  try {
+    await mkdir(dirname(path), { recursive: true });
+    await appendFile(
+      path,
+      `${JSON.stringify({
+        name,
+        email,
+        organisation,
+        role,
+        workflow,
+        receivedAt: new Date().toISOString(),
+      })}\n`,
+      "utf8",
+    );
+    logger.warn("access_request.written_to_fallback");
+    return true;
+  } catch (cause) {
+    logger.error("access_request.fallback_failed", {
+      reason: cause instanceof Error ? cause.name : "unknown",
+    });
+    return false;
+  }
+}
+
 /** The forwarded client address, or null when there is no proxy to trust. */
 async function callerAddress(): Promise<string | null> {
   try {
@@ -172,6 +224,7 @@ export async function requestAccessAction(
         from ? undefined : "ACCESS_REQUEST_FROM",
       ].filter(Boolean),
     });
+    if (await writeFallback(parsed.data)) return { status: "sent" };
     return { status: "error", message: GENERIC_ERROR, values };
   }
 
@@ -193,12 +246,14 @@ export async function requestAccessAction(
 
     if (error) {
       logger.error("access_request.send_failed", { reason: error.name });
+      if (await writeFallback(parsed.data)) return { status: "sent" };
       return { status: "error", message: GENERIC_ERROR, values };
     }
   } catch (cause) {
     logger.error("access_request.send_threw", {
       reason: cause instanceof Error ? cause.name : "unknown",
     });
+    if (await writeFallback(parsed.data)) return { status: "sent" };
     return { status: "error", message: GENERIC_ERROR, values };
   }
 
