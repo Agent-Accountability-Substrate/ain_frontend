@@ -164,7 +164,7 @@ describe("SiteNav", () => {
 
     expect(links.map((link) => link.textContent)).toEqual([
       "Product",
-      "how it works",
+      "How it works",
       "Integrity",
       "Use cases",
       "Security",

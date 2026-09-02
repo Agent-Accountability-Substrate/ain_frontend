@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils";
 
 const HEADER_LINKS = [
   { label: "Product", href: "#top" },
-  { label: "how it works", href: "#how-it-works" },
+  { label: "How it works", href: "#how-it-works" },
   { label: "Integrity", href: "#integrity" },
   { label: "Use cases", href: "#use-cases" },
   { label: "Security", href: "#security" },
