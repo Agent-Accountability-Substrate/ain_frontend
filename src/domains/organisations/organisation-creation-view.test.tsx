@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { OrganisationCreationView } from "@/domains/organisations/organisation-creation-view";
@@ -43,10 +43,9 @@ describe("OrganisationCreationView", () => {
   });
 
   it("collects everything the registry requires", () => {
-    // The address is the one that matters here: the column is NOT NULL, and
-    // this form used to have no field for it at all, so every submission it
-    // could have made would have been a 422.
-    render(<OrganisationCreationView email="owner@example.com" />);
+    // The address matters most here: the column is NOT NULL, so a form
+    // without the field submits nothing but 422s.
+    render(<OrganisationCreationView />);
 
     expect(screen.getByLabelText("Legal organisation name")).toBeDefined();
     expect(screen.getByLabelText("Companies House number")).toBeDefined();
@@ -57,18 +56,23 @@ describe("OrganisationCreationView", () => {
   it("submits the jurisdiction as a code, not as a country name", () => {
     // The registry takes ISO 3166-1 alpha-2 lowercase. The select used to
     // carry the display name, which no amount of backend validation could fix.
-    render(<OrganisationCreationView email="owner@example.com" />);
+    render(<OrganisationCreationView />);
 
-    const select = screen.getByLabelText("Registration jurisdiction");
-    expect(select).toHaveProperty("value", "gb");
-    expect(within(select as HTMLElement).getByRole("option")).toHaveProperty(
-      "text",
-      "United Kingdom",
+    // A listbox trigger is a button, so the submitted value lives on the hidden
+    // input the select renders — which is the thing the action actually reads.
+    const trigger = screen.getByRole("combobox", {
+      name: "Registration jurisdiction",
+    });
+    expect(trigger.textContent).toContain("United Kingdom");
+    const submitted = document.querySelector<HTMLInputElement>(
+      'input[name="jurisdiction"]',
     );
+    expect(submitted).not.toBeNull();
+    expect(submitted).toHaveProperty("value", "gb");
   });
 
   it("will not submit until authority is attested", () => {
-    render(<OrganisationCreationView email="owner@example.com" />);
+    render(<OrganisationCreationView />);
     fillDetails();
     fireEvent.click(
       screen.getByRole("button", { name: /continue to authority/i }),
@@ -80,9 +84,9 @@ describe("OrganisationCreationView", () => {
     expect(submit).toHaveProperty("disabled", true);
 
     fireEvent.click(
-      screen.getByLabelText(
-        /I confirm I am authorised to submit this organisation/i,
-      ),
+      screen.getByRole("checkbox", {
+        name: /I confirm I am authorised to submit this organisation/i,
+      }),
     );
 
     expect(submit).toHaveProperty("disabled", false);
@@ -90,23 +94,23 @@ describe("OrganisationCreationView", () => {
 
   it("shows what happens next, and does not offer agent creation", async () => {
     // The registry refuses agents in an unverified organisation (403), so a
-    // link into the agent wizard here would walk someone into a refusal. This
-    // screen used to do exactly that.
+    // link into the agent wizard here would walk someone into a refusal.
     createOrganisationActionMock.mockImplementation(
       (): CreateOrganisationState => ({
         status: "created",
         organisationId: "6a1f6f38-0d3f-4c86-9a53-8c8f7a1e2b4d",
+        organisationUlid: "01ARZ3NDEKTSV4RRFFQ69G5FAV",
       }),
     );
-    render(<OrganisationCreationView email="owner@example.com" />);
+    render(<OrganisationCreationView />);
     fillDetails();
     fireEvent.click(
       screen.getByRole("button", { name: /continue to authority/i }),
     );
     fireEvent.click(
-      screen.getByLabelText(
-        /I confirm I am authorised to submit this organisation/i,
-      ),
+      screen.getByRole("checkbox", {
+        name: /I confirm I am authorised to submit this organisation/i,
+      }),
     );
     fireEvent.click(
       screen.getByRole("button", { name: /complete organisation setup/i }),
@@ -121,6 +125,14 @@ describe("OrganisationCreationView", () => {
     expect(
       screen.getByText(/agents can be registered once it is verified/i),
     ).toBeDefined();
+    // The way on is the organisation itself, addressed by the ULID the
+    // registry just minted.
+    expect(
+      screen.getByRole("link", { name: /go to example holdings ltd/i }),
+    ).toHaveProperty(
+      "href",
+      "http://localhost:3000/o/01ARZ3NDEKTSV4RRFFQ69G5FAV",
+    );
   });
 
   it("puts the registry's refusal beside the field at fault", async () => {
@@ -131,15 +143,15 @@ describe("OrganisationCreationView", () => {
         errors: { registrationNumber: "company already registered" },
       }),
     );
-    render(<OrganisationCreationView email="owner@example.com" />);
+    render(<OrganisationCreationView />);
     fillDetails();
     fireEvent.click(
       screen.getByRole("button", { name: /continue to authority/i }),
     );
     fireEvent.click(
-      screen.getByLabelText(
-        /I confirm I am authorised to submit this organisation/i,
-      ),
+      screen.getByRole("checkbox", {
+        name: /I confirm I am authorised to submit this organisation/i,
+      }),
     );
     fireEvent.click(
       screen.getByRole("button", { name: /complete organisation setup/i }),

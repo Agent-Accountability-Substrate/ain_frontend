@@ -9,12 +9,8 @@ vi.mock("@/domains/auth/auth-actions", () => ({
 
 describe("AgentDemoView", () => {
   it("renders the illustrative AIN accountability workspace", () => {
-    render(<AgentDemoView email="user@example.com" />);
+    render(<AgentDemoView />);
 
-    screen.getByRole("link", { name: "Subra AIN Registry home" });
-    screen.getByRole("img", { name: "Subra" });
-    screen.getByText("user@example.com");
-    within(screen.getByRole("contentinfo")).getByText("Illustrative workspace");
     screen.getByRole("heading", {
       name: "Agent accountability console",
     });
@@ -23,7 +19,7 @@ describe("AgentDemoView", () => {
   });
 
   it("shows verification, scope, and linked receipt evidence", () => {
-    render(<AgentDemoView email="user@example.com" />);
+    render(<AgentDemoView />);
 
     screen.getByRole("heading", {
       name: "Proposed action assessment",
@@ -34,20 +30,14 @@ describe("AgentDemoView", () => {
     expect(screen.getAllByText("Sequence 43").length).toBeGreaterThan(1);
   });
 
-  it("uses account navigation at the top and agent sections in the side rail", () => {
-    render(<AgentDemoView email="user@example.com" />);
+  it("offers agent sections in the side rail and no workspace navigation", () => {
+    render(<AgentDemoView />);
 
-    const navigation = screen.getByRole("navigation", {
-      name: "Account sections",
-    });
-
+    // The command bar's sections belong to an organisation, and this page is
+    // not inside one — so it has none rather than borrowing another's.
     expect(
-      within(navigation).getByRole("link", { name: "Overview" }),
-    ).toHaveProperty("href", "http://localhost:3000/dashboard");
-    within(navigation).getByRole("link", { name: "Organisations" });
-    within(navigation).getByRole("link", {
-      name: "Account & Security",
-    });
+      screen.queryByRole("navigation", { name: "Account sections" }),
+    ).toBeNull();
 
     const agentNavigation = screen.getByRole("navigation", {
       name: "Agent record sections",
@@ -68,7 +58,7 @@ describe("AgentDemoView", () => {
   });
 
   it("points every record link at a section that exists on the page", () => {
-    const { container } = render(<AgentDemoView email="user@example.com" />);
+    const { container } = render(<AgentDemoView />);
     const agentNavigation = screen.getByRole("navigation", {
       name: "Agent record sections",
     });
@@ -86,21 +76,5 @@ describe("AgentDemoView", () => {
         container.querySelector(`[id="${href!.slice(1)}"]`),
       ).not.toBeNull();
     }
-  });
-
-  it("falls back to 'unknown' when no email is present", () => {
-    render(<AgentDemoView email={undefined} />);
-
-    screen.getByText("unknown");
-  });
-
-  it("offers notifications and the original account dropdown", () => {
-    render(<AgentDemoView email="user@example.com" />);
-
-    screen.getByLabelText("Open notifications");
-    screen.getByText("You are up to date");
-    screen.getByLabelText("Open account menu for user@example.com");
-    screen.getByText("Profile & account management");
-    screen.getByRole("button", { name: "Sign out" });
   });
 });

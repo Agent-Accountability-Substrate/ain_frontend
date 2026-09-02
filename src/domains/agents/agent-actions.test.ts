@@ -268,7 +268,7 @@ describe("submitAgentAction", () => {
       resolverUrl: "https://resolve.ain.test/" + AIN,
       documentVersion: 1,
     });
-    expect(revalidatePathMock).toHaveBeenCalledWith("/dashboard");
+    expect(revalidatePathMock).toHaveBeenCalledWith("/o", "layout");
   });
 
   it("says which subsystem is unconfigured rather than advising a retry", async () => {

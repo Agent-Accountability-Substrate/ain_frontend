@@ -3,6 +3,8 @@
 import { useEffect } from "react";
 
 import { logger } from "@/lib/logger";
+import { Button, ButtonLink } from "@/lib/ui/button";
+import { Eyebrow } from "@/lib/ui/eyebrow";
 
 /**
  * The backstop, for what nobody anticipated.
@@ -31,45 +33,36 @@ export default function WorkspaceError({
     // the error itself via instrumentation; this ties the digest on screen to
     // a log entry. The message is safe to record — for a Server Component
     // error Next has already replaced it with a generic string.
-    logger.error("workspace.unhandled_error", {
-      digest: error.digest ?? null,
-    });
+    logger.error("workspace.unhandled_error", { digest: error.digest ?? null });
   }, [error]);
 
   return (
-    <main className="dashboard-canvas">
-      <section className="dashboard-shell" aria-label="Something went wrong">
-        <div className="account-route-workspace">
-          <div className="wizard-form">
-            <div className="wizard-form-heading">
-              <div>
-                <p className="dashboard-eyebrow">Unexpected error</p>
-                <h1>Something went wrong</h1>
-                <p>
-                  This one is ours, not yours. Nothing you submitted has been
-                  lost, and trying again is safe.
-                </p>
-                {error.digest ? (
-                  <p className="wizard-form-note">
-                    Reference <code>{error.digest}</code> — quote it if you get
-                    in touch.
-                  </p>
-                ) : null}
-              </div>
-            </div>
-            <div className="wizard-form-actions">
-              <a className="wizard-secondary-action" href="/dashboard">
-                Back to overview
-              </a>
-              <button
-                type="button"
-                className="wizard-primary-action"
-                onClick={reset}
-              >
-                Try again
-              </button>
-            </div>
-          </div>
+    <main className="workspace-canvas flex min-h-screen items-center justify-center p-6">
+      <section
+        aria-label="Something went wrong"
+        className="flex w-[min(100%,36rem)] flex-col gap-5 rounded-2xl border border-line bg-white p-6"
+      >
+        <div className="flex flex-col gap-2">
+          <Eyebrow>Unexpected error</Eyebrow>
+          <h1 className="text-xl font-semibold tracking-[-0.02em] text-ink">
+            Something went wrong
+          </h1>
+          <p className="text-xs leading-5 text-mist">
+            This one is ours, not yours. Nothing you submitted has been lost,
+            and trying again is safe.
+          </p>
+          {error.digest ? (
+            <p className="rounded-xl border border-frost bg-wash-blue p-3 text-[11px] leading-5 text-ink-muted">
+              Reference <code className="font-mono">{error.digest}</code> —
+              quote it if you get in touch.
+            </p>
+          ) : null}
+        </div>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <ButtonLink href="/o">Back to your workspace</ButtonLink>
+          <Button type="button" onClick={reset}>
+            Try again
+          </Button>
         </div>
       </section>
     </main>

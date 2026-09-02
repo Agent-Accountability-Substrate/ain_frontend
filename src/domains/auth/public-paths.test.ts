@@ -45,11 +45,12 @@ function routeFor(file: AppFile): string {
 describe("isPublicPath", () => {
   it("keeps the workspace behind the session gate", () => {
     for (const path of [
-      "/dashboard",
-      "/organisations",
+      "/o",
+      "/o/01ARZ3NDEKTSV4RRFFQ69G5FAV",
+      "/o/01ARZ3NDEKTSV4RRFFQ69G5FAV/agents/new",
+      "/o/01ARZ3NDEKTSV4RRFFQ69G5FAV/settings/account",
+      "/o/new",
       "/operations",
-      "/account",
-      "/agents/new",
       "/onboarding/identity",
     ]) {
       expect(isPublicPath(path)).toBe(false);
@@ -99,7 +100,7 @@ describe("isPublicPath", () => {
     expect(isPublicPath(grouped)).toBe(true);
 
     // The suffix is Next's shape, not any six characters after a dash.
-    expect(isPublicPath("/dashboard-abc123")).toBe(false);
+    expect(isPublicPath("/settings-abc123")).toBe(false);
     expect(isPublicPath("/opengraph-image-tooshort")).toBe(false);
   });
 

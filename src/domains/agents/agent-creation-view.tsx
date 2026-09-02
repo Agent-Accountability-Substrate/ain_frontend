@@ -1,67 +1,47 @@
-"use client";
-
 import { AgentCreationWizard } from "@/domains/agents/agent-creation-wizard";
-import { WorkspaceShell } from "@/domains/workspace/workspace-shell";
 import {
-  getSelectedOrganisation,
-  initialAccountWorkspaceState,
-  type AccountWorkspaceState,
-} from "@/domains/workspace/account-workspace";
-import { menuItemsFor } from "@/domains/workspace/workspace-navigation";
+  WorkspaceContent,
+  WorkspacePane,
+} from "@/domains/workspace/workspace-content";
+import type { OrganisationSummary } from "@/domains/workspace/account-workspace";
+import { Eyebrow } from "@/lib/ui/eyebrow";
 
 export function AgentCreationView({
-  email,
-  state = initialAccountWorkspaceState,
+  organisation,
 }: {
-  email: string | null | undefined;
-  state?: AccountWorkspaceState;
+  organisation: OrganisationSummary;
 }) {
-  const organisation = getSelectedOrganisation(state);
-  const verified = organisation?.verificationStatus === "verified";
+  const verified = organisation.verificationStatus === "verified";
 
   return (
-    <WorkspaceShell
-      currentPath="/agents/new"
-      email={email}
-      navigationItems={menuItemsFor(state.isOperator)}
-      navigationLabel="Account sections"
-      organisations={state.organisations}
-      selectedOrganisationId={state.selectedOrganisationId}
-      showOrganisationSwitcher
-      signedInAs={organisation?.name ?? "No organisation selected"}
-      workspaceLabel="Create agent"
-    >
-      <div className="account-wizard-workspace">
-        <aside className="account-wizard-side">
-          <p className="dashboard-eyebrow">Agent workspace</p>
-          <h1>
-            {organisation
-              ? verified
-                ? "Declare an accountable agent"
-                : "Verification pending"
-              : "Select an organisation first"}
+    <>
+      <WorkspaceContent>
+        {/* Side rail sits left on a wide screen and below the wizard when
+          stacked — the guidance is context, and the form is the task. */}
+        <WorkspacePane
+          as="aside"
+          className="flex flex-col gap-3 max-lg:order-2"
+        >
+          <Eyebrow>{organisation.name}</Eyebrow>
+          <h1 className="text-lg font-semibold tracking-[-0.02em] text-ink">
+            {verified ? "Register an agent" : "Verification pending"}
           </h1>
-          <p className="wizard-side-copy">
-            {organisation
-              ? verified
-                ? "An agent's identifier is permanent, and its authorised scope is signed. Both are declared here."
-                : "Agents can be registered once trust operations verify this organisation."
-              : "Agent records belong to an organisation. Choose one before preparing the record."}
+          <p className="text-xs leading-5 text-mist">
+            {verified
+              ? "An agent's identifier is permanent, and its authorised scope is signed. Both are declared here."
+              : "Agents can be registered once we have verified this organisation."}
           </p>
-          {organisation ? null : (
-            <a className="wizard-primary-action" href="/organisations">
-              Choose organisation
-            </a>
-          )}
-        </aside>
-        <div className="account-wizard-main">
+        </WorkspacePane>
+
+        <WorkspacePane className="max-lg:order-1">
           <AgentCreationWizard
-            organisationId={organisation?.id ?? null}
-            organisationName={organisation?.name ?? null}
+            organisationId={organisation.id}
+            organisationName={organisation.name}
+            organisationUlid={organisation.ulid}
             organisationVerified={verified}
           />
-        </div>
-      </div>
-    </WorkspaceShell>
+        </WorkspacePane>
+      </WorkspaceContent>
+    </>
   );
 }

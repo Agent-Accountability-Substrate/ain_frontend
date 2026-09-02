@@ -9,10 +9,8 @@
  * In its own module rather than beside the action that validates against it,
  * because that module is `"use server"` and such a module may export **only**
  * async functions. A const exported from there is stripped from the client
- * bundle and arrives as `undefined` — which is how this first showed up: the
- * form crashed on `JURISDICTIONS[0].code` in the browser while every test
- * passed, because the tests mock the action module and never cross that
- * boundary.
+ * bundle and arrives as `undefined` in the browser — and tests that mock the
+ * action module never cross that boundary, so they will not catch it.
  */
 export const JURISDICTIONS = [{ code: "gb", label: "United Kingdom" }] as const;
 

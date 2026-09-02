@@ -1,68 +1,56 @@
 import { CloudOff } from "lucide-react";
 
-import { WorkspaceShell } from "@/domains/workspace/workspace-shell";
-import { initialAccountWorkspaceState } from "@/domains/workspace/account-workspace";
-import { userMenuItems } from "@/domains/workspace/workspace-navigation";
+import { RetryLink } from "@/domains/workspace/retry-link";
+import { Eyebrow } from "@/lib/ui/eyebrow";
 
 /**
  * The workspace, with the registry not answering.
  *
- * Rendered inside the normal shell on purpose. The failure is real but it is
- * not the end of the session: navigation, sign-out and the account menu all
- * still work, and a page that loses them turns a passing outage into a dead
- * end. Nothing here invents data — the counts and lists are simply absent,
- * which is the honest thing to show when we could not read them.
+ * It carries its own frame rather than sitting inside the shell, because the
+ * shell is built from the membership list and that is exactly what could not
+ * be read. Offering a rail here would mean inventing the one fact that is
+ * missing. The account menu goes with it; signing out still works from the
+ * landing page.
  */
 export function WorkspaceUnavailable({
-  currentPath,
   detail,
   email,
-  workspaceLabel,
 }: {
-  currentPath: string;
   detail: string;
   email: string | null | undefined;
-  workspaceLabel: string;
 }) {
   return (
-    <WorkspaceShell
-      currentPath={currentPath}
-      email={email}
-      navigationItems={userMenuItems}
-      navigationLabel="Account sections"
-      organisations={initialAccountWorkspaceState.organisations}
-      selectedOrganisationId={null}
-      signedInAs="No organisation selected"
-      workspaceLabel={workspaceLabel}
-    >
-      <div className="account-route-workspace">
-        {/* Spans both columns: the workspace grid is a 17rem sidebar plus
-            content, and there is no sidebar to render here — whatever would
-            have filled it is the very thing we could not read. */}
-        <section
-          className="wizard-form col-span-full"
-          aria-labelledby="registry-down-title"
-        >
-          <div className="wizard-form-heading">
-            <span className="wizard-form-icon">
-              <CloudOff className="h-5 w-5" aria-hidden="true" />
-            </span>
-            <div>
-              <p className="dashboard-eyebrow">Registry unavailable</p>
-              <h1 id="registry-down-title">We could not load your workspace</h1>
-              <p role="alert">{detail}</p>
-            </div>
+    <main className="flex h-[100dvh] items-center justify-center bg-[#f3f6fa] p-6">
+      <section
+        aria-label="Registry unavailable"
+        className="flex w-[min(100%,36rem)] flex-col gap-5 rounded-2xl border border-line bg-white p-6"
+      >
+        <div className="flex items-start gap-4">
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-line-soft text-ink-muted">
+            <CloudOff className="h-5 w-5" aria-hidden="true" />
+          </span>
+          <div className="flex flex-col gap-2">
+            <Eyebrow>Registry unavailable</Eyebrow>
+            <h1 className="text-lg font-semibold tracking-[-0.02em] text-ink">
+              We could not load your workspace
+            </h1>
+            <p role="alert" className="text-xs leading-5 text-mist">
+              {detail}
+            </p>
+            {email ? (
+              <p className="text-[11px] text-mist-light">
+                Signed in as {email}
+              </p>
+            ) : null}
           </div>
-          <div className="wizard-form-actions">
-            {/* A plain link rather than a router refresh: this page was
-                server-rendered from a failed read, so the only thing that
-                helps is asking the server again. */}
-            <a className="wizard-primary-action" href={currentPath}>
-              Try again
-            </a>
-          </div>
-        </section>
-      </div>
-    </WorkspaceShell>
+        </div>
+        <div className="flex">
+          {/* A plain link rather than a router refresh: this was server-
+              rendered from a failed read, so the only thing that helps is
+              asking the server again — for the page that failed. */}
+          <RetryLink>Try again</RetryLink>
+        </div>
+      </section>
+    </main>
   );
 }

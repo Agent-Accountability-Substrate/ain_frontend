@@ -3,12 +3,8 @@
 import { z } from "zod";
 
 import { logger } from "@/lib/logger";
-import {
-  NotAuthenticatedError,
-  recordVerification,
-  RegistryRefusedError,
-  RegistryUnavailableError,
-} from "@/lib/registry/registry-api";
+import { registryErrorReporter } from "@/lib/registry/action-errors";
+import { recordVerification } from "@/lib/registry/registry-api";
 
 /**
  * Recording what trust operations decided about a company.
@@ -66,6 +62,12 @@ const UNAVAILABLE =
   "The registry is not reachable right now. Nothing was recorded.";
 const SIGNED_OUT = "Your session expired. Sign in again and re-record this.";
 
+const toErrorState = registryErrorReporter({
+  signedOut: SIGNED_OUT,
+  unavailable: UNAVAILABLE,
+  unavailableEvent: "operations.registry_unavailable",
+});
+
 function text(formData: FormData, key: string): string {
   const value = formData.get(key);
   return typeof value === "string" ? value : "";
@@ -101,46 +103,25 @@ export async function recordDecisionAction(
     logger.info("operations.decision_recorded", {
       outcome: parsed.data.outcome,
     });
-    // No revalidation here at all, and the omission is the fix.
-    //
-    // Every page this action touches is `force-dynamic`, so none of them has a
-    // cached payload to invalidate — the calls could only ever have had one
-    // observable effect. `revalidatePath` in Next 16.3 does not scope anything
-    // to the path it is given: it sets a single `store.pathWasRevalidated`
-    // flag, carrying its own `// TODO: only revalidate if the path matches`.
-    // That flag makes the client discard its router cache and refetch the
+    // Deliberately no `revalidatePath`. Every page this action touches is
+    // `force-dynamic`, so there is no cached payload to invalidate — and in
+    // Next 16.3 the call is not scoped to the path it is given: it sets one
+    // global `store.pathWasRevalidated` flag that makes the client refetch the
     // *current* route.
     //
     // Refetching /operations drops the just-decided organisation out of the
     // review queue, and `selected` derives from the queue — so the pane swaps
-    // from the decision form to "Choose a company to review", unmounting the
-    // subtree and discarding the `useActionState` result before the operator
-    // can read what was recorded. `verified` and `rejected` both leave the
-    // queue, so two of the three outcomes silently showed nothing on the most
-    // consequential write in the product. Naming only the other two paths does
-    // not help, because the flag is global.
+    // to "Choose a company to review", discarding the `useActionState` result
+    // before the operator can read what was recorded. `verified` and
+    // `rejected` both leave the queue, so two of the three outcomes would show
+    // nothing on the most consequential write in the product.
     //
     // The confirmation panel links back to the queue, and that navigation
-    // fetches it fresh — which is all a `force-dynamic` page ever needed.
+    // fetches it fresh.
     return { status: "recorded", outcome: parsed.data.outcome };
   } catch (error) {
-    if (error instanceof NotAuthenticatedError) {
-      return { status: "error", message: SIGNED_OUT, errors: {} };
-    }
-    if (error instanceof RegistryRefusedError) {
-      logger.warn("operations.decision_refused", { status: error.status });
-      // 409 is the one worth reading closely: somebody else decided this while
-      // the operator had it open, and the registry refused to overwrite them.
-      return { status: "error", message: error.detail, errors: {} };
-    }
-    if (error instanceof RegistryUnavailableError) {
-      logger.error("operations.registry_unavailable");
-      return {
-        status: "error",
-        message: error.detail ?? UNAVAILABLE,
-        errors: {},
-      };
-    }
-    throw error;
+    // 409 is the one worth reading closely: somebody else decided this while
+    // the operator had it open, and the registry refused to overwrite them.
+    return toErrorState(error, "operations.decision_refused");
   }
 }

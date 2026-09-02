@@ -52,16 +52,11 @@ export default defineConfig({
         "src/instrumentation-client.ts",
         // Auth.js framework glue — verified by the manual "invited user logs
         // in" exit test, not unit tests (the tested logic lives in the
-        // dashboard / sign-in / sign-out components).
+        // workspace / sign-in / sign-out components).
         "src/auth.ts",
         "src/proxy.ts",
         "src/domains/auth/auth-actions.ts",
         "src/app/api/**",
-        "src/app/dashboard/**",
-        // Vendored shadcn primitives, written by the CLI rather than by us —
-        // `components.json` points it at this path. Third-party source has no
-        // business failing our own coverage gate.
-        "src/lib/ui/**",
         "src/**/*.test.{ts,tsx}",
       ],
       thresholds: {

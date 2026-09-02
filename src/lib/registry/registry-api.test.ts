@@ -5,12 +5,18 @@ const { authMock, getServerEnvMock } = vi.hoisted(() => ({
   getServerEnvMock: vi.fn(),
 }));
 
-vi.mock("@/auth", () => ({ auth: authMock }));
+vi.mock("@/auth", () => ({
+  auth: authMock,
+  currentSession: authMock,
+}));
 vi.mock("@/lib/config/server-env", () => ({ getServerEnv: getServerEnvMock }));
 
 import {
   createOrganisation,
   identityAssurance,
+  inviteMember,
+  leaveOrganisation,
+  listMembers,
   listReviewQueue,
   recordVerification,
   submitAgent,
@@ -114,6 +120,36 @@ describe("registry api", () => {
 
     const [url] = fetchMock.mock.calls[0] as [URL];
     expect(url.toString()).toBe("https://api.subrahq.com/auth/whoami");
+  });
+
+  it("keeps a base URL's own path prefix", async () => {
+    // `new URL("/auth/whoami", "https://host/registry")` drops "/registry",
+    // because an absolute path replaces the base's. A registry behind a
+    // gateway would 404 every call while still forwarding the bearer token to
+    // a path nobody meant, and nothing would complain at boot.
+    getServerEnvMock.mockReturnValue({
+      AIN_API_BASE_URL: "https://api.subrahq.com/registry",
+    });
+    const fetchMock = vi.fn().mockResolvedValue(jsonResponse(WHOAMI));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await whoAmI();
+
+    const [url] = fetchMock.mock.calls[0] as [URL];
+    expect(url.toString()).toBe("https://api.subrahq.com/registry/auth/whoami");
+  });
+
+  it("does not double the separator on a base URL that ends in one", async () => {
+    getServerEnvMock.mockReturnValue({
+      AIN_API_BASE_URL: "https://api.subrahq.com/registry/",
+    });
+    const fetchMock = vi.fn().mockResolvedValue(jsonResponse(WHOAMI));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await whoAmI();
+
+    const [url] = fetchMock.mock.calls[0] as [URL];
+    expect(url.toString()).toBe("https://api.subrahq.com/registry/auth/whoami");
   });
 
   it("refuses to call the registry without a token", async () => {
@@ -335,6 +371,9 @@ describe("registry api", () => {
     const second = {
       ...ORGANISATION,
       organisation_id: "1a1f6f38-0d3f-4c86-9a53-8c8f7a1e2b4d",
+      // Its own ULID, because that is what addresses it: two organisations
+      // sharing one would be two organisations at one URL.
+      org_ulid: "01BX5ZZKBKACTAV9WEVGEMMVRZ",
       name: "Beta Ltd",
       is_owner: false,
       verification_status: "pending",
@@ -365,12 +404,14 @@ describe("registry api", () => {
     expect(state.organisations).toEqual([
       {
         id: ORG_ID,
+        ulid: "01ARZ3NDEKTSV4RRFFQ69G5FAV",
         name: "Acme Ltd",
         membershipRole: "owner",
         verificationStatus: "verified",
       },
       {
         id: second.organisation_id,
+        ulid: "01BX5ZZKBKACTAV9WEVGEMMVRZ",
         name: "Beta Ltd",
         membershipRole: "member",
         verificationStatus: "pending",
@@ -582,5 +623,134 @@ describe("registry writes", () => {
     // The queue is what is *outstanding*; a decided row appearing in it is a
     // contract break worth failing on rather than rendering.
     await expect(listReviewQueue()).rejects.toThrow();
+  });
+
+  it("sends an invitation as a write, not a read", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(jsonResponse({}));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await inviteMember(ORG_ID, "auditor@example.com", "auditor");
+
+    const [url, init] = fetchMock.mock.calls[0] as [URL, RequestInit];
+    expect(url.pathname).toBe(`/orgs/${ORG_ID}/members`);
+    expect(init.method).toBe("POST");
+  });
+
+  it("says nobody is listed only when the registry could list them", async () => {
+    // The registry has no members read yet. An empty array and "we cannot ask"
+    // are different claims, and only one of them is true.
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(jsonResponse({}, 404)));
+
+    await expect(listMembers(ORG_ID)).resolves.toBeNull();
+
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        jsonResponse({
+          members: [
+            {
+              member_id: "1f4f4c6e-0000-4000-8000-000000000001",
+              email: "auditor@example.com",
+              role: "auditor",
+            },
+          ],
+        }),
+      ),
+    );
+
+    await expect(listMembers(ORG_ID)).resolves.toEqual([
+      {
+        id: "1f4f4c6e-0000-4000-8000-000000000001",
+        email: "auditor@example.com",
+        role: "auditor",
+      },
+    ]);
+  });
+
+  it("does not report an outage as a missing members route", async () => {
+    // `null` means "the registry does not serve this yet", which the page
+    // turns into "anyone already invited still has access". Said during an
+    // outage that is a claim with nothing behind it.
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(jsonResponse({}, 503)));
+
+    await expect(listMembers(ORG_ID)).rejects.toBeInstanceOf(
+      RegistryUnavailableError,
+    );
+  });
+
+  it("does not report an expired session as a missing members route", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(jsonResponse({}, 401)));
+
+    await expect(listMembers(ORG_ID)).rejects.toBeInstanceOf(
+      NotAuthenticatedError,
+    );
+  });
+
+  it("lets contract drift fail loudly rather than reading as unserved", async () => {
+    // `member_id` renamed. The module's whole promise is that drift surfaces
+    // here rather than as `undefined` rendering halfway down a page.
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        jsonResponse({
+          members: [{ id: "1", email: "auditor@example.com", role: "auditor" }],
+        }),
+      ),
+    );
+
+    await expect(listMembers(ORG_ID)).rejects.toBeTruthy();
+  });
+
+  it("gives up access with a delete that expects no body", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(new Response(null, { status: 204 }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(leaveOrganisation(ORG_ID)).resolves.toBe("left");
+
+    const [url, init] = fetchMock.mock.calls[0] as [URL, RequestInit];
+    expect(url.pathname).toBe(`/orgs/${ORG_ID}/members/me`);
+    expect(init.method).toBe("DELETE");
+    // No body, so no content-type to declare one.
+    expect(init.body).toBeUndefined();
+  });
+
+  it("reports a missing capability as missing, not as an outage", async () => {
+    // A 404 or 405 here means the route is not there. Nothing is wrong with
+    // the registry, so "try again shortly" would be advice that cannot work.
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(jsonResponse({}, 405)));
+
+    await expect(leaveOrganisation(ORG_ID)).resolves.toBe("unsupported");
+  });
+
+  it("reads the 422 the registry actually sends as a missing capability", async () => {
+    // `/orgs/{id}/members/me` is matched by the registry's
+    // `/orgs/{organisation_id}/members/{member_id}`, whose `member_id` is a
+    // UUID — so the literal "me" fails validation before any handler runs and
+    // FastAPI answers 422 with an array `detail`. No string survives
+    // `refusalDetail`, so it arrives as an unavailability; reading it as one
+    // told every non-owner to retry something that can never succeed.
+    vi.stubGlobal(
+      "fetch",
+      vi
+        .fn()
+        .mockResolvedValue(
+          jsonResponse(
+            { detail: [{ loc: ["path", "member_id"], msg: "invalid uuid" }] },
+            422,
+          ),
+        ),
+    );
+
+    await expect(leaveOrganisation(ORG_ID)).resolves.toBe("unsupported");
+  });
+
+  it("still fails an outage closed while leaving", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(jsonResponse({}, 500)));
+
+    await expect(leaveOrganisation(ORG_ID)).rejects.toBeInstanceOf(
+      RegistryUnavailableError,
+    );
   });
 });

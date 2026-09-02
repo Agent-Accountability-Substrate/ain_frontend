@@ -1,9 +1,11 @@
 import "server-only";
 
+import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
 import type { AccountWorkspaceState } from "@/domains/workspace/account-workspace";
 import { logger } from "@/lib/logger";
+import { ORGANISATION_PREFERENCE } from "@/domains/workspace/workspace-routes";
 import {
   loadAccountWorkspace,
   NotAuthenticatedError,
@@ -33,28 +35,40 @@ const GENERIC =
 
 export async function loadWorkspace(
   selectedOrganisationId: string | null = null,
+  /** Passed through: the shell renders no agent rows, so it asks for none. */
+  options: { withAgents?: boolean } = {},
 ): Promise<WorkspaceLoad> {
   try {
     return {
       status: "ready",
-      state: await loadAccountWorkspace(selectedOrganisationId),
+      state: await loadAccountWorkspace(
+        selectedOrganisationId,
+        // Only consulted when the address named nothing, which is the only
+        // time there is a question to answer. Reading it here rather than in
+        // the layout is what keeps the frame and the screen inside it showing
+        // the same organisation.
+        selectedOrganisationId === null
+          ? ((await cookies()).get(ORGANISATION_PREFERENCE)?.value ?? null)
+          : null,
+        options,
+      ),
     };
   } catch (error) {
     if (error instanceof NotAuthenticatedError) {
       // The session cookie outlives the access token, so this is an ordinary
-      // state rather than an error: signed in, but no longer holding anything
-      // the registry will accept. Re-authenticating is the whole fix, and it
+      // state rather than an error. Re-authenticating is the whole fix, and it
       // returns the person to the page they asked for.
       logger.info("workspace.reauthentication_required");
       redirect("/api/auth/signin");
     }
     if (error instanceof RegistryUnavailableError) {
-      logger.error("workspace.registry_unavailable");
-      // `detail` is present when the registry named an unconfigured subsystem
-      // — "issuance signing is not configured" and the like. That is worth
-      // showing an operator; anything else gets wording that does not promise
-      // a retry will help.
-      return { status: "unavailable", detail: error.detail ?? GENERIC };
+      // The registry's own `detail` names a subsystem — "issuance signing is
+      // not configured" and the like. That belongs in the log, not on the
+      // screen of somebody who cannot act on it and did not cause it.
+      logger.error("workspace.registry_unavailable", {
+        ...(error.detail !== undefined && { detail: error.detail }),
+      });
+      return { status: "unavailable", detail: GENERIC };
     }
     throw error;
   }

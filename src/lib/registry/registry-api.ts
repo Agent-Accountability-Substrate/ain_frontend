@@ -1,10 +1,12 @@
 import "server-only";
 
+import { cache } from "react";
 import { z } from "zod";
 
-import { auth } from "@/auth";
+import { currentSession } from "@/auth";
 import type {
   AccountWorkspaceState,
+  OrganisationMember,
   OrganisationSummary,
 } from "@/domains/workspace/account-workspace";
 import type { IndividualAssuranceSummary } from "@/domains/identity/identity-assurance";
@@ -15,15 +17,13 @@ import { getServerEnv } from "@/lib/config/server-env";
  * API origin or the caller's bearer token (Next 16.3 guidance: a `server-only`
  * DAL owns `process.env` access, so secrets never spread through the tree).
  *
- * Two things this deliberately does not do. It does not accept a token as an
- * argument: callers cannot supply one, so no route can be tricked into
- * forwarding someone else's. And it does not export the token — only the parsed
- * result of a call — so nothing downstream can pass it to a client component.
+ * It never accepts a token as an argument, so no route can be tricked into
+ * forwarding someone else's, and never exports one — only the parsed result of
+ * a call.
  *
  * Every response is parsed with Zod before it leaves this module, per the repo
- * rule. The backend is trusted for correctness, not for shape: a contract drift
- * should surface here as a loud failure rather than as `undefined` rendering
- * halfway down a page.
+ * rule: contract drift surfaces here as a loud failure rather than as
+ * `undefined` rendering halfway down a page.
  */
 
 /** Local default matching `uvicorn ain_backend_api.app:create_app --factory`. */
@@ -32,18 +32,22 @@ const LOCAL_API_BASE_URL = "http://127.0.0.1:8000";
 /**
  * The registry could not be reached, or answered in a way we cannot use.
  *
- * `detail` is the registry's own explanation when it gave one. A 503 from this
- * backend has two quite different meanings — "storage is temporarily
- * unavailable", where retrying is the right advice, and "issuance signing is
- * not configured", where it never is. Both arrive as 503, so a caller that
- * only knows the status tells someone to retry something that cannot succeed.
+ * `detail` carries the registry's own explanation for the log. A 503 means
+ * either "storage is temporarily unavailable", where retrying helps, or
+ * "issuance signing is not configured", where it never will.
  */
 export class RegistryUnavailableError extends Error {
   readonly detail: string | undefined;
+  /** The HTTP status, when there was a response at all. */
+  readonly status: number | undefined;
 
-  constructor(message: string, options?: ErrorOptions & { detail?: string }) {
+  constructor(
+    message: string,
+    options?: ErrorOptions & { detail?: string; status?: number },
+  ) {
     super(message, options);
     this.detail = options?.detail;
+    this.status = options?.status;
   }
 }
 
@@ -55,9 +59,8 @@ export class NotAuthenticatedError extends Error {}
  *
  * Separate from `RegistryUnavailableError` because the two need opposite
  * treatment: this one is the caller's to fix and its `detail` is safe to show,
- * while an unavailability is ours and its message is not. `status` is carried
- * so a caller can distinguish "already registered" from "slow down" without
- * matching on prose.
+ * while an unavailability is ours and its message is not. `status` lets a
+ * caller tell "already registered" from "slow down" without matching on prose.
  */
 export class RegistryRefusedError extends Error {
   constructor(
@@ -148,20 +151,31 @@ function baseUrl(): string {
 }
 
 /**
+ * The registry's address for one path.
+ *
+ * Concatenated rather than `new URL(path, base)`: every path here is absolute,
+ * and an absolute path replaces the base's own, so a registry mounted under a
+ * prefix — `https://host/registry` behind a gateway — silently loses it. That
+ * 404s every call in the deployment while still forwarding the caller's bearer
+ * token to a path nobody meant, and nothing complains at boot.
+ */
+function apiUrl(path: string): URL {
+  return new URL(`${baseUrl().replace(/\/+$/, "")}${path}`);
+}
+
+/**
  * Statuses whose `detail` is written for a person and is theirs to act on.
  *
  * An allowlist rather than "any 4xx", because most 4xx are not the caller's at
- * all. A **405** is the client calling a route the registry does not serve that
- * way — a version skew between the two, which showed up the first time this was
- * pointed at a backend running older code and rendered "Method Not Allowed" to
- * the user. A **404** on a tenant route means "not a member", and repeating the
- * registry's wording would tell a stranger which of the two it was. Both belong
- * on the unavailable side with everything else unrecognised.
+ * all. A **405** is a version skew between client and registry, which would
+ * otherwise render "Method Not Allowed" to a user. A **404** on a tenant route
+ * means "not a member", and repeating the registry's wording would tell a
+ * stranger which of the two it was. Both belong on the unavailable side.
  *
- * 403 "insufficient role" / "organisation is not verified", 409 "company
- * already registered", 422 "the member's email is not a usable address" and
- * 429's back-off are all written to be read. Add to this set only when the
- * registry gains another status that carries a message worth showing.
+ * 403 "insufficient role", 409 "company already registered", 422 "the member's
+ * email is not a usable address" and 429's back-off are all written to be
+ * read. Add to this set only when the registry gains another status carrying a
+ * message worth showing.
  */
 const RELAYABLE = new Set([403, 409, 422, 429, 503]);
 
@@ -183,23 +197,24 @@ async function refusalDetail(response: Response): Promise<string | null> {
 
 async function request(
   path: string,
-  init?: { method: "POST" | "PATCH"; body: unknown },
+  init?: { method: "POST" | "PATCH" | "DELETE"; body?: unknown },
 ): Promise<unknown> {
-  const session = await auth();
-  // Absent covers both "not signed in" and "access token expired", which the
-  // session callback collapses on purpose — neither can be fixed by retrying
-  // the request, and both are fixed by signing in again.
+  const session = await currentSession();
+  // Absent covers both "not signed in" and "access token expired": neither is
+  // fixed by retrying, and both are fixed by signing in again.
   if (!session?.accessToken) throw new NotAuthenticatedError();
 
   let response: Response;
   try {
-    response = await fetch(new URL(path, baseUrl()), {
+    response = await fetch(apiUrl(path), {
       method: init?.method ?? "GET",
       headers: {
         authorization: `Bearer ${session.accessToken}`,
-        ...(init && { "content-type": "application/json" }),
+        ...(init?.body !== undefined && {
+          "content-type": "application/json",
+        }),
       },
-      ...(init && { body: JSON.stringify(init.body) }),
+      ...(init?.body !== undefined && { body: JSON.stringify(init.body) }),
       // Authority is re-read from the registry on every backend request, so a
       // cached response would reinstate exactly the staleness that reading it
       // per request exists to avoid.
@@ -230,9 +245,11 @@ async function request(
     }
     throw new RegistryUnavailableError(
       `registry answered ${response.status} for ${path}`,
-      detail !== null ? { detail } : undefined,
+      { status: response.status, ...(detail !== null && { detail }) },
     );
   }
+  // A 204 has no body to parse, and a deletion is the ordinary case for one.
+  if (response.status === 204) return null;
   return response.json();
 }
 
@@ -243,10 +260,10 @@ async function get(path: string): Promise<unknown> {
 /**
  * `GET /auth/whoami` — the authenticated echo.
  *
- * Worth more than it looks: the organisations and roles it returns are resolved
- * from the caller's `app_user` rows, not from the token, so a successful call
- * proves the whole chain — audience requested, Action stamping its claims,
- * backend verifying, membership resolved.
+ * The organisations and roles it returns are resolved from the caller's
+ * `app_user` rows rather than from the token, so a successful call proves the
+ * whole chain: audience requested, claims stamped, backend verifying,
+ * membership resolved.
  */
 export async function whoAmI(): Promise<WhoAmI> {
   return whoAmISchema.parse(await get("/auth/whoami"));
@@ -271,15 +288,12 @@ export async function listAgents(
 /**
  * `GET /identity/assurance` — how well the caller's own identity is known.
  *
- * Always answers; "nothing established yet" is `not_started`, not a 404. The
- * registry never writes this table, so today it is `not_started` for everyone
- * — the shape is here so the UI is already right when a provider lands.
+ * Always answers; "nothing established yet" is `not_started`, not a 404.
  */
 export async function identityAssurance(): Promise<IndividualAssuranceSummary> {
   const record = assuranceSchema.parse(await get("/identity/assurance"));
-  // Optional-and-absent rather than explicitly null, because that is what the
-  // frontend type says. `??` on each field would keep nulls; this drops the
-  // keys entirely, so `"assuranceProfile" in summary` means what it looks like.
+  // Optional-and-absent rather than explicitly null, matching the frontend
+  // type: `??` would keep nulls, where this drops the keys entirely.
   return {
     status: record.status,
     ...(record.assurance_profile !== null && {
@@ -317,9 +331,8 @@ export type NewOrganisation = {
  * `POST /orgs` — register a company. Anyone with a verified address may.
  *
  * The organisation is created `pending` and can do nothing until trust-ops
- * confirms the registration number against the company register and the
- * creator's authority to represent it out of band. That is why this needs no
- * gate of its own beyond being signed in.
+ * confirms the registration number and the creator's authority to represent it
+ * out of band, which is why this needs no gate beyond being signed in.
  */
 export async function createOrganisation(
   input: NewOrganisation,
@@ -421,11 +434,10 @@ export type SubmittedAgent = z.infer<typeof submittedAgentSchema>;
 /**
  * `POST /orgs/{id}/agents/{ain}/submit` — sign the document and activate.
  *
- * The one write here that needs custody provisioned: it canonicalises the
- * payload, has it signed, and appends the genesis lifecycle events in one
- * transaction. Without Vault the registry refuses rather than issuing an agent
- * under a development key, which is why a 503 from this call is configuration
- * rather than a bug.
+ * The one write that needs custody provisioned: it canonicalises the payload,
+ * has it signed, and appends the genesis lifecycle events in one transaction.
+ * Without Vault the registry refuses rather than issue under a development key,
+ * so a 503 here is configuration rather than a bug.
  */
 export async function submitAgent(
   organisationId: string,
@@ -461,9 +473,9 @@ export type ReviewItem = z.infer<typeof reviewItemSchema>;
  * `GET /operations/review-queue` — what trust operations has left to decide.
  *
  * The one cross-tenant list in the product. The operator belongs to none of
- * these organisations; the registry's `organisation_review_read` policy is
- * what makes the read possible, and it re-derives the role from the database
- * rather than trusting the caller.
+ * these organisations; the registry's `organisation_review_read` policy makes
+ * the read possible, re-deriving the role from the database rather than
+ * trusting the caller.
  */
 export async function listReviewQueue(): Promise<ReviewItem[]> {
   const body = reviewQueueSchema.parse(await get("/operations/review-queue"));
@@ -534,9 +546,107 @@ export async function recordVerification(
   );
 }
 
+const memberSchema = z.object({
+  member_id: z.uuid(),
+  email: z.email(),
+  role: z.string(),
+});
+
+const memberListSchema = z.object({ members: z.array(memberSchema) });
+
+/**
+ * `POST /orgs/{id}/members` — give someone access to this organisation.
+ *
+ * Any address, matching the registry: an auditor or outside adviser may need to
+ * read a register without holding a company mailbox. The role is the limit.
+ */
+export async function inviteMember(
+  organisationId: string,
+  email: string,
+  role: string,
+): Promise<void> {
+  await request(`/orgs/${encodeURIComponent(organisationId)}/members`, {
+    method: "POST",
+    body: { email, role },
+  });
+}
+
+/**
+ * Whether a failure means "the registry does not serve this route", rather
+ * than anything being wrong.
+ *
+ * A **404** is the route not existing and a **405** the path existing for
+ * another verb. A **422** is this shape too, and is the one that actually
+ * answers today: `/orgs/{id}/members/me` is matched by the registry's
+ * `/orgs/{organisation_id}/members/{member_id}`, whose `member_id` is a UUID,
+ * so the literal `me` fails validation before any handler runs. FastAPI's 422
+ * body is an array of per-field objects, so no detail survives `refusalDetail`
+ * and it arrives here as an unavailability — which it is not.
+ */
+function isUnsupportedRoute(error: unknown): boolean {
+  return (
+    error instanceof RegistryUnavailableError &&
+    (error.status === 404 || error.status === 405 || error.status === 422)
+  );
+}
+
+/**
+ * `GET /orgs/{id}/members` — who else can act for this organisation.
+ *
+ * The registry does not serve this yet. Returns `null` rather than an empty
+ * array when the route is absent, so the page can say "not available" instead
+ * of "nobody" — different claims, and only one of them true.
+ */
+export async function listMembers(
+  organisationId: string,
+): Promise<OrganisationMember[] | null> {
+  try {
+    const body = memberListSchema.parse(
+      await get(`/orgs/${encodeURIComponent(organisationId)}/members`),
+    );
+    return body.members.map((member) => ({
+      id: member.member_id,
+      email: member.email,
+      role: member.role,
+    }));
+  } catch (error) {
+    // Only "the registry does not serve this route" becomes `null`. An expired
+    // session, an outage, or a payload that fails the schema are all different
+    // claims, and laundering them into "not available yet" would state as fact
+    // something this module has no evidence for — and would swallow the loud
+    // failure that contract drift is supposed to produce here.
+    if (isUnsupportedRoute(error)) return null;
+    throw error;
+  }
+}
+
+/**
+ * `DELETE /orgs/{id}/members/me` — give up your own access to a company.
+ *
+ * The registry removes a member by id and cannot yet name the caller's own, so
+ * this route does not answer — see `isUnsupportedRoute` for the three ways it
+ * says so, 422 being the one it actually sends. That comes back as
+ * `"unsupported"` rather than an outage: nothing is wrong, so "try again
+ * shortly" would be a promise nothing can keep.
+ */
+export async function leaveOrganisation(
+  organisationId: string,
+): Promise<"left" | "unsupported"> {
+  try {
+    await request(`/orgs/${encodeURIComponent(organisationId)}/members/me`, {
+      method: "DELETE",
+    });
+    return "left";
+  } catch (error) {
+    if (isUnsupportedRoute(error)) return "unsupported";
+    throw error;
+  }
+}
+
 function toSummary(organisation: RegistryOrganisation): OrganisationSummary {
   return {
     id: organisation.organisation_id,
+    ulid: organisation.org_ulid,
     name: organisation.name,
     // The owner is the `organisation.owner_user_id` FK, not a role: an
     // organisation may have several admins and exactly one owner.
@@ -553,38 +663,100 @@ function toSummary(organisation: RegistryOrganisation): OrganisationSummary {
  * Everything the authenticated shell needs, in one call per page.
  *
  * The agent count is a sum across organisations, so it costs one request each.
- * That is deliberate rather than overlooked: the number appears on one card,
- * and a count field on `GET /orgs` would put a second definition of "how many
- * agents" in the API for it. Revisit if a person ever belongs to enough
- * organisations for the round trips to show.
+ * A count field on `GET /orgs` would put a second definition of "how many
+ * agents" in the API; revisit if a person ever belongs to enough organisations
+ * for the round trips to show.
  *
- * `selectedOrganisationId` is the caller's choice, passed in by the page. It is
- * not stored here and not guessed: every tenant route on the backend names its
- * organisation in the path, and the client should say which one it means for
- * the same reason.
+ * The selected organisation is the caller's choice, passed in by the page —
+ * not stored here and not guessed.
  */
 export async function loadAccountWorkspace(
-  selectedOrganisationId: string | null = null,
+  /**
+   * The organisation named by the URL, as its public ULID.
+   *
+   * Resolved against the caller's own membership list, which is what makes an
+   * organisation they do not belong to indistinguishable from one that does
+   * not exist: it is simply not in the map, so the page 404s like any other
+   * resource you cannot see. No separate authorisation branch to keep correct.
+   */
+  selectedOrganisationUlid: string | null = null,
+  /**
+   * The organisation remembered from the last switch, for the screens whose
+   * address names none. A fallback rather than a claim: one that no longer
+   * resolves is ignored, where a URL naming the same organisation would 404.
+   */
+  rememberedOrganisationUlid: string | null = null,
+  /**
+   * Whether the per-organisation agent registers are wanted.
+   *
+   * Off for the shell, which renders none of them. On by default, so a screen
+   * that needs them gets them by asking for nothing.
+   */
+  { withAgents = true }: { withAgents?: boolean } = {},
 ): Promise<AccountWorkspaceState> {
+  const { summaries, isOperator, individualAssurance } =
+    await fetchMemberships();
+  const agentLists = withAgents ? await fetchAgentLists() : [];
+
+  const named =
+    selectedOrganisationUlid === null
+      ? null
+      : (summaries.find(
+          (summary) => summary.ulid === selectedOrganisationUlid,
+        ) ?? null);
+  // The address, then the last switch, then the only membership there is —
+  // which is not a guess, because with one there is nothing to choose between.
+  const selected =
+    named ??
+    summaries.find((summary) => summary.ulid === rememberedOrganisationUlid) ??
+    (summaries.length === 1 ? summaries[0]! : null);
+
+  return {
+    individualAssurance,
+    isOperator,
+    organisations: summaries,
+    selectedOrganisationId: selected?.id ?? null,
+    // Distinct from the fallback above: a URL that named an organisation the
+    // caller is not in resolved to nothing, and the page turns that into a 404
+    // rather than quietly showing them a different one.
+    namedOrganisationFound: selectedOrganisationUlid === null || named !== null,
+    totalAccessibleAgents: agentLists.reduce(
+      (total, entry) => total + entry.agents.length,
+      0,
+    ),
+    // Already fetched, parsed and validated to produce that number, so
+    // keeping the rows costs nothing.
+    agents: agentLists.flatMap((entry) =>
+      entry.agents.map((agent) => ({
+        ain: agent.ain,
+        name: agent.name,
+        role: agent.role,
+        status: agent.status,
+        riskClass: agent.risk_class,
+        organisationId: entry.organisationId,
+        validFrom: agent.valid_from,
+        createdAt: agent.created_at,
+      })),
+    ),
+    recentActivity: [],
+  };
+}
+
+/**
+ * The memberships side of the workspace, fetched once per request.
+ *
+ * `cache` rather than a module-level variable: per-request memoisation, so the
+ * shell and the page inside it share one round trip and two different requests
+ * share nothing.
+ *
+ * Nothing about the caller's *choice* of organisation is in here — that is a
+ * pure function of this data and the URL, so it belongs where the URL is known.
+ */
+const fetchMemberships = cache(async () => {
   const [organisations, individualAssurance] = await Promise.all([
     listOrganisations(),
     identityAssurance(),
   ]);
-  // allSettled, not all: this fan-out exists to sum one number for one stat
-  // tile and one checklist tick, and Promise.all rejects on the first
-  // rejection -- so a single organisation's agent list failing threw away the
-  // organisations, names, statuses, review reasons, isOperator and assurance
-  // that had already been fetched successfully, and the user got the full-page
-  // outage screen. Nothing authorisation- or correctness-bearing reads the
-  // count, so an undercount on a card is the right way to degrade.
-  const agentCounts = (
-    await Promise.allSettled(
-      organisations.map(
-        async (organisation) =>
-          (await listAgents(organisation.organisation_id)).length,
-      ),
-    )
-  ).map((result) => (result.status === "fulfilled" ? result.value : 0));
 
   const summaries = organisations.map(toSummary);
   // Read off the raw roles before `toSummary` drops them. The console's
@@ -593,27 +765,39 @@ export async function loadAccountWorkspace(
   const isOperator = organisations.some((organisation) =>
     organisation.roles.includes("trust_ops"),
   );
-  const selected =
-    selectedOrganisationId !== null &&
-    summaries.some((summary) => summary.id === selectedOrganisationId)
-      ? selectedOrganisationId
-      : // Falling back to the only organisation is not a guess: with one
-        // membership there is nothing to choose between. With several, no
-        // choice has been made and the UI must say so rather than pick.
-        summaries.length === 1
-        ? summaries[0]!.id
-        : null;
 
-  return {
-    individualAssurance,
-    isOperator,
-    organisations: summaries,
-    selectedOrganisationId: selected,
-    totalAccessibleAgents: agentCounts.reduce((total, n) => total + n, 0),
-    // No source yet. `audit_log` holds the rows, but nothing exposes them and
-    // what an activity feed may disclose — audit entries name the acting
-    // subject — is a decision, not a wiring job. Empty is the honest value;
-    // inventing one here would be worse than the gap.
-    recentActivity: [],
-  };
-}
+  return { organisations, summaries, isOperator, individualAssurance };
+});
+
+/**
+ * The agent registers, which cost one request per organisation.
+ *
+ * Its own memoised read rather than part of the one above, because the shell
+ * needs none of it. The workspace layout wraps every authenticated route, so
+ * folding the fan-out into the shared fetch made `/demo`, the account settings
+ * and the identity check each pay a request per organisation for rows nothing
+ * on those pages renders.
+ */
+const fetchAgentLists = cache(async () => {
+  const { organisations } = await fetchMemberships();
+  // allSettled, not all: one organisation's agent list failing must not throw
+  // away the memberships, statuses and assurance already fetched and send the
+  // whole page to the outage screen. Nothing authorisation- or
+  // correctness-bearing reads these, so an empty register is the right way to
+  // degrade.
+  return (
+    await Promise.allSettled(
+      organisations.map(async (organisation) => ({
+        organisationId: organisation.organisation_id,
+        agents: await listAgents(organisation.organisation_id),
+      })),
+    )
+  ).map((result, index) =>
+    result.status === "fulfilled"
+      ? result.value
+      : {
+          organisationId: organisations[index]!.organisation_id,
+          agents: [] as RegistryAgent[],
+        },
+  );
+});

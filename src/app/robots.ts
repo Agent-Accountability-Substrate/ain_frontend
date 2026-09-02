@@ -7,8 +7,12 @@ import { siteUrl } from "@/lib/brand/site-origin";
  * Everything behind the session gate. Listing it keeps a set of redirects out
  * of the index and out of the crawl budget.
  *
- * `Disallow` matches a prefix, not a path segment, so: a trailing slash where
- * the segment has only children, none where it has a page of its own.
+ * A rule matches a prefix, not a path segment, so: a trailing slash where the
+ * segment has only children, none where it has a page of its own. `$` anchors
+ * a rule to the end of the path (RFC 9309 §2.2.3), which `/o$` needs — the
+ * organisation segment is one letter, and a bare `/o` would also disallow
+ * `/opengraph-image`, sending every social scraper away from the share card
+ * that is meant to be crawled.
  *
  * Written out rather than derived, because a crawler needs prefixes and the
  * gate answers about one path at a time. `robots.test.ts` walks `src/app` and
@@ -17,12 +21,12 @@ import { siteUrl } from "@/lib/brand/site-origin";
  */
 const GATED_PREFIXES = [
   "/api/",
-  "/account",
-  "/agents/",
-  "/dashboard",
+  "/demo",
+  "/o$",
+  "/o/",
   "/onboarding/",
   "/operations",
-  "/organisations",
+  "/settings",
 ];
 
 /**

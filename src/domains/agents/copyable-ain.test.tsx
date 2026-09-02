@@ -28,6 +28,15 @@ afterEach(() => {
 });
 
 describe("CopyableAin", () => {
+  it("shows the identifier, rather than only offering to copy it", () => {
+    // The AIN is the one string the whole product exists to produce. It used to
+    // live only inside a href behind this button, so it could be copied blind
+    // and never read, checked, or written down.
+    render(<CopyableAin value={permanentAin} />);
+
+    expect(screen.getByText(permanentAin)).toBeDefined();
+  });
+
   it("copies the full AIN and announces success", async () => {
     const writeText = vi.fn().mockResolvedValue(undefined);
     setClipboard(writeText);

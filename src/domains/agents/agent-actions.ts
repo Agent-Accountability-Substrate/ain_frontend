@@ -3,13 +3,12 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
+import { ORGANISATION_SETTINGS } from "@/domains/workspace/workspace-routes";
 import { logger } from "@/lib/logger";
+import { registryErrorReporter } from "@/lib/registry/action-errors";
 import {
-  NotAuthenticatedError,
   patchAgent,
   registerAgent,
-  RegistryRefusedError,
-  RegistryUnavailableError,
   submitAgent,
 } from "@/lib/registry/registry-api";
 
@@ -32,6 +31,12 @@ import {
 const UNAVAILABLE =
   "The registry is not reachable right now. Try again shortly.";
 const SIGNED_OUT = "Your session expired. Sign in again and continue.";
+
+const toErrorState = registryErrorReporter({
+  signedOut: SIGNED_OUT,
+  unavailable: UNAVAILABLE,
+  unavailableEvent: "agent.registry_unavailable",
+});
 
 export type AgentStepState<T = object> =
   | { status: "idle" }
@@ -65,40 +70,6 @@ function list(raw: string): string[] {
         .filter(Boolean),
     ),
   ].sort();
-}
-
-/**
- * Every step ends the same four ways, and each needs different handling: a
- * refusal is the caller's and is shown verbatim, an outage is ours and is not,
- * an expired session is neither, and anything else is a bug worth crashing on.
- */
-function toErrorState(
-  error: unknown,
-  event: string,
-): {
-  status: "error";
-  message: string;
-  errors: Partial<Record<string, string>>;
-} {
-  if (error instanceof NotAuthenticatedError) {
-    return { status: "error", message: SIGNED_OUT, errors: {} };
-  }
-  if (error instanceof RegistryRefusedError) {
-    logger.warn(event, { status: error.status });
-    return { status: "error", message: error.detail, errors: {} };
-  }
-  if (error instanceof RegistryUnavailableError) {
-    logger.error(`${event}_unavailable`);
-    // "issuance signing is not configured" and "storage is temporarily
-    // unavailable" are both 503. Telling someone to retry the first is worse
-    // than saying nothing, so the registry.s own words win when it gave any.
-    return {
-      status: "error",
-      message: error.detail ?? UNAVAILABLE,
-      errors: {},
-    };
-  }
-  throw error;
 }
 
 function fieldErrors(error: z.ZodError): Partial<Record<string, string>> {
@@ -155,7 +126,7 @@ const declarationSchema = z.object({
     .transform(list)
     .refine(
       (entries) => entries.length > 0,
-      "Declare at least one action class, or state a deny-all scope explicitly",
+      "List at least one action this agent is authorised to take",
     ),
   riskLevel: z.string().trim().min(1, "Choose a risk level").max(50),
   regulatoryMappings: z.string().transform(list),
@@ -254,8 +225,8 @@ export async function submitAgentAction(
       parsed.data.ain,
     );
     logger.info("agent.issued");
-    revalidatePath("/dashboard");
-    revalidatePath("/organisations");
+    revalidatePath("/o", "layout");
+    revalidatePath(ORGANISATION_SETTINGS);
     return {
       status: "done",
       ain: issued.ain,
