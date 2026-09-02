@@ -4,7 +4,11 @@ import { ArrowRight, Building2, ShieldCheck } from "lucide-react";
 import { useActionState, useState } from "react";
 
 import { PrimaryNextActions } from "@/domains/workspace/primary-next-actions";
-import { WorkspaceShell } from "@/domains/workspace/workspace-shell";
+import {
+  WorkspaceContent,
+  WorkspacePane,
+  WorkspaceShell,
+} from "@/domains/workspace/workspace-shell";
 import {
   initialAccountWorkspaceState,
   type AccountWorkspaceState,
@@ -15,8 +19,28 @@ import {
   type CreateOrganisationState,
 } from "@/domains/organisations/organisation-actions";
 import { menuItemsFor } from "@/domains/workspace/workspace-navigation";
+import { Callout } from "@/lib/ui/callout";
+import { Button, ButtonLink } from "@/lib/ui/button";
+import { CheckboxField } from "@/lib/ui/checkbox-field";
+import { Eyebrow } from "@/lib/ui/eyebrow";
+import { SelectField } from "@/lib/ui/select-field";
+import { TextField } from "@/lib/ui/text-field";
 
 const INITIAL: CreateOrganisationState = { status: "idle" };
+
+const JURISDICTION_ITEMS = JURISDICTIONS.map((entry) => ({
+  value: entry.code,
+  label: entry.label,
+}));
+
+/** Which step owns each field, so a refusal shows the step that can fix it. */
+const STEP_ONE_FIELDS = [
+  "name",
+  "registrationNumber",
+  "jurisdiction",
+  "address",
+  "webUrl",
+];
 
 export function OrganisationCreationView({
   email,
@@ -30,12 +54,8 @@ export function OrganisationCreationView({
     INITIAL,
   );
   const [step, setStep] = useState<1 | 2>(1);
-  // Controlled, so a rejected submission keeps what was typed without the
-  // action having to carry every value back to the client.
   const [name, setName] = useState("");
   const [registrationNumber, setRegistrationNumber] = useState("");
-  // Widened from the literal union: the select's value is whatever the DOM
-  // reports, and the action re-validates it against the same list anyway.
   const [jurisdiction, setJurisdiction] = useState<string>(
     JURISDICTIONS[0].code,
   );
@@ -45,25 +65,12 @@ export function OrganisationCreationView({
 
   const errors = result.status === "error" ? result.errors : {};
   const created = result.status === "created";
-  // Step 1's fields live in a `hidden` container so the submitted FormData
-  // carries all of them, and Tailwind's preflight makes `[hidden]` a hard
-  // `display: none`. The form only submits from step 2, so a refusal about a
-  // step-1 field rendered "Check the highlighted fields" with every message
-  // invisible and no way back except guessing at "Back". Showing the step that
-  // owns the complaint is the fix; `step` is state, so this is just where it
-  // should be looking.
-  const stepOneFields = [
-    "name",
-    "registrationNumber",
-    "jurisdiction",
-    "address",
-    "webUrl",
-  ];
   const shownStep =
     result.status === "error" &&
-    stepOneFields.some((field) => errors[field] !== undefined)
+    STEP_ONE_FIELDS.some((f) => errors[f] !== undefined)
       ? 1
       : step;
+
   const jurisdictionLabel =
     JURISDICTIONS.find((entry) => entry.code === jurisdiction)?.label ??
     jurisdiction;
@@ -80,24 +87,26 @@ export function OrganisationCreationView({
       signedInAs={created ? name : "No organisation selected"}
       workspaceLabel="Create organisation"
     >
-      <div className="account-route-workspace">
-        <PrimaryNextActions state={state} />
-        <div className="wizard-panel">
+      <WorkspaceContent>
+        <WorkspacePane as="aside" className="max-lg:order-2">
+          <PrimaryNextActions state={state} />
+        </WorkspacePane>
+
+        <WorkspacePane className="max-lg:order-1">
           {created ? (
-            <div className="wizard-form">
-              <div className="wizard-form-heading">
-                <span className="wizard-form-icon">
+            <section className="mx-auto flex w-[min(100%,52rem)] flex-col gap-5 rounded-2xl border border-line bg-white p-6">
+              <div className="flex items-start gap-4">
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-success-wash text-success-strong">
                   <ShieldCheck className="h-5 w-5" aria-hidden="true" />
                 </span>
-                <div>
-                  <p className="dashboard-eyebrow">
-                    Submitted for verification
-                  </p>
-                  <h1>{name} is registered</h1>
-                  {/* Deliberately not a link into agent creation. The registry
-                      refuses agents in an unverified organisation, so offering
-                      it here would send someone straight into a refusal. */}
-                  <p>
+                <div className="flex flex-col gap-2">
+                  <Eyebrow>Submitted for verification</Eyebrow>
+                  <h1 className="text-xl font-semibold tracking-[-0.02em] text-ink">
+                    {name} is registered
+                  </h1>
+                  {/* Deliberately not a link into agent creation: the registry
+                      refuses agents in an unverified organisation. */}
+                  <p className="text-xs leading-5 text-mist">
                     Trust operations will confirm the company number against
                     Companies House and check your authority to act for it.
                     Until that is done the organisation is inert — agents can be
@@ -105,25 +114,28 @@ export function OrganisationCreationView({
                   </p>
                 </div>
               </div>
-              <div className="wizard-form-actions">
-                <a className="wizard-primary-action" href="/organisations">
+              <div className="flex justify-end">
+                <ButtonLink variant="primary" href="/organisations">
                   Back to organisations
                   <ArrowRight className="h-4 w-4" aria-hidden="true" />
-                </a>
+                </ButtonLink>
               </div>
-            </div>
+            </section>
           ) : (
-            <form className="wizard-form" action={formAction}>
-              <div className="wizard-form-heading">
-                <span className="wizard-form-icon">
+            <form
+              action={formAction}
+              className="mx-auto flex w-[min(100%,52rem)] flex-col gap-5 rounded-2xl border border-line bg-white p-6"
+            >
+              <div className="flex items-start gap-4">
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-wash-blue text-cobalt">
                   <Building2 className="h-5 w-5" aria-hidden="true" />
                 </span>
-                <div>
-                  <p className="dashboard-eyebrow">
-                    Step {shownStep} of 2 · Organisation setup
-                  </p>
-                  <h1>Create your organisation</h1>
-                  <p>
+                <div className="flex flex-col gap-2">
+                  <Eyebrow>Step {shownStep} of 2 · Organisation setup</Eyebrow>
+                  <h1 className="text-xl font-semibold tracking-[-0.02em] text-ink">
+                    Create your organisation
+                  </h1>
+                  <p className="text-xs leading-5 text-mist">
                     Register the legal entity that will own and operate your
                     accountable agents.
                   </p>
@@ -131,179 +143,198 @@ export function OrganisationCreationView({
               </div>
 
               <ol
-                className="wizard-progress"
+                className="grid grid-cols-2 gap-3"
                 aria-label="Organisation setup steps"
               >
-                <li data-current={shownStep === 1}>
-                  <span>1</span>
-                  Organisation details
-                </li>
-                <li data-current={shownStep === 2}>
-                  <span>2</span>
-                  Authority and review
-                </li>
+                {["Organisation details", "Authority and review"].map(
+                  (label, index) => (
+                    <li
+                      key={label}
+                      aria-current={
+                        shownStep === index + 1 ? "step" : undefined
+                      }
+                      className={
+                        shownStep === index + 1
+                          ? "flex items-center gap-2 border-b-2 border-cobalt pb-2 text-xs font-semibold text-ink"
+                          : "flex items-center gap-2 border-b-2 border-line pb-2 text-xs font-medium text-mist"
+                      }
+                    >
+                      <span
+                        className={
+                          shownStep === index + 1
+                            ? "flex h-5 w-5 items-center justify-center rounded-full bg-cobalt text-[10px] font-semibold text-white"
+                            : "flex h-5 w-5 items-center justify-center rounded-full border border-line-strong text-[10px] font-semibold text-mist"
+                        }
+                      >
+                        {index + 1}
+                      </span>
+                      {label}
+                    </li>
+                  ),
+                )}
               </ol>
 
-              {/* Every field stays mounted so the submitted FormData carries
-                  all of them; step 2 hides the inputs rather than unmounting. */}
-              <div className="wizard-form-grid" hidden={shownStep !== 1}>
-                <label>
-                  <span>Legal organisation name</span>
-                  <input
+              {shownStep === 1 ? (
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <TextField
+                    className="sm:col-span-2"
+                    label="Legal organisation name"
                     name="name"
                     required
+                    placeholder="Example Holdings Ltd"
                     value={name}
                     onChange={(event) => setName(event.target.value)}
-                    placeholder="Example Holdings Ltd"
+                    error={errors["name"]}
                   />
-                  {errors["name"] ? (
-                    <small role="alert">{errors["name"]}</small>
-                  ) : null}
-                </label>
-                <label>
-                  <span>Companies House number</span>
-                  <input
+                  <TextField
+                    label="Companies House number"
                     name="registrationNumber"
                     required
+                    placeholder="01234567"
                     value={registrationNumber}
                     onChange={(event) =>
                       setRegistrationNumber(event.target.value.toUpperCase())
                     }
-                    placeholder="01234567"
-                    inputMode="text"
+                    error={errors["registrationNumber"]}
                   />
-                  {errors["registrationNumber"] ? (
-                    <small role="alert">{errors["registrationNumber"]}</small>
-                  ) : null}
-                </label>
-                <label>
-                  <span>Registration jurisdiction</span>
-                  <select
+                  <SelectField
+                    label="Registration jurisdiction"
                     name="jurisdiction"
+                    items={JURISDICTION_ITEMS}
                     value={jurisdiction}
-                    onChange={(event) => setJurisdiction(event.target.value)}
-                  >
-                    {JURISDICTIONS.map((entry) => (
-                      <option key={entry.code} value={entry.code}>
-                        {entry.label}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <label>
-                  <span>Registered office address</span>
-                  <textarea
+                    onValueChange={setJurisdiction}
+                    error={errors["jurisdiction"]}
+                  />
+                  <TextField
+                    className="sm:col-span-2"
+                    label="Registered office address"
                     name="address"
-                    required
+                    multiline
                     rows={3}
+                    required
+                    placeholder="1 Example Street, London, EC1A 1AA"
                     value={address}
                     onChange={(event) => setAddress(event.target.value)}
-                    placeholder="1 Example Street, London, EC1A 1AA"
+                    error={errors["address"]}
                   />
-                  {errors["address"] ? (
-                    <small role="alert">{errors["address"]}</small>
-                  ) : null}
-                </label>
-                <label>
-                  <span>Website (optional)</span>
-                  <input
+                  <TextField
+                    className="sm:col-span-2"
+                    label="Website (optional)"
                     name="webUrl"
+                    placeholder="https://example.com"
                     value={webUrl}
                     onChange={(event) => setWebUrl(event.target.value)}
-                    placeholder="https://example.com"
+                    error={errors["webUrl"]}
                   />
-                </label>
-              </div>
-
-              {shownStep === 2 ? (
-                <div className="wizard-review">
-                  <div>
-                    <span>Organisation</span>
-                    <strong>{name}</strong>
-                  </div>
-                  <div>
-                    <span>Companies House number</span>
-                    <strong>{registrationNumber}</strong>
-                  </div>
-                  <div>
-                    <span>Jurisdiction</span>
-                    <strong>{jurisdictionLabel}</strong>
-                  </div>
-                  <div>
-                    <span>Registered office</span>
-                    <strong>{address}</strong>
-                  </div>
-                  {/* An attestation, not a stored field. The registry has
-                      nowhere to put a claimed relationship today, and a form
-                      that asks and discards would be worse than not asking. */}
-                  <label className="wizard-checkbox">
-                    <input
-                      type="checkbox"
-                      required
-                      checked={authorityConfirmed}
-                      onChange={(event) =>
-                        setAuthorityConfirmed(event.target.checked)
-                      }
-                    />
-                    <span>
-                      I confirm I am authorised to submit this organisation for
-                      verification.
-                    </span>
-                  </label>
                 </div>
-              ) : null}
+              ) : (
+                <>
+                  {/* Step 1's values ride along as hidden inputs rather than as
+                      visually-hidden required controls. The previous form kept
+                      them mounted under [hidden] with `required` still set,
+                      which Chrome refuses to submit — it cannot focus the
+                      invalid control to report it — so the whole form silently
+                      deadlocked. A truthiness guard on the Continue button
+                      masked it, and a single space defeated that guard. */}
+                  <input type="hidden" name="name" value={name} />
+                  <input
+                    type="hidden"
+                    name="registrationNumber"
+                    value={registrationNumber}
+                  />
+                  <input
+                    type="hidden"
+                    name="jurisdiction"
+                    value={jurisdiction}
+                  />
+                  <input type="hidden" name="address" value={address} />
+                  <input type="hidden" name="webUrl" value={webUrl} />
+
+                  <dl className="grid gap-3 rounded-xl border border-line bg-band p-4 sm:grid-cols-2">
+                    {[
+                      ["Organisation", name],
+                      ["Companies House number", registrationNumber],
+                      ["Jurisdiction", jurisdictionLabel],
+                      ["Registered office", address],
+                    ].map(([term, value]) => (
+                      <div key={term} className="flex flex-col gap-1">
+                        <dt className="text-[11px] font-semibold text-ink-muted">
+                          {term}
+                        </dt>
+                        <dd className="text-xs font-semibold text-ink">
+                          {value}
+                        </dd>
+                      </div>
+                    ))}
+                  </dl>
+
+                  {/* An attestation, not a stored field: the registry has
+                      nowhere to put a claimed relationship, and a form that
+                      asks and discards would be worse than not asking. */}
+                  <CheckboxField
+                    required
+                    checked={authorityConfirmed}
+                    onCheckedChange={setAuthorityConfirmed}
+                  >
+                    I confirm I am authorised to submit this organisation for
+                    verification.
+                  </CheckboxField>
+                </>
+              )}
 
               {result.status === "error" ? (
-                <p className="wizard-form-note" role="alert">
+                <Callout tone="danger" alert>
                   {result.message}
-                </p>
+                </Callout>
               ) : (
-                <div className="wizard-form-note">
+                <Callout>
                   The organisation is created pending verification. Trust
                   operations check the company number and your authority to act
                   for it before it can do anything.
-                </div>
+                </Callout>
               )}
 
-              <div className="wizard-form-actions">
+              <div className="flex flex-wrap items-center justify-between gap-3">
                 {shownStep === 2 ? (
-                  <button
+                  <Button
                     type="button"
-                    className="wizard-secondary-action"
+                    variant="secondary"
                     onClick={() => setStep(1)}
                   >
                     Back
-                  </button>
+                  </Button>
                 ) : (
-                  <a className="wizard-secondary-action" href="/dashboard">
+                  <ButtonLink variant="secondary" href="/dashboard">
                     Save and return
-                  </a>
+                  </ButtonLink>
                 )}
                 {step === 1 ? (
-                  <button
+                  <Button
                     type="button"
-                    className="wizard-primary-action"
                     onClick={() => setStep(2)}
-                    disabled={!name || !registrationNumber || !address}
+                    disabled={
+                      !name.trim() ||
+                      !registrationNumber.trim() ||
+                      !address.trim()
+                    }
                   >
                     Continue to authority
                     <ArrowRight className="h-4 w-4" aria-hidden="true" />
-                  </button>
+                  </Button>
                 ) : (
-                  <button
+                  <Button
                     type="submit"
-                    className="wizard-primary-action"
                     disabled={pending || !authorityConfirmed}
                   >
                     {pending ? "Submitting…" : "Complete organisation setup"}
                     <ArrowRight className="h-4 w-4" aria-hidden="true" />
-                  </button>
+                  </Button>
                 )}
               </div>
             </form>
           )}
-        </div>
-      </div>
+        </WorkspacePane>
+      </WorkspaceContent>
     </WorkspaceShell>
   );
 }

@@ -1,8 +1,13 @@
 import { CloudOff } from "lucide-react";
 
-import { WorkspaceShell } from "@/domains/workspace/workspace-shell";
+import {
+  WorkspaceContent,
+  WorkspaceShell,
+} from "@/domains/workspace/workspace-shell";
 import { initialAccountWorkspaceState } from "@/domains/workspace/account-workspace";
 import { userMenuItems } from "@/domains/workspace/workspace-navigation";
+import { ButtonLink } from "@/lib/ui/button";
+import { Eyebrow } from "@/lib/ui/eyebrow";
 
 /**
  * The workspace, with the registry not answering.
@@ -35,34 +40,38 @@ export function WorkspaceUnavailable({
       signedInAs="No organisation selected"
       workspaceLabel={workspaceLabel}
     >
-      <div className="account-route-workspace">
-        {/* Spans both columns: the workspace grid is a 17rem sidebar plus
-            content, and there is no sidebar to render here — whatever would
-            have filled it is the very thing we could not read. */}
+      <WorkspaceContent columns="single">
         <section
-          className="wizard-form col-span-full"
           aria-labelledby="registry-down-title"
+          className="mx-auto flex w-[min(100%,42rem)] flex-col gap-5 rounded-2xl border border-line bg-white p-6"
         >
-          <div className="wizard-form-heading">
-            <span className="wizard-form-icon">
+          <div className="flex items-start gap-4">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-line-soft text-ink-muted">
               <CloudOff className="h-5 w-5" aria-hidden="true" />
             </span>
-            <div>
-              <p className="dashboard-eyebrow">Registry unavailable</p>
-              <h1 id="registry-down-title">We could not load your workspace</h1>
-              <p role="alert">{detail}</p>
+            <div className="flex flex-col gap-2">
+              <Eyebrow>Registry unavailable</Eyebrow>
+              <h1
+                id="registry-down-title"
+                className="text-lg font-semibold tracking-[-0.02em] text-ink"
+              >
+                We could not load your workspace
+              </h1>
+              <p role="alert" className="text-xs leading-5 text-mist">
+                {detail}
+              </p>
             </div>
           </div>
-          <div className="wizard-form-actions">
+          <div className="flex">
             {/* A plain link rather than a router refresh: this page was
                 server-rendered from a failed read, so the only thing that
                 helps is asking the server again. */}
-            <a className="wizard-primary-action" href={currentPath}>
+            <ButtonLink variant="primary" href={currentPath}>
               Try again
-            </a>
+            </ButtonLink>
           </div>
         </section>
-      </div>
+      </WorkspaceContent>
     </WorkspaceShell>
   );
 }

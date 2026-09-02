@@ -22,9 +22,20 @@ describe("DashboardView", () => {
     expect(screen.getAllByText("0")).toHaveLength(5);
 
     const metrics = screen.getByRole("region", { name: "Account metrics" });
-    expect(within(metrics).getAllByRole("article")).toHaveLength(6);
-    expect(metrics.querySelectorAll(".account-metric-visual")).toHaveLength(6);
-    expect(document.querySelector(".account-verification-alert")).toBeNull();
+    const tiles = within(metrics).getAllByRole("article");
+    expect(tiles).toHaveLength(6);
+    // Every tile carries its decoration, and every decoration reads as "no data
+    // yet". `data-state` is what drives the appearance, so asserting on it says
+    // the same thing the old class-name check meant without pinning the markup.
+    for (const tile of tiles) {
+      const visual = tile.querySelector("[data-state]");
+      expect(visual).not.toBeNull();
+      expect(visual!.getAttribute("data-state")).toBe("empty");
+      // Decoration only — it must never be announced as content.
+      expect(visual!.getAttribute("aria-hidden")).toBe("true");
+    }
+    // Nothing to warn about while the account has no verified state to lose.
+    expect(screen.queryByRole("alert")).toBeNull();
 
     for (const label of [
       "Account verification status",
@@ -68,17 +79,13 @@ describe("DashboardView", () => {
     const switcher = screen.getByRole("combobox", {
       name: "Organisation switcher",
     });
-    const commandBar = document.querySelector(".dashboard-command-bar");
-    expect(commandBar).not.toBeNull();
-    expect(
-      within(commandBar as HTMLElement).queryByRole("combobox", {
-        name: "Organisation switcher",
-      }),
-    ).toBeNull();
+    // It belongs to the footer, not the command bar: switching tenant is a
+    // standing context control, not one of the bar's per-page actions.
+    const footer = screen.getByRole("contentinfo");
+    expect(footer.contains(switcher)).toBe(true);
+    expect(switcher.closest("header")).toBeNull();
     expect(switcher).toHaveProperty("disabled", true);
-    expect(
-      within(switcher).getByText("No organisation selected"),
-    ).toBeDefined();
+    expect(switcher.textContent).toContain("No organisation selected");
     expect(
       within(screen.getByRole("contentinfo")).getByText(
         "No organisation selected",

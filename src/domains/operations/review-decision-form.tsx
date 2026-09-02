@@ -7,6 +7,11 @@ import {
   recordDecisionAction,
   type DecisionState,
 } from "@/domains/operations/operations-actions";
+import { Callout } from "@/lib/ui/callout";
+import { Button, ButtonLink } from "@/lib/ui/button";
+import { Eyebrow } from "@/lib/ui/eyebrow";
+import { RadioField } from "@/lib/ui/radio-field";
+import { TextField } from "@/lib/ui/text-field";
 
 /**
  * Recording a review outcome.
@@ -21,6 +26,12 @@ import {
  * and it frees the company number, so the way forward afterwards is a fresh
  * registration rather than an appeal — that is worth a moment's friction, not a
  * button of equal weight beside "verify".
+ *
+ * Each option's guidance is a `<RadioField>` description rather than part of the
+ * label, so the option announces as "Refuse" and not as "Refuse Final. Frees
+ * the company number, so the way forward is a fresh registration — say what was
+ * wrong." The guidance still reaches assistive technology, through
+ * `aria-describedby`, which is what that attribute is for.
  */
 
 const OUTCOMES = [
@@ -33,21 +44,24 @@ const OUTCOMES = [
     // How the outcome reads back afterwards. The enum value is the registry's
     // word, not a sentence to put in front of a person.
     recorded: "verified",
-    hint: "The company is real, the number matches, and this person may act for it. The organisation can register agents from this point.",
+    description:
+      "The company is real, the number matches, and this person may act for it. The organisation can register agents from this point.",
   },
   {
     value: "needs_attention",
     label: "Ask for more",
     action: "Send this back for more",
     recorded: "waiting on more information",
-    hint: "Keeps the registration live and its claim on the company number. The holder sees what you write here.",
+    description:
+      "Keeps the registration live and its claim on the company number. The holder sees what you write here.",
   },
   {
     value: "rejected",
     label: "Refuse",
     action: "Refuse this company",
     recorded: "not approved",
-    hint: "Final. Frees the company number, so the way forward is a fresh registration — say what was wrong.",
+    description:
+      "Final. Frees the company number, so the way forward is a fresh registration — say what was wrong.",
   },
 ] as const;
 
@@ -70,112 +84,90 @@ export function ReviewDecisionForm({
 
   if (result.status === "recorded") {
     return (
-      <section className="wizard-complete" aria-labelledby="decision-recorded">
-        <span className="wizard-complete-icon">
+      <section className="flex flex-col items-start gap-4 rounded-2xl border border-success-soft bg-success-wash/40 p-6">
+        <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-white text-success-strong">
           <CheckCircle2 className="h-6 w-6" aria-hidden="true" />
         </span>
-        <h2 id="decision-recorded">Recorded</h2>
-        <p>
+        <h2 className="text-lg font-semibold tracking-[-0.02em] text-ink">
+          Recorded
+        </h2>
+        <p className="text-xs leading-5 text-mist">
           {organisationName} is now{" "}
-          <strong>
+          <strong className="text-ink">
             {OUTCOMES.find((entry) => entry.value === result.outcome)
               ?.recorded ?? result.outcome}
           </strong>
           . Its members see this, and the reason with it.
         </p>
-        <div className="wizard-complete-actions">
-          <a href="/operations">Back to the review queue</a>
-        </div>
+        <ButtonLink href="/operations">Back to the review queue</ButtonLink>
       </section>
     );
   }
 
   return (
-    <form className="wizard-form" action={formAction}>
+    <form
+      action={formAction}
+      className="flex flex-col gap-5 rounded-2xl border border-line bg-white p-6"
+    >
       <input type="hidden" name="organisationId" value={organisationId} />
-      <div className="wizard-form-heading">
-        <span className="wizard-form-icon">
+
+      <div className="flex items-start gap-4">
+        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-warm-wash text-warm-700">
           <ShieldCheck className="h-5 w-5" aria-hidden="true" />
         </span>
-        <div>
-          <p className="dashboard-eyebrow">Record a decision</p>
-          <h2>What did you find?</h2>
+        <div className="flex flex-col gap-2">
+          <Eyebrow>Record a decision</Eyebrow>
+          <h2 className="text-lg font-semibold tracking-[-0.02em] text-ink">
+            What did you find?
+          </h2>
         </div>
       </div>
 
-      <fieldset className="wizard-form-grid">
-        <legend className="sr-only">Review outcome</legend>
-        {OUTCOMES.map((entry) => (
-          <label key={entry.value} className="wizard-checkbox">
-            <input
-              type="radio"
-              name="outcome"
-              value={entry.value}
-              checked={outcome === entry.value}
-              onChange={(event) => setOutcome(event.target.value)}
-            />
-            <span>
-              <strong>{entry.label}</strong>
-              <br />
-              {entry.hint}
-            </span>
-          </label>
-        ))}
-      </fieldset>
+      <RadioField
+        name="outcome"
+        legend="Review outcome"
+        options={OUTCOMES}
+        value={outcome}
+        onValueChange={setOutcome}
+      />
 
-      {/* Wrapped in the form grid: a bare <label> inside .wizard-form gets no
-          layout at all, and the label, textarea and helper text pile on top of
-          one another. Full width, because a reason is prose. */}
       {outcome === "verified" ? null : (
-        <div className="wizard-form-grid">
-          <label className="col-span-full">
-            <span>
-              {outcome === "rejected"
-                ? "Why this was refused"
-                : "What the holder needs to send"}
-            </span>
-            <textarea
-              name="reviewReason"
-              rows={3}
-              required
-              placeholder={
-                outcome === "rejected"
-                  ? "The company number belongs to a dissolved entity."
-                  : "Send a director's proof of address dated within the last three months."
-              }
-            />
-            <small>
-              Written to the organisation&apos;s own members, in your words.
-            </small>
-            {errors["reviewReason"] ? (
-              <small role="alert">{errors["reviewReason"]}</small>
-            ) : null}
-          </label>
-        </div>
+        <TextField
+          label={
+            outcome === "rejected"
+              ? "Why this was refused"
+              : "What the holder needs to send"
+          }
+          name="reviewReason"
+          multiline
+          rows={3}
+          required
+          placeholder={
+            outcome === "rejected"
+              ? "The company number belongs to a dissolved entity."
+              : "Send a director's proof of address dated within the last three months."
+          }
+          description="Written to the organisation's own members, in your words."
+          error={errors["reviewReason"]}
+        />
       )}
 
       {result.status === "error" ? (
-        <p className="wizard-form-note" role="alert">
+        <Callout tone="danger" alert>
           {result.message}
-        </p>
+        </Callout>
       ) : (
-        <div className="wizard-form-note">
+        <Callout>
           No outcome here can be taken back through any route. A refusal is
           final, and an approval is what lets this organisation issue agents.
-        </div>
+        </Callout>
       )}
 
-      <div className="wizard-form-actions">
-        <a className="wizard-secondary-action" href="/operations">
-          Back to the queue
-        </a>
-        <button
-          type="submit"
-          className="wizard-primary-action"
-          disabled={pending}
-        >
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <ButtonLink href="/operations">Back to the queue</ButtonLink>
+        <Button type="submit" disabled={pending}>
           {pending ? "Recording…" : (chosen?.action ?? "Record the decision")}
-        </button>
+        </Button>
       </div>
     </form>
   );

@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { OrganisationCreationView } from "@/domains/organisations/organisation-creation-view";
@@ -59,12 +59,17 @@ describe("OrganisationCreationView", () => {
     // carry the display name, which no amount of backend validation could fix.
     render(<OrganisationCreationView email="owner@example.com" />);
 
-    const select = screen.getByLabelText("Registration jurisdiction");
-    expect(select).toHaveProperty("value", "gb");
-    expect(within(select as HTMLElement).getByRole("option")).toHaveProperty(
-      "text",
-      "United Kingdom",
+    // A listbox trigger is a button, so the submitted value lives on the hidden
+    // input the select renders — which is the thing the action actually reads.
+    const trigger = screen.getByRole("combobox", {
+      name: "Registration jurisdiction",
+    });
+    expect(trigger.textContent).toContain("United Kingdom");
+    const submitted = document.querySelector<HTMLInputElement>(
+      'input[name="jurisdiction"]',
     );
+    expect(submitted).not.toBeNull();
+    expect(submitted).toHaveProperty("value", "gb");
   });
 
   it("will not submit until authority is attested", () => {
@@ -80,9 +85,9 @@ describe("OrganisationCreationView", () => {
     expect(submit).toHaveProperty("disabled", true);
 
     fireEvent.click(
-      screen.getByLabelText(
-        /I confirm I am authorised to submit this organisation/i,
-      ),
+      screen.getByRole("checkbox", {
+        name: /I confirm I am authorised to submit this organisation/i,
+      }),
     );
 
     expect(submit).toHaveProperty("disabled", false);
@@ -104,9 +109,9 @@ describe("OrganisationCreationView", () => {
       screen.getByRole("button", { name: /continue to authority/i }),
     );
     fireEvent.click(
-      screen.getByLabelText(
-        /I confirm I am authorised to submit this organisation/i,
-      ),
+      screen.getByRole("checkbox", {
+        name: /I confirm I am authorised to submit this organisation/i,
+      }),
     );
     fireEvent.click(
       screen.getByRole("button", { name: /complete organisation setup/i }),
@@ -137,9 +142,9 @@ describe("OrganisationCreationView", () => {
       screen.getByRole("button", { name: /continue to authority/i }),
     );
     fireEvent.click(
-      screen.getByLabelText(
-        /I confirm I am authorised to submit this organisation/i,
-      ),
+      screen.getByRole("checkbox", {
+        name: /I confirm I am authorised to submit this organisation/i,
+      }),
     );
     fireEvent.click(
       screen.getByRole("button", { name: /complete organisation setup/i }),

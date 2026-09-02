@@ -10,7 +10,11 @@ import {
 } from "lucide-react";
 
 import { PrimaryNextActions } from "@/domains/workspace/primary-next-actions";
-import { WorkspaceShell } from "@/domains/workspace/workspace-shell";
+import {
+  WorkspaceContent,
+  WorkspacePane,
+  WorkspaceShell,
+} from "@/domains/workspace/workspace-shell";
 import {
   getAccountOverviewStats,
   getSelectedOrganisation,
@@ -18,25 +22,13 @@ import {
   type AccountWorkspaceState,
 } from "@/domains/workspace/account-workspace";
 import { menuItemsFor } from "@/domains/workspace/workspace-navigation";
+import { Card } from "@/lib/ui/card";
+import { EmptyState } from "@/lib/ui/empty-state";
+import { Eyebrow } from "@/lib/ui/eyebrow";
+import { PageHeading } from "@/lib/ui/page-heading";
+import { MetricCard, type MetricVisual } from "@/lib/ui/metric-card";
 
-const metricIcons = [
-  ShieldCheck,
-  Building2,
-  UsersRound,
-  Clock3,
-  CircleAlert,
-  Network,
-] as const;
-
-const metricVisualisations = [
-  "segments",
-  "threshold",
-  "gauge",
-  "segments",
-  "threshold",
-  "gauge",
-] as const;
-
+/** Sentence case from the registry's snake_case status vocabulary. */
 function formatStatus(
   status: AccountWorkspaceState["individualAssurance"]["status"],
 ) {
@@ -55,35 +47,50 @@ export function DashboardView({
 }) {
   const stats = getAccountOverviewStats(state);
   const selectedOrganisation = getSelectedOrganisation(state);
-  const signedInAs = selectedOrganisation?.name ?? "No organisation selected";
-  const metrics = [
+
+  const metrics: ReadonlyArray<{
+    label: string;
+    value: string | number;
+    icon: typeof ShieldCheck;
+    visual: MetricVisual;
+  }> = [
     {
       label: "Account verification status",
       value: formatStatus(stats.verificationStatus),
-      context: "Required before organisation creation",
-      href: "/onboarding/identity",
+      icon: ShieldCheck,
+      visual: "segments",
     },
     {
       label: "Number of organisations owned",
       value: stats.organisationsOwned,
+      icon: Building2,
+      visual: "threshold",
     },
     {
       label: "Number of organisations joined",
       value: stats.organisationsJoined,
+      icon: UsersRound,
+      visual: "gauge",
     },
     {
       label: "Organisations pending verification",
       value: stats.organisationsPendingVerification,
+      icon: Clock3,
+      visual: "segments",
     },
     {
       label: "Organisations requiring attention",
       value: stats.organisationsRequiringAttention,
+      icon: CircleAlert,
+      visual: "threshold",
     },
     {
       label: "Total accessible agents across organisations",
       value: stats.totalAccessibleAgents,
+      icon: Network,
+      visual: "gauge",
     },
-  ] as const;
+  ];
 
   return (
     <WorkspaceShell
@@ -95,139 +102,121 @@ export function DashboardView({
       organisations={state.organisations}
       selectedOrganisationId={state.selectedOrganisationId}
       showOrganisationSwitcher
-      signedInAs={signedInAs}
+      signedInAs={selectedOrganisation?.name ?? "No organisation selected"}
       workspaceLabel="Account overview"
     >
-      <div className="account-overview-workspace">
-        <aside className="account-overview-side">
+      <WorkspaceContent columns="overview">
+        {/* Stacked, the metrics lead: the checklist is guidance and the
+            support rail is secondary, so both fall below. */}
+        <WorkspacePane as="aside" className="max-xl:order-2">
           <PrimaryNextActions state={state} />
-        </aside>
+        </WorkspacePane>
 
-        <div className="account-overview-main">
-          <header className="account-overview-heading">
-            <div>
-              <p className="dashboard-eyebrow">Account workspace</p>
-              <h1>Overview</h1>
-              <p>Account assurance and organisation access in one place.</p>
-            </div>
-            <span className="account-zero-state-label">No live records</span>
+        <WorkspacePane className="flex flex-col gap-5 max-xl:order-1">
+          <header className="flex flex-wrap items-start justify-between gap-3">
+            <PageHeading
+              eyebrow="Account workspace"
+              lede="Account assurance and organisation access in one place."
+            >
+              Overview
+            </PageHeading>
+            {/* Unconditional, exactly as before. It is wrong — it shows beside a
+                non-zero agent count — but it is a content defect on the deferred
+                journey-findings list, and silently fixing it inside a restyle
+                would hide it in a diff nobody is reading for that. */}
+            <span className="shrink-0 rounded-full border border-line-strong bg-band px-2.5 py-1.5 text-[0.6875rem] font-bold text-mist">
+              No live records
+            </span>
           </header>
 
-          <section className="account-metric-grid" aria-label="Account metrics">
-            {metrics.map((metric, index) => {
-              const Icon = metricIcons[index]!;
-              const visualisation = metricVisualisations[index]!;
-              const isEmpty =
-                typeof metric.value === "number"
-                  ? metric.value === 0
-                  : stats.verificationStatus !== "verified";
-
-              return (
-                <article key={metric.label} className="account-metric-card">
-                  <div className="account-metric-heading">
-                    <p>{metric.label}</p>
-                    <span>
-                      <Icon className="h-4 w-4" aria-hidden="true" />
-                    </span>
-                  </div>
-                  <div className="account-metric-body">
-                    <strong
-                      className={
-                        typeof metric.value === "string"
-                          ? "account-metric-text-value"
-                          : undefined
-                      }
-                    >
-                      {metric.value}
-                    </strong>
-                    <div
-                      aria-hidden="true"
-                      className={`account-metric-visual account-metric-visual-${visualisation}`}
-                      data-state={isEmpty ? "empty" : "active"}
-                    >
-                      {visualisation === "segments" ? (
-                        <span className="account-metric-segments">
-                          {Array.from({ length: 6 }, (_, segment) => (
-                            <i key={segment} />
-                          ))}
-                        </span>
-                      ) : null}
-                      {visualisation === "threshold" ? (
-                        <>
-                          <span className="account-metric-threshold-track">
-                            <i />
-                          </span>
-                          <span className="account-metric-threshold-marker" />
-                        </>
-                      ) : null}
-                      {visualisation === "gauge" ? (
-                        <>
-                          <span className="account-metric-gauge-arc" />
-                          <span className="account-metric-gauge-line" />
-                        </>
-                      ) : null}
-                    </div>
-                  </div>
-                </article>
-              );
-            })}
-          </section>
-        </div>
-
-        <aside className="account-overview-support">
           <section
-            className="account-activity-card"
+            aria-label="Account metrics"
+            className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3"
+          >
+            {metrics.map((metric) => (
+              <MetricCard
+                key={metric.label}
+                label={metric.label}
+                value={metric.value}
+                icon={metric.icon}
+                visual={metric.visual}
+                empty={
+                  typeof metric.value === "number"
+                    ? metric.value === 0
+                    : stats.verificationStatus !== "verified"
+                }
+              />
+            ))}
+          </section>
+        </WorkspacePane>
+
+        <WorkspacePane
+          as="aside"
+          className="flex flex-col gap-3.5 max-xl:order-3 max-xl:grid max-xl:grid-cols-2 max-lg:grid-cols-1"
+        >
+          <Card
+            as="section"
             aria-labelledby="recent-organisation-activity-title"
           >
-            <div className="account-support-heading">
-              <span>
+            <div className="flex items-start gap-3">
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-wash-blue text-cobalt">
                 <Activity className="h-4 w-4" aria-hidden="true" />
               </span>
-              <div>
-                <p className="dashboard-eyebrow">Organisation updates</p>
-                <h2 id="recent-organisation-activity-title">
+              <div className="flex flex-col gap-0.5">
+                <Eyebrow>Organisation updates</Eyebrow>
+                <h2
+                  id="recent-organisation-activity-title"
+                  className="text-sm font-semibold text-ink"
+                >
                   Recent organisation activity
                 </h2>
               </div>
             </div>
 
             {state.recentActivity.length === 0 ? (
-              <div className="account-empty-state">
-                <Building2 className="h-5 w-5" aria-hidden="true" />
-                <h3>No organisation activity yet</h3>
-                <p>
-                  Activity will appear after an organisation is created or
-                  joined.
-                </p>
-              </div>
+              <EmptyState
+                className="mt-4"
+                icon={Building2}
+                title="No organisation activity yet"
+              >
+                Activity will appear after an organisation is created or joined.
+              </EmptyState>
             ) : (
-              <ol>
+              <ol className="mt-4 flex flex-col gap-3">
                 {state.recentActivity.map((activity) => (
-                  <li key={activity.id}>
-                    <p>{activity.summary}</p>
-                    <time dateTime={activity.occurredAt}>
+                  <li key={activity.id} className="flex flex-col gap-1">
+                    <p className="text-xs text-ink-soft">{activity.summary}</p>
+                    <time
+                      dateTime={activity.occurredAt}
+                      className="text-[11px] text-mist-light"
+                    >
                       {activity.occurredAt}
                     </time>
                   </li>
                 ))}
               </ol>
             )}
-          </section>
+          </Card>
 
-          <section className="account-demo-card">
-            <p className="dashboard-eyebrow">Illustrative product view</p>
-            <h2>Explore an agent accountability record</h2>
-            <p>
+          <Card as="section" className="bg-wash-blue/70">
+            <Eyebrow>Illustrative product view</Eyebrow>
+            <h2 className="mt-1 text-sm font-semibold text-ink">
+              Explore an agent accountability record
+            </h2>
+            <p className="mt-2 text-[11px] leading-4 text-mist">
               This separate demo does not represent an organisation or agent
               accessible by this account.
             </p>
-            <a href="/dashboard/agent-demo">
+            <a
+              href="/dashboard/agent-demo"
+              className="mt-3 inline-flex items-center gap-1.5 text-xs font-semibold text-cobalt hover:underline"
+            >
               Open illustrative agent demo
               <ArrowRight className="h-4 w-4" aria-hidden="true" />
             </a>
-          </section>
-        </aside>
-      </div>
+          </Card>
+        </WorkspacePane>
+      </WorkspaceContent>
     </WorkspaceShell>
   );
 }

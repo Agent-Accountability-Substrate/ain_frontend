@@ -1,4 +1,4 @@
-import { render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 import { AgentDemoView } from "@/domains/agents/agent-demo-view";
@@ -94,13 +94,20 @@ describe("AgentDemoView", () => {
     screen.getByText("unknown");
   });
 
-  it("offers notifications and the original account dropdown", () => {
+  it("offers notifications and the account menu", () => {
     render(<AgentDemoView email="user@example.com" />);
 
-    screen.getByLabelText("Open notifications");
+    // Both popups mount on open rather than sitting hidden in the document, so
+    // each is opened before its contents are looked for.
+    fireEvent.click(
+      screen.getByRole("button", { name: "Notifications, none unread" }),
+    );
     screen.getByText("You are up to date");
-    screen.getByLabelText("Open account menu for user@example.com");
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "user@example.com, account menu" }),
+    );
     screen.getByText("Profile & account management");
-    screen.getByRole("button", { name: "Sign out" });
+    screen.getByRole("menuitem", { name: "Sign out" });
   });
 });

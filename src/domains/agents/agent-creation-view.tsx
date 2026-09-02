@@ -1,13 +1,19 @@
 "use client";
 
 import { AgentCreationWizard } from "@/domains/agents/agent-creation-wizard";
-import { WorkspaceShell } from "@/domains/workspace/workspace-shell";
+import {
+  WorkspaceContent,
+  WorkspacePane,
+  WorkspaceShell,
+} from "@/domains/workspace/workspace-shell";
 import {
   getSelectedOrganisation,
   initialAccountWorkspaceState,
   type AccountWorkspaceState,
 } from "@/domains/workspace/account-workspace";
 import { menuItemsFor } from "@/domains/workspace/workspace-navigation";
+import { ButtonLink } from "@/lib/ui/button";
+import { Eyebrow } from "@/lib/ui/eyebrow";
 
 export function AgentCreationView({
   email,
@@ -31,17 +37,22 @@ export function AgentCreationView({
       signedInAs={organisation?.name ?? "No organisation selected"}
       workspaceLabel="Create agent"
     >
-      <div className="account-wizard-workspace">
-        <aside className="account-wizard-side">
-          <p className="dashboard-eyebrow">Agent workspace</p>
-          <h1>
+      <WorkspaceContent>
+        {/* Side rail sits left on a wide screen and below the wizard when
+            stacked — the guidance is context, and the form is the task. */}
+        <WorkspacePane
+          as="aside"
+          className="flex flex-col gap-3 max-lg:order-2"
+        >
+          <Eyebrow>Agent workspace</Eyebrow>
+          <h1 className="text-lg font-semibold tracking-[-0.02em] text-ink">
             {organisation
               ? verified
                 ? "Declare an accountable agent"
                 : "Verification pending"
               : "Select an organisation first"}
           </h1>
-          <p className="wizard-side-copy">
+          <p className="text-xs leading-5 text-mist">
             {organisation
               ? verified
                 ? "An agent's identifier is permanent, and its authorised scope is signed. Both are declared here."
@@ -49,19 +60,24 @@ export function AgentCreationView({
               : "Agent records belong to an organisation. Choose one before preparing the record."}
           </p>
           {organisation ? null : (
-            <a className="wizard-primary-action" href="/organisations">
+            <ButtonLink
+              variant="primary"
+              href="/organisations"
+              className="self-start"
+            >
               Choose organisation
-            </a>
+            </ButtonLink>
           )}
-        </aside>
-        <div className="account-wizard-main">
+        </WorkspacePane>
+
+        <WorkspacePane className="max-lg:order-1">
           <AgentCreationWizard
             organisationId={organisation?.id ?? null}
             organisationName={organisation?.name ?? null}
             organisationVerified={verified}
           />
-        </div>
-      </div>
+        </WorkspacePane>
+      </WorkspaceContent>
     </WorkspaceShell>
   );
 }

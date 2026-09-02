@@ -1,4 +1,4 @@
-import { render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 import { IdentityOnboardingView } from "@/domains/identity/identity-onboarding-view";
@@ -127,7 +127,15 @@ describe("IdentityOnboardingView", () => {
       />,
     );
 
-    expect(screen.getByLabelText("Open notifications")).toBeDefined();
+    // The count is part of the name: a bell that says only "notifications"
+    // makes a reader open the menu to discover there is nothing in it.
+    const bell = screen.getByRole("button", {
+      name: "Notifications, 1 unread",
+    });
+    expect(screen.queryByText("Identity verification not started")).toBeNull();
+
+    fireEvent.click(bell);
+
     expect(screen.getByText("Identity verification not started")).toBeDefined();
   });
 });

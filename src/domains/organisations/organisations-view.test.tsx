@@ -87,12 +87,14 @@ describe("OrganisationsView", () => {
       screen.getByRole("region", { name: "Your organisations" }),
     ).getAllByRole("listitem");
     expect(entries).toHaveLength(2);
+    // Role and verification state are two separate readings of the same row, so
+    // they are asserted separately rather than as one run-together string.
     expect(within(entries[0]!).getByText("Alpha Holdings Ltd")).toBeDefined();
-    expect(within(entries[0]!).getByText(/Owner · Verified/)).toBeDefined();
+    expect(within(entries[0]!).getByText("Owner")).toBeDefined();
+    expect(within(entries[0]!).getByText("Verified")).toBeDefined();
     expect(within(entries[1]!).getByText("Beta Systems Ltd")).toBeDefined();
-    expect(
-      within(entries[1]!).getByText(/Member · Verification pending/),
-    ).toBeDefined();
+    expect(within(entries[1]!).getByText("Member")).toBeDefined();
+    expect(within(entries[1]!).getByText("Verification pending")).toBeDefined();
     expect(within(entries[1]!).getByText("Selected")).toBeDefined();
     expect(within(entries[0]!).queryByText("Selected")).toBeNull();
   });

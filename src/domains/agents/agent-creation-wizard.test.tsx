@@ -14,6 +14,7 @@ vi.mock("@/domains/agents/agent-actions", () => ({
 }));
 
 import { AgentCreationWizard } from "@/domains/agents/agent-creation-wizard";
+import { chooseOption, selectTrigger } from "@/lib/testing/select";
 
 const ORG_ID = "6a1f6f38-0d3f-4c86-9a53-8c8f7a1e2b4d";
 const AIN = "did:ain:gb:01ARZ3NDEKTSV4RRFFQ69G5FAV:01BX5ZZKBKACTAV9WEVGEMMVRZ";
@@ -100,13 +101,21 @@ describe("AgentCreationWizard", () => {
     ).toBeDefined();
   });
 
-  it("keeps the chosen risk class", () => {
+  it("keeps the chosen risk class", async () => {
     renderWizard();
-    const select = screen.getByLabelText(/risk class/i);
+    const submitted = () =>
+      document.querySelector<HTMLInputElement>('input[name="riskClass"]')
+        ?.value;
 
-    expect(select).toHaveProperty("value", "high");
-    fireEvent.change(select, { target: { value: "low" } });
-    expect(select).toHaveProperty("value", "low");
+    // Fail closed: the highest risk class is the default, so a form submitted
+    // without touching it never understates what the agent may do.
+    expect(submitted()).toBe("high");
+    expect(selectTrigger("Risk class").textContent).toContain("High");
+
+    await chooseOption("Risk class", "Low");
+
+    expect(submitted()).toBe("low");
+    expect(selectTrigger("Risk class").textContent).toContain("Low");
   });
 
   it("walks minting, declaration and issuance as three registry calls", async () => {
@@ -255,8 +264,20 @@ describe("field-level refusals", () => {
     fillIdentity();
     fireEvent.click(screen.getByRole("button", { name: /mint identifier/i }));
 
-    const alerts = await screen.findAllByRole("alert");
-    expect(alerts.map((node) => node.textContent)).toContain("Name the agent");
+    // The refusal itself is announced once, at the top. The per-field sentence
+    // is attached to the field it is about, via `aria-describedby` and
+    // `aria-invalid` — so it is read when that field is reached rather than
+    // firing one alert per field the moment the response lands.
+    expect((await screen.findByRole("alert")).textContent).toBe(
+      "Check the highlighted fields.",
+    );
+
+    const field = screen.getByRole("textbox", { name: /agent name/i });
+    expect(field.getAttribute("aria-invalid")).toBe("true");
+    const described = (field.getAttribute("aria-describedby") ?? "")
+      .split(/\s+/)
+      .map((id) => document.getElementById(id)?.textContent);
+    expect(described).toContain("Name the agent");
   });
 
   it("shows the scope message, which is the one that says what to do", async () => {

@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const { pushMock } = vi.hoisted(() => ({ pushMock: vi.fn() }));
@@ -10,16 +10,19 @@ vi.mock("next/navigation", () => ({
 }));
 
 import { OrganisationSwitcher } from "@/domains/organisations/organisation-switcher";
+import { chooseOption, openSelect, selectTrigger } from "@/lib/testing/select";
 
 const ORGS = [
   { id: "org-a", name: "Alpha Ltd" },
   { id: "org-b", name: "Beta Ltd" },
 ];
 
+const trigger = () => selectTrigger("Organisation switcher");
+
 describe("OrganisationSwitcher", () => {
   beforeEach(() => pushMock.mockReset());
 
-  it("puts the choice in the URL and keeps the rest of the query", () => {
+  it("puts the choice in the URL and keeps the rest of the query", async () => {
     // Selection lives in the URL and nowhere else: every tenant route names its
     // organisation in the path, and a cookie would put back ambient tenancy.
     render(
@@ -29,16 +32,37 @@ describe("OrganisationSwitcher", () => {
       />,
     );
 
-    fireEvent.change(
-      screen.getByRole("combobox", { name: "Organisation switcher" }),
-      {
-        target: { value: "org-b" },
-      },
+    await chooseOption("Organisation switcher", "Beta Ltd");
+
+    await waitFor(() =>
+      expect(pushMock).toHaveBeenCalledWith(
+        "/organisations?tab=agents&org=org-b",
+      ),
+    );
+  });
+
+  it("navigates when a choice is committed, not while arrowing through", async () => {
+    // The native `<select>` this replaces moved the selection on every arrow
+    // keypress, and each move was a `router.push` to a `force-dynamic` page.
+    // Holding Down was a burst of server round trips that landed the caller
+    // somewhere they never chose.
+    render(
+      <OrganisationSwitcher
+        organisations={ORGS}
+        selectedOrganisationId={null}
+      />,
     );
 
-    expect(pushMock).toHaveBeenCalledWith(
-      "/organisations?tab=agents&org=org-b",
-    );
+    await openSelect("Organisation switcher");
+    const focused = () => document.activeElement as HTMLElement;
+    fireEvent.keyDown(focused(), { key: "ArrowDown" });
+    fireEvent.keyDown(focused(), { key: "ArrowDown" });
+    fireEvent.keyDown(focused(), { key: "ArrowUp" });
+
+    expect(pushMock).not.toHaveBeenCalled();
+
+    fireEvent.keyDown(focused(), { key: "Enter" });
+    await waitFor(() => expect(pushMock).toHaveBeenCalledTimes(1));
   });
 
   it("says nothing is chosen rather than implying the first", () => {
@@ -49,12 +73,7 @@ describe("OrganisationSwitcher", () => {
       />,
     );
 
-    expect(
-      screen.getByRole("combobox", { name: "Organisation switcher" }),
-    ).toHaveProperty("value", "");
-    expect(
-      screen.getByRole("option", { name: /select an organisation/i }),
-    ).toBeDefined();
+    expect(trigger().textContent).toContain("Select an organisation");
   });
 
   it("drops the placeholder once a choice exists", () => {
@@ -65,12 +84,11 @@ describe("OrganisationSwitcher", () => {
       />,
     );
 
-    expect(
-      screen.getByRole("combobox", { name: "Organisation switcher" }),
-    ).toHaveProperty("value", "org-a");
-    expect(
-      screen.queryByRole("option", { name: /select an organisation/i }),
-    ).toBeNull();
+    // The name, not the id — the reason `SelectField` requires `items` rather
+    // than letting the trigger fall back to rendering the raw value.
+    expect(trigger().textContent).toContain("Alpha Ltd");
+    expect(trigger().textContent).not.toContain("Select an organisation");
+    expect(trigger().textContent).not.toContain("org-a");
   });
 
   it("is disabled, and says why, when there is nothing to switch between", () => {
@@ -78,27 +96,7 @@ describe("OrganisationSwitcher", () => {
       <OrganisationSwitcher organisations={[]} selectedOrganisationId={null} />,
     );
 
-    expect(
-      screen.getByRole("combobox", { name: "Organisation switcher" }),
-    ).toHaveProperty("disabled", true);
-    expect(
-      screen.getByRole("option", { name: /no organisation selected/i }),
-    ).toBeDefined();
-  });
-
-  it("clears the parameter rather than writing an empty one", () => {
-    render(
-      <OrganisationSwitcher
-        organisations={ORGS}
-        selectedOrganisationId="org-a"
-      />,
-    );
-
-    fireEvent.change(
-      screen.getByRole("combobox", { name: "Organisation switcher" }),
-      { target: { value: "" } },
-    );
-
-    expect(pushMock).toHaveBeenCalledWith("/organisations?tab=agents");
+    expect(trigger()).toHaveProperty("disabled", true);
+    expect(trigger().textContent).toContain("No organisation selected");
   });
 });
