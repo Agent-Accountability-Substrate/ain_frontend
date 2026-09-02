@@ -1,15 +1,39 @@
+import mdx from "@mdx-js/rollup";
 import react from "@vitejs/plugin-react";
+import { fileURLToPath } from "node:url";
 import tsconfigPaths from "vite-tsconfig-paths";
 import { defineConfig } from "vitest/config";
 
 export default defineConfig({
-  plugins: [react(), tsconfigPaths()],
+  plugins: [
+    // Ahead of `react()`, so `.mdx` is compiled to JSX before the React plugin
+    // transforms it. Vitest does not go through the Next loader.
+    //
+    // `providerImportSource` is what `@next/mdx` sets for the build; without it
+    // a post renders bare tags in tests and the class map could be
+    // disconnected, or deleted, with the suite still green.
+    //
+    // `format` pins which extensions count as MDX. Left unset the plugin also
+    // claims `.md` and five more, while the build matches `/\.mdx$/` alone.
+    {
+      enforce: "pre",
+      ...mdx({
+        format: "mdx",
+        providerImportSource: fileURLToPath(
+          new URL("./src/mdx-components.tsx", import.meta.url),
+        ),
+      }),
+    },
+    react(),
+    tsconfigPaths(),
+  ],
   resolve: {
     alias: {
       // See test/stubs/server-only.ts — Next resolves this internally and
       // discards the package body; only Vitest needs something to import.
-      "server-only": new URL("./test/stubs/server-only.ts", import.meta.url)
-        .pathname,
+      "server-only": fileURLToPath(
+        new URL("./test/stubs/server-only.ts", import.meta.url),
+      ),
     },
   },
   test: {
@@ -24,7 +48,6 @@ export default defineConfig({
         // Renders to a PNG through next/og, so there is nothing jsdom can
         // assert. Verified by `next build`, which prerenders it.
         "src/app/opengraph-image.tsx",
-        "src/components/ui/**",
         "src/instrumentation.ts",
         "src/instrumentation-client.ts",
         // Auth.js framework glue — verified by the manual "invited user logs
@@ -32,9 +55,13 @@ export default defineConfig({
         // dashboard / sign-in / sign-out components).
         "src/auth.ts",
         "src/proxy.ts",
-        "src/lib/auth-actions.ts",
+        "src/domains/auth/auth-actions.ts",
         "src/app/api/**",
         "src/app/dashboard/**",
+        // Vendored shadcn primitives, written by the CLI rather than by us —
+        // `components.json` points it at this path. Third-party source has no
+        // business failing our own coverage gate.
+        "src/lib/ui/**",
         "src/**/*.test.{ts,tsx}",
       ],
       thresholds: {

@@ -1,9 +1,9 @@
 import { redirect } from "next/navigation";
 
-import { OrganisationCreationView } from "@/components/organisation-creation-view";
-import { WorkspaceUnavailable } from "@/components/workspace-unavailable";
+import { OrganisationCreationView } from "@/domains/organisations/organisation-creation-view";
+import { WorkspaceUnavailable } from "@/domains/workspace/workspace-unavailable";
 import { auth } from "@/auth";
-import { loadWorkspace } from "@/lib/workspace-page";
+import { loadWorkspace } from "@/domains/workspace/workspace-page";
 
 export const dynamic = "force-dynamic";
 

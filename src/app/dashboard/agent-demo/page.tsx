@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 
 import { auth } from "@/auth";
-import { AgentDemoView } from "@/components/agent-demo-view";
+import { AgentDemoView } from "@/domains/agents/agent-demo-view";
 
 export const dynamic = "force-dynamic";
 

@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 
 import { auth } from "@/auth";
-import { IdentityOnboardingView } from "@/components/identity-onboarding-view";
+import { IdentityOnboardingView } from "@/domains/identity/identity-onboarding-view";
 
 export const dynamic = "force-dynamic";
 

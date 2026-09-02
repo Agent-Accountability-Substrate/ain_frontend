@@ -17,7 +17,7 @@ vi.mock("next/navigation", () => ({
   redirect: redirectMock,
 }));
 
-vi.mock("@/lib/auth-actions", () => ({
+vi.mock("@/domains/auth/auth-actions", () => ({
   signOutAction: vi.fn(),
 }));
 

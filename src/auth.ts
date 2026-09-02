@@ -3,13 +3,15 @@ import "server-only";
 import NextAuth from "next-auth";
 import Auth0 from "next-auth/providers/auth0";
 
+import { isPublicPath } from "@/domains/auth/public-paths";
+
 /**
  * Generic OIDC integration via Auth.js (not a provider-specific SDK), so the
  * identity provider stays swappable at config level (see the ain_docs
  * DECISIONS.md 2026-07-03 auth entry). The Auth0 provider reads its
  * credentials from AUTH_AUTH0_ID / AUTH_AUTH0_SECRET / AUTH_AUTH0_ISSUER; the
  * session secret from AUTH_SECRET. `trustHost` is required behind the reverse
- * proxy; AUTH_URL (validated at boot in `@/lib/server-env`) pins the origin so
+ * proxy; AUTH_URL (validated at boot in `@/lib/config/server-env`) pins the origin so
  * host headers are not trusted for URL/cookie derivation.
  *
  * ## The API access token
@@ -34,13 +36,6 @@ import Auth0 from "next-auth/providers/auth0";
  * `accessToken()` treats an expired token as absent and forces re-auth rather
  * than sending a stale bearer and reading the 401 as a permissions problem.
  */
-
-/** Paths reachable without a session. Everything else is deny-by-default. */
-function isPublicPath(pathname: string): boolean {
-  // Auth.js's own routes must stay public or sign-in loops.
-  if (pathname.startsWith("/api/auth")) return true;
-  return pathname === "/";
-}
 
 declare module "next-auth" {
   interface Session {
@@ -70,7 +65,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         params: {
           // Without an audience Auth0 issues an opaque userinfo token and puts
           // none of the API's namespaced claims on it, so the backend refuses
-          // every call. Read here rather than from `@/lib/server-env` because
+          // every call. Read here rather than from `@/lib/config/server-env` because
           // the provider is constructed at module load, before boot validation
           // runs; server-env re-validates the same variable and fails closed.
           audience: process.env["AUTH_AUTH0_AUDIENCE"],

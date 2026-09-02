@@ -1,4 +1,4 @@
-import { parseEnv } from "@/lib/env";
+import { parseEnv } from "@/lib/config/env";
 
 /**
  * Sentry is initialized only when a DSN is configured; without one the

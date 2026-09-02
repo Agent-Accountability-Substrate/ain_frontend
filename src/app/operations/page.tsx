@@ -1,8 +1,8 @@
 import { redirect } from "next/navigation";
 
 import { auth } from "@/auth";
-import { OperationsView } from "@/components/operations-view";
-import { WorkspaceUnavailable } from "@/components/workspace-unavailable";
+import { OperationsView } from "@/domains/operations/operations-view";
+import { WorkspaceUnavailable } from "@/domains/workspace/workspace-unavailable";
 import {
   checkRegistration,
   listReviewQueue,
@@ -11,8 +11,8 @@ import {
   RegistryUnavailableError,
   type RegistrationCheck,
   type ReviewItem,
-} from "@/lib/registry-api";
-import { loadWorkspace } from "@/lib/workspace-page";
+} from "@/lib/registry/registry-api";
+import { loadWorkspace } from "@/domains/workspace/workspace-page";
 
 export const dynamic = "force-dynamic";
 
