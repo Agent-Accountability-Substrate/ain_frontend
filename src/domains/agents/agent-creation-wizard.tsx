@@ -83,7 +83,7 @@ function Blocked({
           <p className="text-xs leading-5 text-mist">{children}</p>
         </div>
       </div>
-      <div className="flex">{action}</div>
+      <div className="flex flex-wrap gap-3">{action}</div>
     </section>
   );
 }
@@ -106,6 +106,7 @@ export function AgentCreationWizard({
   organisationUlid,
   organisationVerified,
   draft,
+  unresolvedDraft,
   onBack,
 }: {
   /** `null` when no organisation is selected — the wizard then refuses to run. */
@@ -122,6 +123,12 @@ export function AgentCreationWizard({
    * recycled.
    */
   draft?: { ain: string; name: string } | null;
+  /**
+   * An identifier a resume link named that resolved to no draft here. The
+   * wizard must not fall through to the identity step for it: that step mints
+   * a permanent identifier, and the agent named may already hold one.
+   */
+  unresolvedDraft?: string | null;
   onBack?: () => void;
 }) {
   // Every way out of the wizard leads back to the register it was opened
@@ -196,6 +203,43 @@ export function AgentCreationWizard({
         We confirm the company registration and your authority to act for it
         before any agent can be registered. This step opens as soon as that is
         done.
+      </Blocked>
+    );
+  }
+
+  // A resume link whose draft cannot be found says so and stops. The register
+  // is where the draft is waiting if it exists; a fresh start is offered as a
+  // separate, deliberate act rather than as the silent default.
+  if (unresolvedDraft) {
+    return (
+      <Blocked
+        icon={Bot}
+        eyebrow="Draft not found"
+        title="This draft could not be resumed"
+        action={
+          <>
+            <ButtonLink href={registerHref}>
+              <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+              Open the register
+            </ButtonLink>
+            <ButtonLink
+              variant="secondary"
+              href={
+                organisationUlid
+                  ? orgHref(organisationUlid, "agents/new")
+                  : WORKSPACE
+              }
+            >
+              Start a new agent
+            </ButtonLink>
+          </>
+        }
+      >
+        No draft with the identifier{" "}
+        <code className="break-all font-mono">{unresolvedDraft}</code> is
+        waiting in {organisationName}. It may already be issued, in which case
+        its scope changes by a new signed version rather than here. Nothing has
+        been minted.
       </Blocked>
     );
   }

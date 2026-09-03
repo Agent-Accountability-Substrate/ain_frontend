@@ -9,12 +9,20 @@ import { Eyebrow } from "@/lib/ui/eyebrow";
 export function AgentCreationView({
   draft,
   organisation,
+  unresolvedDraft,
 }: {
   /** A draft being continued, already resolved against this organisation. */
   draft?: { ain: string; name: string } | null;
   organisation: OrganisationSummary;
+  /**
+   * An identifier a resume link named that is not a draft of this
+   * organisation. The wizard refuses to start afresh from it, because a fresh
+   * start mints an identifier and the one named may already exist.
+   */
+  unresolvedDraft?: string | null;
 }) {
   const verified = organisation.verificationStatus === "verified";
+  const unresolved = unresolvedDraft !== null && unresolvedDraft !== undefined;
 
   return (
     <>
@@ -29,16 +37,20 @@ export function AgentCreationView({
           <h1 className="text-lg font-semibold tracking-[-0.02em] text-ink">
             {!verified
               ? "Verification pending"
-              : draft
-                ? "Finish this agent"
-                : "Register an agent"}
+              : unresolved
+                ? "Cannot resume this draft"
+                : draft
+                  ? "Finish this agent"
+                  : "Register an agent"}
           </h1>
           <p className="text-xs leading-5 text-mist">
             {!verified
               ? "Agents can be registered once we have verified this organisation."
-              : draft
-                ? "This draft already holds a permanent identifier. What is left is its authorised scope, the person accountable for it, and the signature."
-                : "An agent's identifier is permanent, and its authorised scope is signed. Both are declared here."}
+              : unresolved
+                ? "No draft with that identifier is waiting here, so nothing is minted from this address. A draft keeps its permanent identifier until it is finished."
+                : draft
+                  ? "This draft already holds a permanent identifier. What is left is its authorised scope, the person accountable for it, and the signature."
+                  : "An agent's identifier is permanent, and its authorised scope is signed. Both are declared here."}
           </p>
         </WorkspacePane>
 
@@ -49,6 +61,7 @@ export function AgentCreationView({
             organisationName={organisation.name}
             organisationUlid={organisation.ulid}
             organisationVerified={verified}
+            unresolvedDraft={unresolvedDraft}
           />
         </WorkspacePane>
       </WorkspaceContent>
