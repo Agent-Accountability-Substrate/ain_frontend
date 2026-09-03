@@ -5,6 +5,7 @@ import { UserPlus, UsersRound } from "lucide-react";
 
 import { inviteMemberAction } from "@/domains/organisations/organisation-actions";
 import type { InviteMemberState } from "@/domains/organisations/organisation-actions";
+import { OrganisationMemberRow } from "@/domains/organisations/organisation-member-row";
 import type { OrganisationMember } from "@/domains/workspace/account-workspace";
 import { Button } from "@/lib/ui/button";
 import { Callout } from "@/lib/ui/callout";
@@ -12,7 +13,6 @@ import { Card } from "@/lib/ui/card";
 import { EmptyState } from "@/lib/ui/empty-state";
 import { Eyebrow } from "@/lib/ui/eyebrow";
 import { SelectField } from "@/lib/ui/select-field";
-import { StatusPill } from "@/lib/ui/status-pill";
 import { TextField } from "@/lib/ui/text-field";
 
 /**
@@ -31,13 +31,6 @@ const ROLES = [
   },
   { value: "auditor", label: "Auditor — read the record and its evidence" },
 ] as const;
-
-const ROLE_LABEL: Record<string, string> = {
-  owner: "Owner",
-  org_admin: "Admin",
-  compliance: "Compliance",
-  auditor: "Auditor",
-};
 
 export function OrganisationMembersView({
   members,
@@ -77,8 +70,9 @@ export function OrganisationMembersView({
 
         {membersUnavailable ? (
           <Callout tone="caution" title="We cannot show this list yet">
-            Anyone already invited still has access — they are just not listed
-            here. You can carry on inviting below.
+            This registry does not serve the member list. Anyone already invited
+            still has access — they are just not listed here. You can carry on
+            inviting below.
           </Callout>
         ) : null}
 
@@ -95,29 +89,11 @@ export function OrganisationMembersView({
         ) : (
           <ul className="flex flex-col gap-2.5">
             {members.map((member) => (
-              <li
+              <OrganisationMemberRow
                 key={member.id}
-                className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-2xl border border-line bg-panel px-4 py-3.5"
-              >
-                <span className="text-sm font-semibold text-ink">
-                  {member.email}
-                </span>
-                <StatusPill
-                  tone={member.role === "owner" ? "success" : "neutral"}
-                >
-                  {ROLE_LABEL[member.role] ?? member.role}
-                </StatusPill>
-                {member.role === "owner" ? null : (
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    disabled
-                    className="ml-auto px-0 text-mist-light"
-                  >
-                    Remove
-                  </Button>
-                )}
-              </li>
+                member={member}
+                organisationId={organisationId}
+              />
             ))}
           </ul>
         )}

@@ -49,6 +49,28 @@ describe("AgentCreationView", () => {
     ).toHaveProperty("href", `http://localhost:3000/o/${ORG_ULID}/agents`);
   });
 
+  it("stops rather than starting afresh when a resume link resolves to nothing", () => {
+    // The identity step mints a permanent AIN. A resume link that did not
+    // resolve must never land there, or "Continue this draft" mints twice.
+    render(
+      <AgentCreationView
+        organisation={organisation("verified")}
+        unresolvedDraft={`did:ain:gb:${ORG_ULID}:01BX5ZZKBKACTAV9WEVGEMMVRZ`}
+      />,
+    );
+
+    expect(
+      screen.getByRole("heading", { name: "Cannot resume this draft" }),
+    ).toBeDefined();
+    expect(
+      screen.getByRole("heading", { name: "This draft could not be resumed" }),
+    ).toBeDefined();
+    expect(screen.queryByLabelText("Agent name")).toBeNull();
+    expect(
+      screen.getByRole("link", { name: "Open the register" }),
+    ).toHaveProperty("href", `http://localhost:3000/o/${ORG_ULID}/agents`);
+  });
+
   it("opens the identity step once the organisation is verified", () => {
     renderFor(organisation("verified"));
 

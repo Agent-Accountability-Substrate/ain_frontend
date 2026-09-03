@@ -13,6 +13,10 @@ import type { ReactNode } from "react";
 
 import { CopyableAin } from "@/domains/agents/copyable-ain";
 import {
+  ScopeConstraintsField,
+  type ConstraintRow,
+} from "@/domains/agents/scope-constraints-field";
+import {
   patchAgentAction,
   registerAgentAction,
   submitAgentAction,
@@ -79,7 +83,7 @@ function Blocked({
           <p className="text-xs leading-5 text-mist">{children}</p>
         </div>
       </div>
-      <div className="flex">{action}</div>
+      <div className="flex flex-wrap gap-3">{action}</div>
     </section>
   );
 }
@@ -101,6 +105,8 @@ export function AgentCreationWizard({
   organisationName,
   organisationUlid,
   organisationVerified,
+  draft,
+  unresolvedDraft,
   onBack,
 }: {
   /** `null` when no organisation is selected — the wizard then refuses to run. */
@@ -108,6 +114,21 @@ export function AgentCreationWizard({
   organisationName: string | null;
   organisationUlid: string | null;
   organisationVerified: boolean;
+  /**
+   * A draft the registry already holds, resolved by the page.
+   *
+   * Present when the wizard was opened to continue one. Its AIN is permanent
+   * and already minted, so the identity step is behind us — starting blank
+   * would mint a second identifier for the same agent, and an AIN is never
+   * recycled.
+   */
+  draft?: { ain: string; name: string } | null;
+  /**
+   * An identifier a resume link named that resolved to no draft here. The
+   * wizard must not fall through to the identity step for it: that step mints
+   * a permanent identifier, and the agent named may already hold one.
+   */
+  unresolvedDraft?: string | null;
   onBack?: () => void;
 }) {
   // Every way out of the wizard leads back to the register it was opened
@@ -132,6 +153,7 @@ export function AgentCreationWizard({
     role: "",
     riskClass: "high",
   });
+  const [constraints, setConstraints] = useState<readonly ConstraintRow[]>([]);
   const [declaration, setDeclaration] = useState({
     actionClasses: "",
     riskLevel: "high",
@@ -185,6 +207,43 @@ export function AgentCreationWizard({
     );
   }
 
+  // A resume link whose draft cannot be found says so and stops. The register
+  // is where the draft is waiting if it exists; a fresh start is offered as a
+  // separate, deliberate act rather than as the silent default.
+  if (unresolvedDraft) {
+    return (
+      <Blocked
+        icon={Bot}
+        eyebrow="Draft not found"
+        title="This draft could not be resumed"
+        action={
+          <>
+            <ButtonLink href={registerHref}>
+              <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+              Open the register
+            </ButtonLink>
+            <ButtonLink
+              variant="secondary"
+              href={
+                organisationUlid
+                  ? orgHref(organisationUlid, "agents/new")
+                  : WORKSPACE
+              }
+            >
+              Start a new agent
+            </ButtonLink>
+          </>
+        }
+      >
+        No draft with the identifier{" "}
+        <code className="break-all font-mono">{unresolvedDraft}</code> is
+        waiting in {organisationName}. It may already be issued, in which case
+        its scope changes by a new signed version rather than here. Nothing has
+        been minted.
+      </Blocked>
+    );
+  }
+
   if (issued.status === "done") {
     return (
       <section className="flex flex-col items-start gap-4 rounded-2xl border border-success-soft bg-success-wash/40 p-6">
@@ -212,8 +271,21 @@ export function AgentCreationWizard({
 
   const identityErrors = registered.status === "error" ? registered.errors : {};
   const declarationErrors = declared.status === "error" ? declared.errors : {};
-  const ain = registered.status === "done" ? registered.ain : null;
+  // A resumed draft is already past step 1 — its identifier exists and is
+  // permanent, so the wizard opens on the declaration rather than re-minting.
+  const ain =
+    draft?.ain ?? (registered.status === "done" ? registered.ain : null);
   const declarationAttached = declared.status === "done";
+  // A bound must name a declared class, so the selector reads what has been
+  // typed above rather than a list of its own.
+  const declaredClasses = [
+    ...new Set(
+      declaration.actionClasses
+        .split(/[,\n]/)
+        .map((entry) => entry.trim())
+        .filter(Boolean),
+    ),
+  ].sort();
   const step = ain === null ? 1 : declarationAttached ? 3 : 2;
 
   return (
@@ -338,6 +410,14 @@ export function AgentCreationWizard({
         <form action={patchAction} className="flex flex-col gap-5">
           <input type="hidden" name="organisationId" value={organisationId} />
           <input type="hidden" name="ain" value={ain} />
+          {draft ? (
+            <Note>
+              Continuing the draft <strong>{draft.name}</strong>. Its identifier
+              below was minted when the draft was opened and is permanent — this
+              declares scope and accountability against that identifier rather
+              than creating a second one.
+            </Note>
+          ) : null}
           <CopyableAin value={ain} />
           <div className="grid gap-4 sm:grid-cols-2">
             <TextField
@@ -357,6 +437,14 @@ export function AgentCreationWizard({
               placeholder={"payments.initiate\ncustomer_comms.send"}
               description="One per line. Anything you do not list here is not authorised."
               error={declarationErrors["actionClasses"]}
+            />
+            <ScopeConstraintsField
+              actionClasses={declaredClasses}
+              rows={constraints}
+              onChange={setConstraints}
+              {...(declarationErrors["constraints"] !== undefined && {
+                error: declarationErrors["constraints"],
+              })}
             />
             <SelectField
               label="Operational risk level"

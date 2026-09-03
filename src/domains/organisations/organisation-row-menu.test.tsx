@@ -23,7 +23,12 @@ const OWNED: OrganisationSummary = {
 const JOINED: OrganisationSummary = { ...OWNED, membershipRole: "member" };
 
 function open(organisation: OrganisationSummary) {
-  render(<OrganisationRowMenu organisation={organisation} />);
+  render(
+    <OrganisationRowMenu
+      email="founder@example.com"
+      organisation={organisation}
+    />,
+  );
   fireEvent.click(
     screen.getByRole("button", { name: `Actions for ${organisation.name}` }),
   );

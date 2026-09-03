@@ -171,4 +171,84 @@ describe("OrganisationCreationView", () => {
       )?.value,
     ).toBe("01234567");
   });
+
+  it("does not submit when Continue follows Back with authority ticked", () => {
+    // Continue and the submit button take turns in one slot. Without distinct
+    // keys React reuses the node, and the click that reveals step two lands
+    // on a button that has just become type="submit" and enabled — so the
+    // browser's default action submitted a form nobody had finished
+    // reviewing. Found by clicking, not by reading.
+    render(<OrganisationCreationView />);
+    fillDetails();
+    fireEvent.click(
+      screen.getByRole("button", { name: /continue to authority/i }),
+    );
+    fireEvent.click(
+      screen.getByRole("checkbox", {
+        name: /I confirm I am authorised to submit this organisation/i,
+      }),
+    );
+    fireEvent.click(screen.getByRole("button", { name: /^back$/i }));
+    fireEvent.click(
+      screen.getByRole("button", { name: /continue to authority/i }),
+    );
+
+    expect(createOrganisationActionMock).not.toHaveBeenCalled();
+    expect(
+      screen.getByRole("button", { name: /complete organisation setup/i }),
+    ).toHaveProperty("disabled", false);
+  });
+
+  it("lets a refused field be corrected and resubmitted", async () => {
+    // The refusal collapses the form to step one so the field at fault is on
+    // screen. Correcting it and continuing has to reach step two again — the
+    // form used to stay pinned to step one while the refusal stood, and the
+    // only control that could replace the refusal was step two's submit
+    // button, so nobody could ever resubmit without reloading.
+    createOrganisationActionMock.mockImplementation(
+      (): CreateOrganisationState => ({
+        status: "error",
+        message: "Check the highlighted fields.",
+        errors: {
+          registrationNumber:
+            "A company number is 8 digits, or 2 letters followed by 6 digits",
+        },
+      }),
+    );
+    render(<OrganisationCreationView />);
+    fillDetails();
+    fireEvent.change(screen.getByLabelText("Companies House number"), {
+      target: { value: "12" },
+    });
+    fireEvent.click(
+      screen.getByRole("button", { name: /continue to authority/i }),
+    );
+    fireEvent.click(
+      screen.getByRole("checkbox", {
+        name: /I confirm I am authorised to submit this organisation/i,
+      }),
+    );
+    fireEvent.click(
+      screen.getByRole("button", { name: /complete organisation setup/i }),
+    );
+    // Collapsed to step one, with the field at fault visible.
+    expect(
+      await screen.findByText(/a company number is 8 digits/i),
+    ).toBeDefined();
+    expect(screen.getByLabelText("Companies House number")).toBeDefined();
+
+    fireEvent.change(screen.getByLabelText("Companies House number"), {
+      target: { value: "01234567" },
+    });
+    fireEvent.click(
+      screen.getByRole("button", { name: /continue to authority/i }),
+    );
+
+    // Step two again: the submit is back, the attestation still holds, and
+    // the stale "check the highlighted fields" is gone from the review.
+    expect(
+      screen.getByRole("button", { name: /complete organisation setup/i }),
+    ).toHaveProperty("disabled", false);
+    expect(screen.queryByText("Check the highlighted fields.")).toBeNull();
+  });
 });

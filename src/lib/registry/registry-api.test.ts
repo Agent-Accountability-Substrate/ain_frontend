@@ -15,11 +15,13 @@ import {
   createOrganisation,
   identityAssurance,
   inviteMember,
-  leaveOrganisation,
+  getAgent,
   listMembers,
   listReviewQueue,
   recordVerification,
+  removeMember,
   submitAgent,
+  transitionAgent,
   listAgents,
   listOrganisations,
   loadAccountWorkspace,
@@ -29,6 +31,7 @@ import {
 } from "@/lib/registry/registry-api";
 
 const ORG_ID = "6a1f6f38-0d3f-4c86-9a53-8c8f7a1e2b4d";
+const MEMBER_ID = "1f4f4c6e-0000-4000-8000-000000000001";
 
 const WHOAMI = {
   subject: "auth0|abc",
@@ -652,6 +655,7 @@ describe("registry writes", () => {
               member_id: "1f4f4c6e-0000-4000-8000-000000000001",
               email: "auditor@example.com",
               role: "auditor",
+              status: "pending",
             },
           ],
         }),
@@ -663,6 +667,7 @@ describe("registry writes", () => {
         id: "1f4f4c6e-0000-4000-8000-000000000001",
         email: "auditor@example.com",
         role: "auditor",
+        status: "pending",
       },
     ]);
   });
@@ -701,56 +706,166 @@ describe("registry writes", () => {
     await expect(listMembers(ORG_ID)).rejects.toBeTruthy();
   });
 
-  it("gives up access with a delete that expects no body", async () => {
+  it("ends a membership by id, with a delete that expects no body", async () => {
     const fetchMock = vi
       .fn()
       .mockResolvedValue(new Response(null, { status: 204 }));
     vi.stubGlobal("fetch", fetchMock);
 
-    await expect(leaveOrganisation(ORG_ID)).resolves.toBe("left");
+    await expect(removeMember(ORG_ID, MEMBER_ID)).resolves.toBeUndefined();
 
     const [url, init] = fetchMock.mock.calls[0] as [URL, RequestInit];
-    expect(url.pathname).toBe(`/orgs/${ORG_ID}/members/me`);
+    // By id, because `/members/me` is not a route the registry serves — which
+    // is why the previous client could only ever be refused, and why the 422
+    // above was the shape of that refusal.
+    expect(url.pathname).toBe(`/orgs/${ORG_ID}/members/${MEMBER_ID}`);
     expect(init.method).toBe("DELETE");
     // No body, so no content-type to declare one.
     expect(init.body).toBeUndefined();
   });
 
-  it("reports a missing capability as missing, not as an outage", async () => {
-    // A 404 or 405 here means the route is not there. Nothing is wrong with
-    // the registry, so "try again shortly" would be advice that cannot work.
-    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(jsonResponse({}, 405)));
-
-    await expect(leaveOrganisation(ORG_ID)).resolves.toBe("unsupported");
-  });
-
-  it("reads the 422 the registry actually sends as a missing capability", async () => {
-    // `/orgs/{id}/members/me` is matched by the registry's
-    // `/orgs/{organisation_id}/members/{member_id}`, whose `member_id` is a
-    // UUID — so the literal "me" fails validation before any handler runs and
-    // FastAPI answers 422 with an array `detail`. No string survives
-    // `refusalDetail`, so it arrives as an unavailability; reading it as one
-    // told every non-owner to retry something that can never succeed.
-    vi.stubGlobal(
-      "fetch",
-      vi
-        .fn()
-        .mockResolvedValue(
-          jsonResponse(
-            { detail: [{ loc: ["path", "member_id"], msg: "invalid uuid" }] },
-            422,
-          ),
-        ),
-    );
-
-    await expect(leaveOrganisation(ORG_ID)).resolves.toBe("unsupported");
-  });
-
-  it("still fails an outage closed while leaving", async () => {
+  it("still fails an outage closed while removing", async () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(jsonResponse({}, 500)));
 
-    await expect(leaveOrganisation(ORG_ID)).rejects.toBeInstanceOf(
+    await expect(removeMember(ORG_ID, MEMBER_ID)).rejects.toBeInstanceOf(
       RegistryUnavailableError,
     );
+  });
+});
+
+describe("the single-agent read", () => {
+  const AIN =
+    "did:ain:gb:01ARZ3NDEKTSV4RRFFQ69G5FAV:01BX5ZZKBKACTAV9WEVGEMMVRZ";
+
+  const RECORD = {
+    ...AGENT,
+    document: {
+      document_version: 3,
+      document_hash: "9f2c7a",
+      kid: "ain-registry-2026-07",
+      valid_from: "2026-07-16T12:00:00Z",
+    },
+    scope: {
+      action_classes: ["payments.initiate"],
+      constraints: { "payments.initiate": { max_value_gbp: 5000 } },
+      risk_level: "high",
+      regulatory_mappings: ["FCA CONC 7"],
+    },
+    accountability: {
+      role_title: "Head of Collections",
+      responsibility_area: "collections",
+      regulatory_identifier: "SMF24-000123",
+    },
+    external_identities: [
+      { ref_type: "spiffe", ref_value: "spiffe://x/y", verified: false },
+    ],
+    lifecycle: [
+      {
+        seq: 1,
+        event_type: "registered",
+        occurred_at: "2026-07-16T11:00:00Z",
+        event_hash: "aa",
+        previous_event_hash: null,
+      },
+    ],
+    resolver_url: `https://resolver.example/${AIN}`,
+  };
+
+  it("escapes the identifier into one path segment", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(jsonResponse(RECORD));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await getAgent(ORG_ID, AIN);
+
+    const [url] = fetchMock.mock.calls[0] as [URL];
+    // An AIN is opaque and byte-exact once minted, so it is escaped rather
+    // than trusted to contain nothing that would split the path.
+    expect(url.pathname).toBe(
+      `/orgs/${ORG_ID}/agents/${encodeURIComponent(AIN)}`,
+    );
+  });
+
+  it("carries the scope, the owner and the chain through", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(jsonResponse(RECORD)));
+
+    const record = await getAgent(ORG_ID, AIN);
+
+    expect(record?.scope?.constraints).toEqual({
+      "payments.initiate": { max_value_gbp: 5000 },
+    });
+    expect(record?.accountability?.regulatoryIdentifier).toBe("SMF24-000123");
+    expect(record?.lifecycle[0]?.previousEventHash).toBeNull();
+    expect(record?.document?.documentVersion).toBe(3);
+  });
+
+  it("drops the keys a draft has nothing for, rather than carrying nulls", async () => {
+    // An absent scope and an empty one are different claims: an empty scope
+    // says "authorised to do nothing".
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        jsonResponse({
+          ...RECORD,
+          status: "draft",
+          document: null,
+          scope: null,
+          accountability: null,
+          lifecycle: [],
+          resolver_url: null,
+        }),
+      ),
+    );
+
+    const record = await getAgent(ORG_ID, AIN);
+
+    expect(record).toBeDefined();
+    expect("scope" in record!).toBe(false);
+    expect("document" in record!).toBe(false);
+    expect("resolverUrl" in record!).toBe(false);
+  });
+
+  it("reports an agent this organisation does not have as absent", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(jsonResponse({}, 404)));
+
+    await expect(getAgent(ORG_ID, AIN)).resolves.toBeNull();
+  });
+
+  it("treats a registry with no single-agent read as having no record", async () => {
+    // `PATCH` is the only method registered on this path today, so a `GET`
+    // answers 405. Nothing is wrong and retrying cannot help, so a screen that
+    // merely offers the record stops offering it rather than falling over.
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(jsonResponse({}, 405)));
+
+    await expect(getAgent(ORG_ID, AIN)).resolves.toBeNull();
+  });
+
+  it("still fails an outage closed", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(jsonResponse({}, 500)));
+
+    await expect(getAgent(ORG_ID, AIN)).rejects.toBeInstanceOf(
+      RegistryUnavailableError,
+    );
+  });
+
+  it("posts a withdrawal to its own verb sub-path, with the reason", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      jsonResponse({
+        ain: AIN,
+        status: "suspended",
+        event_type: "suspended",
+        seq: 3,
+        chain_head: "cc",
+      }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    await transitionAgent(ORG_ID, AIN, "suspend", "Model replaced");
+
+    const [url, init] = fetchMock.mock.calls[0] as [URL, RequestInit];
+    expect(url.pathname).toBe(
+      `/orgs/${ORG_ID}/agents/${encodeURIComponent(AIN)}/suspend`,
+    );
+    expect(init.method).toBe("POST");
+    expect(JSON.parse(String(init.body))).toEqual({ reason: "Model replaced" });
   });
 });

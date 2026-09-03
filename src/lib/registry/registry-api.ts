@@ -5,6 +5,10 @@ import { z } from "zod";
 
 import { currentSession } from "@/auth";
 import type {
+  AgentRecord,
+  AgentTransition,
+} from "@/domains/agents/agent-record";
+import type {
   AccountWorkspaceState,
   OrganisationMember,
   OrganisationSummary,
@@ -129,6 +133,62 @@ const agentSchema = z.object({
 const agentListSchema = z.object({ agents: z.array(agentSchema) });
 
 export type RegistryAgent = z.infer<typeof agentSchema>;
+
+/**
+ * The single-agent read.
+ *
+ * `document`, `scope` and `accountability` are nullable rather than optional
+ * because a draft genuinely has none of them yet — the registry says so
+ * explicitly instead of omitting keys, so a missing key stays a contract
+ * error rather than an ordinary draft.
+ *
+ * `constraints` is `unknown` inside: contract v1 fixes the shape as
+ * `{action_class: {key: <open JSON>}}` and deliberately says nothing about
+ * what a key means. Narrowing it here would invent a vocabulary this layer
+ * does not own.
+ */
+const agentRecordSchema = agentSchema.extend({
+  document: z
+    .object({
+      document_version: z.number().int(),
+      document_hash: z.string(),
+      kid: z.string(),
+      valid_from: z.iso.datetime({ offset: true }),
+    })
+    .nullable(),
+  scope: z
+    .object({
+      action_classes: z.array(z.string()),
+      constraints: z.record(z.string(), z.record(z.string(), z.unknown())),
+      risk_level: z.string(),
+      regulatory_mappings: z.array(z.string()),
+    })
+    .nullable(),
+  accountability: z
+    .object({
+      role_title: z.string(),
+      responsibility_area: z.string(),
+      regulatory_identifier: z.string(),
+    })
+    .nullable(),
+  external_identities: z.array(
+    z.object({
+      ref_type: z.string(),
+      ref_value: z.string(),
+      verified: z.boolean(),
+    }),
+  ),
+  lifecycle: z.array(
+    z.object({
+      seq: z.number().int(),
+      event_type: z.string(),
+      occurred_at: z.iso.datetime({ offset: true }),
+      event_hash: z.string(),
+      previous_event_hash: z.string().nullable(),
+    }),
+  ),
+  resolver_url: z.string().nullable(),
+});
 
 const assuranceSchema = z.object({
   status: z.enum([
@@ -283,6 +343,88 @@ export async function listAgents(
     await get(`/orgs/${encodeURIComponent(organisationId)}/agents`),
   );
   return body.agents;
+}
+
+/**
+ * `GET /orgs/{id}/agents/{ain}` — one agent's whole record.
+ *
+ * The AIN is percent-encoded in the path. Its colons are legal `pchar` and
+ * survive either way, but the identifier is opaque and byte-exact once minted,
+ * so it is escaped rather than trusted to contain nothing else.
+ */
+export async function getAgent(
+  organisationId: string,
+  ain: string,
+): Promise<AgentRecord | null> {
+  let record: z.infer<typeof agentRecordSchema>;
+  try {
+    record = agentRecordSchema.parse(
+      await get(
+        `/orgs/${encodeURIComponent(organisationId)}/agents/${encodeURIComponent(ain)}`,
+      ),
+    );
+  } catch (error) {
+    // A 404 means this organisation has no such agent; the statuses
+    // `isUnsupportedRoute` covers mean the registry has no single-agent read
+    // at all, `PATCH` being the only method registered on this path. Neither
+    // is an outage, and both come back as "no record", so a screen that merely
+    // *offers* the record degrades to not offering it rather than taking a
+    // working page down. Anything else is a real failure and stays one.
+    if (
+      isUnsupportedRoute(error) ||
+      (error instanceof RegistryUnavailableError && error.status === 404)
+    ) {
+      return null;
+    }
+    throw error;
+  }
+
+  return {
+    ain: record.ain,
+    name: record.name,
+    role: record.role,
+    status: record.status,
+    riskClass: record.risk_class,
+    organisationId,
+    validFrom: record.valid_from,
+    createdAt: record.created_at,
+    ...(record.document !== null && {
+      document: {
+        documentVersion: record.document.document_version,
+        documentHash: record.document.document_hash,
+        kid: record.document.kid,
+        validFrom: record.document.valid_from,
+      },
+    }),
+    ...(record.scope !== null && {
+      scope: {
+        actionClasses: record.scope.action_classes,
+        constraints: record.scope.constraints,
+        riskLevel: record.scope.risk_level,
+        regulatoryMappings: record.scope.regulatory_mappings,
+      },
+    }),
+    ...(record.accountability !== null && {
+      accountability: {
+        roleTitle: record.accountability.role_title,
+        responsibilityArea: record.accountability.responsibility_area,
+        regulatoryIdentifier: record.accountability.regulatory_identifier,
+      },
+    }),
+    externalIdentities: record.external_identities.map((reference) => ({
+      refType: reference.ref_type,
+      refValue: reference.ref_value,
+      verified: reference.verified,
+    })),
+    lifecycle: record.lifecycle.map((event) => ({
+      seq: event.seq,
+      eventType: event.event_type,
+      occurredAt: event.occurred_at,
+      eventHash: event.event_hash,
+      previousEventHash: event.previous_event_hash,
+    })),
+    ...(record.resolver_url !== null && { resolverUrl: record.resolver_url }),
+  };
 }
 
 /**
@@ -550,6 +692,11 @@ const memberSchema = z.object({
   member_id: z.uuid(),
   email: z.email(),
   role: z.string(),
+  // 'pending' until the invitee's first verified login binds their subject to
+  // the row; 'active' after. The distinction is the difference between
+  // "invited" and "has access", and a list that showed only addresses could
+  // not tell an admin which they were looking at.
+  status: z.string(),
 });
 
 const memberListSchema = z.object({ members: z.array(memberSchema) });
@@ -593,9 +740,9 @@ function isUnsupportedRoute(error: unknown): boolean {
 /**
  * `GET /orgs/{id}/members` — who else can act for this organisation.
  *
- * The registry does not serve this yet. Returns `null` rather than an empty
- * array when the route is absent, so the page can say "not available" instead
- * of "nobody" — different claims, and only one of them true.
+ * Returns `null` only when the registry does not serve the route at all, so
+ * the page can say "not available" instead of "nobody" — different claims, and
+ * only one of them true. Everything else is rethrown.
  */
 export async function listMembers(
   organisationId: string,
@@ -608,39 +755,67 @@ export async function listMembers(
       id: member.member_id,
       email: member.email,
       role: member.role,
+      status: member.status,
     }));
   } catch (error) {
-    // Only "the registry does not serve this route" becomes `null`. An expired
-    // session, an outage, or a payload that fails the schema are all different
-    // claims, and laundering them into "not available yet" would state as fact
-    // something this module has no evidence for — and would swallow the loud
-    // failure that contract drift is supposed to produce here.
     if (isUnsupportedRoute(error)) return null;
     throw error;
   }
 }
 
 /**
- * `DELETE /orgs/{id}/members/me` — give up your own access to a company.
+ * `DELETE /orgs/{id}/members/{member_id}` — end a membership.
  *
- * The registry removes a member by id and cannot yet name the caller's own, so
- * this route does not answer — see `isUnsupportedRoute` for the three ways it
- * says so, 422 being the one it actually sends. That comes back as
- * `"unsupported"` rather than an outage: nothing is wrong, so "try again
- * shortly" would be a promise nothing can keep.
+ * A `DELETE` in the API and an `UPDATE` in the database: the row's `status`
+ * becomes `removed`, because a membership that authorised an action has to
+ * stay evidenceable afterwards.
+ *
+ * One call serves both removals the registry allows — an admin removing
+ * someone, and anyone removing themselves — because they are the same
+ * transition. It takes the member's id rather than a `/me` alias, which is not
+ * a route the registry has; the caller's own id comes from the member list.
  */
-export async function leaveOrganisation(
+export async function removeMember(
   organisationId: string,
-): Promise<"left" | "unsupported"> {
-  try {
-    await request(`/orgs/${encodeURIComponent(organisationId)}/members/me`, {
-      method: "DELETE",
-    });
-    return "left";
-  } catch (error) {
-    if (isUnsupportedRoute(error)) return "unsupported";
-    throw error;
-  }
+  memberId: string,
+): Promise<void> {
+  await request(
+    `/orgs/${encodeURIComponent(organisationId)}/members/${encodeURIComponent(memberId)}`,
+    { method: "DELETE" },
+  );
+}
+
+const transitionSchema = z.object({
+  ain: z.string(),
+  status: z.string(),
+  event_type: z.string(),
+  seq: z.number().int(),
+  chain_head: z.string(),
+});
+
+/**
+ * `POST /orgs/{id}/agents/{ain}/suspend` or `/revoke` — withdraw authority.
+ *
+ * Two verb sub-paths rather than one decision endpoint, matching the registry:
+ * `revoked` is terminal and `suspended` is not, they admit different current
+ * statuses, and each is a distinct act an operator performs.
+ *
+ * The reason is mandatory and lands in the audit log, never in the signed
+ * event body — `ain-lifecycle-v1`'s key set is fixed, and an operator's
+ * explanation is administrative context rather than authorised state.
+ */
+export async function transitionAgent(
+  organisationId: string,
+  ain: string,
+  transition: AgentTransition,
+  reason: string,
+): Promise<z.infer<typeof transitionSchema>> {
+  return transitionSchema.parse(
+    await request(
+      `/orgs/${encodeURIComponent(organisationId)}/agents/${encodeURIComponent(ain)}/${transition}`,
+      { method: "POST", body: { reason } },
+    ),
+  );
 }
 
 function toSummary(organisation: RegistryOrganisation): OrganisationSummary {

@@ -3,7 +3,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const {
   createOrganisationMock,
   inviteMemberMock,
-  leaveOrganisationMock,
+  listMembersMock,
+  removeMemberMock,
   revalidatePathMock,
   NotAuthenticatedError,
   RegistryRefusedError,
@@ -22,7 +23,8 @@ const {
   return {
     createOrganisationMock: vi.fn(),
     inviteMemberMock: vi.fn(),
-    leaveOrganisationMock: vi.fn(),
+    listMembersMock: vi.fn(),
+    removeMemberMock: vi.fn(),
     revalidatePathMock: vi.fn(),
     NotAuthenticatedError,
     RegistryRefusedError,
@@ -33,7 +35,8 @@ const {
 vi.mock("@/lib/registry/registry-api", () => ({
   createOrganisation: createOrganisationMock,
   inviteMember: inviteMemberMock,
-  leaveOrganisation: leaveOrganisationMock,
+  listMembers: listMembersMock,
+  removeMember: removeMemberMock,
   NotAuthenticatedError,
   RegistryRefusedError,
   RegistryUnavailableError,
@@ -49,6 +52,7 @@ import {
   createOrganisationAction,
   inviteMemberAction,
   leaveOrganisationAction,
+  removeMemberAction,
 } from "@/domains/organisations/organisation-actions";
 
 function form(overrides: Record<string, string> = {}): FormData {
@@ -171,32 +175,58 @@ describe("createOrganisationAction", () => {
 
 describe("leaveOrganisationAction", () => {
   const ORG_ID = "6a1f6f38-0d3f-4c86-9a53-8c8f7a1e2b4d";
+  const MEMBER_ID = "1f4f4c6e-0000-4000-8000-000000000001";
+  const EMAIL = "member@example.com";
 
-  function leaveForm(organisationId: string = ORG_ID): FormData {
+  function leaveForm(
+    organisationId: string = ORG_ID,
+    email: string = EMAIL,
+  ): FormData {
     const data = new FormData();
     data.set("organisationId", organisationId);
+    data.set("email", email);
     return data;
   }
 
   beforeEach(() => {
-    leaveOrganisationMock.mockReset();
+    listMembersMock.mockReset();
+    removeMemberMock.mockReset();
     revalidatePathMock.mockReset();
+    listMembersMock.mockResolvedValue([
+      { id: MEMBER_ID, email: EMAIL, role: "compliance", status: "active" },
+    ]);
   });
 
-  it("gives up access and refreshes what lists it", async () => {
-    leaveOrganisationMock.mockResolvedValue("left");
+  it("finds the caller's own membership and ends it by id", async () => {
+    // The registry has no `/members/me`, so the caller's row has to be looked
+    // up first. Posting to that alias is what could only ever be refused.
+    expect(
+      await leaveOrganisationAction({ status: "idle" }, leaveForm()),
+    ).toEqual({ status: "left" });
+    expect(removeMemberMock).toHaveBeenCalledWith(ORG_ID, MEMBER_ID);
+    expect(revalidatePathMock).toHaveBeenCalledWith("/o", "layout");
+  });
+
+  it("matches the address regardless of how it is cased", async () => {
+    listMembersMock.mockResolvedValue([
+      {
+        id: MEMBER_ID,
+        email: "Member@Example.com",
+        role: "auditor",
+        status: "active",
+      },
+    ]);
 
     expect(
       await leaveOrganisationAction({ status: "idle" }, leaveForm()),
     ).toEqual({ status: "left" });
-    expect(leaveOrganisationMock).toHaveBeenCalledWith(ORG_ID);
-    expect(revalidatePathMock).toHaveBeenCalledWith("/o", "layout");
+    expect(removeMemberMock).toHaveBeenCalledWith(ORG_ID, MEMBER_ID);
   });
 
-  it("says what is missing rather than advising a retry", async () => {
-    // Nothing is wrong with the registry, so "try again shortly" would be a
-    // promise nothing can keep. The way on is a person, so name them.
-    leaveOrganisationMock.mockResolvedValue("unsupported");
+  it("names a person to ask when the registry cannot list members", async () => {
+    // Without the list there is no id to remove, and nothing is wrong with the
+    // registry — so "try again shortly" would be a promise nothing can keep.
+    listMembersMock.mockResolvedValue(null);
 
     const state = await leaveOrganisationAction(
       { status: "idle" },
@@ -206,24 +236,41 @@ describe("leaveOrganisationAction", () => {
     expect(state.status).toBe("error");
     expect(state).toHaveProperty(
       "message",
-      expect.stringContaining("Ask an owner or admin"),
+      expect.stringContaining("can remove you from the members list"),
     );
+    expect(removeMemberMock).not.toHaveBeenCalled();
     expect(revalidatePathMock).not.toHaveBeenCalled();
   });
 
+  it("says so when the caller is not on the list at all", async () => {
+    listMembersMock.mockResolvedValue([
+      {
+        id: MEMBER_ID,
+        email: "someone@else.example",
+        role: "auditor",
+        status: "active",
+      },
+    ]);
+
+    const state = await leaveOrganisationAction(
+      { status: "idle" },
+      leaveForm(),
+    );
+
+    expect(state.status).toBe("error");
+    expect(removeMemberMock).not.toHaveBeenCalled();
+  });
+
   it("relays a refusal in the registry's own words", async () => {
-    leaveOrganisationMock.mockRejectedValue(
-      new RegistryRefusedError(
-        403,
-        "An owner cannot leave their organisation.",
-      ),
+    removeMemberMock.mockRejectedValue(
+      new RegistryRefusedError(409, "An organisation must keep one admin."),
     );
 
     expect(
       await leaveOrganisationAction({ status: "idle" }, leaveForm()),
     ).toEqual({
       status: "error",
-      message: "An owner cannot leave their organisation.",
+      message: "An organisation must keep one admin.",
     });
   });
 
@@ -234,11 +281,19 @@ describe("leaveOrganisationAction", () => {
     );
 
     expect(state.status).toBe("error");
-    expect(leaveOrganisationMock).not.toHaveBeenCalled();
+    expect(listMembersMock).not.toHaveBeenCalled();
   });
 
-  it("asks for a fresh sign-in rather than losing the click", async () => {
-    leaveOrganisationMock.mockRejectedValue(new NotAuthenticatedError());
+  it("asks an expired session to sign in rather than reporting a failure", async () => {
+    listMembersMock.mockRejectedValue(new NotAuthenticatedError());
+
+    expect(
+      await leaveOrganisationAction({ status: "idle" }, leaveForm()),
+    ).toMatchObject({ message: expect.stringContaining("Sign in again") });
+  });
+
+  it("keeps an outage on our side of the line", async () => {
+    removeMemberMock.mockRejectedValue(new RegistryUnavailableError());
 
     const state = await leaveOrganisationAction(
       { status: "idle" },
@@ -246,15 +301,74 @@ describe("leaveOrganisationAction", () => {
     );
 
     expect(state.status).toBe("error");
+    expect(revalidatePathMock).not.toHaveBeenCalled();
+  });
+});
+
+describe("removeMemberAction", () => {
+  const ORG_ID = "6a1f6f38-0d3f-4c86-9a53-8c8f7a1e2b4d";
+  const MEMBER_ID = "1f4f4c6e-0000-4000-8000-000000000001";
+
+  function removeForm(memberId: string = MEMBER_ID): FormData {
+    const data = new FormData();
+    data.set("organisationId", ORG_ID);
+    data.set("memberId", memberId);
+    data.set("email", "auditor@example.com");
+    return data;
+  }
+
+  beforeEach(() => {
+    removeMemberMock.mockReset();
+    revalidatePathMock.mockReset();
   });
 
-  it("reports an outage as an outage", async () => {
-    leaveOrganisationMock.mockRejectedValue(new RegistryUnavailableError());
+  it("removes by id and refreshes what lists the member", async () => {
+    expect(await removeMemberAction({ status: "idle" }, removeForm())).toEqual({
+      status: "removed",
+      email: "auditor@example.com",
+    });
+    expect(removeMemberMock).toHaveBeenCalledWith(ORG_ID, MEMBER_ID);
+    expect(revalidatePathMock).toHaveBeenCalledWith("/o", "layout");
+  });
 
-    const state = await leaveOrganisationAction(
-      { status: "idle" },
-      leaveForm(),
+  it("relays the registry's refusal to remove the last admin", async () => {
+    // No route grants the role back from outside, so an organisation without
+    // an admin could never be administered again.
+    removeMemberMock.mockRejectedValue(
+      new RegistryRefusedError(
+        409,
+        "an organisation must keep at least one admin",
+      ),
     );
+
+    expect(await removeMemberAction({ status: "idle" }, removeForm())).toEqual({
+      status: "error",
+      message: "an organisation must keep at least one admin",
+    });
+  });
+
+  it("refuses a member id that is not one", async () => {
+    const state = await removeMemberAction(
+      { status: "idle" },
+      removeForm("nope"),
+    );
+
+    expect(state.status).toBe("error");
+    expect(removeMemberMock).not.toHaveBeenCalled();
+  });
+
+  it("asks an expired session to sign in", async () => {
+    removeMemberMock.mockRejectedValue(new NotAuthenticatedError());
+
+    expect(
+      await removeMemberAction({ status: "idle" }, removeForm()),
+    ).toMatchObject({ message: expect.stringContaining("Sign in again") });
+  });
+
+  it("keeps an outage on our side of the line", async () => {
+    removeMemberMock.mockRejectedValue(new RegistryUnavailableError());
+
+    const state = await removeMemberAction({ status: "idle" }, removeForm());
 
     expect(state.status).toBe("error");
     expect(revalidatePathMock).not.toHaveBeenCalled();
