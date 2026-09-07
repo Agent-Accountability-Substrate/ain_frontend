@@ -10,7 +10,11 @@ import {
   periodStart,
 } from "@/domains/agents/evidence-pack";
 import { logger } from "@/lib/logger";
-import { registryErrorReporter } from "@/lib/registry/action-errors";
+import {
+  fieldErrors,
+  registryErrorReporter,
+  text,
+} from "@/lib/registry/action-errors";
 import { requestEvidencePack } from "@/lib/registry/registry-api";
 
 /**
@@ -70,22 +74,6 @@ const periodSchema = z
     message: "The period must not end before it starts",
     path: ["to"],
   });
-
-function fieldErrors(error: z.ZodError): Partial<Record<string, string>> {
-  const errors: Partial<Record<string, string>> = {};
-  for (const issue of error.issues) {
-    const field = issue.path[0];
-    if (typeof field === "string" && !(field in errors)) {
-      errors[field] = issue.message;
-    }
-  }
-  return errors;
-}
-
-function text(formData: FormData, key: string): string {
-  const value = formData.get(key);
-  return typeof value === "string" ? value : "";
-}
 
 export async function requestEvidencePackAction(
   _previous: RequestPackState,

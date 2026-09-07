@@ -6,7 +6,11 @@ import { z } from "zod";
 import { AGENT_TRANSITIONS } from "@/domains/agents/agent-record";
 import { ORGANISATION_SETTINGS } from "@/domains/workspace/workspace-routes";
 import { logger } from "@/lib/logger";
-import { registryErrorReporter } from "@/lib/registry/action-errors";
+import {
+  fieldErrors,
+  registryErrorReporter,
+  text,
+} from "@/lib/registry/action-errors";
 import {
   patchAgent,
   registerAgent,
@@ -57,11 +61,6 @@ export type SubmitAgentState = AgentStepState<{
   documentVersion: number;
 }>;
 
-function text(formData: FormData, key: string): string {
-  const value = formData.get(key);
-  return typeof value === "string" ? value : "";
-}
-
 /** Comma- or newline-separated free text into a sorted, duplicate-free list. */
 function list(raw: string): string[] {
   return [
@@ -72,17 +71,6 @@ function list(raw: string): string[] {
         .filter(Boolean),
     ),
   ].sort();
-}
-
-function fieldErrors(error: z.ZodError): Partial<Record<string, string>> {
-  const errors: Partial<Record<string, string>> = {};
-  for (const issue of error.issues) {
-    const field = issue.path[0];
-    if (typeof field === "string" && !(field in errors)) {
-      errors[field] = issue.message;
-    }
-  }
-  return errors;
 }
 
 const identitySchema = z.object({

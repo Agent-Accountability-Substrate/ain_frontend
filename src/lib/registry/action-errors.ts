@@ -1,5 +1,7 @@
 import "server-only";
 
+import type { z } from "zod";
+
 import { logger } from "@/lib/logger";
 import {
   NotAuthenticatedError,
@@ -76,4 +78,37 @@ export function registryErrorReporter(copy: RegistryErrorCopy) {
     }
     throw error;
   };
+}
+
+/**
+ * One `FormData` entry as the string a schema expects.
+ *
+ * A missing entry and a `File` both become `""` rather than reaching a schema
+ * as `null` or as an object, so a form's own validation gives the message
+ * instead of a type error from inside the parser.
+ */
+export function text(formData: FormData, key: string): string {
+  const value = formData.get(key);
+  return typeof value === "string" ? value : "";
+}
+
+/**
+ * A Zod failure as one message per field, first issue winning.
+ *
+ * First-issue-wins because a field shows one message, and the first is the one
+ * the schema author wrote for the commonest mistake. Beside the ladder above
+ * for the same reason it exists: retyped per domain, this is what drifts —
+ * two spellings of "which issue does a field show" that nothing compares.
+ */
+export function fieldErrors(
+  error: z.ZodError,
+): Partial<Record<string, string>> {
+  const errors: Partial<Record<string, string>> = {};
+  for (const issue of error.issues) {
+    const field = issue.path[0];
+    if (typeof field === "string" && !(field in errors)) {
+      errors[field] = issue.message;
+    }
+  }
+  return errors;
 }

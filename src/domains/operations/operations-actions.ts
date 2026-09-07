@@ -3,7 +3,7 @@
 import { z } from "zod";
 
 import { logger } from "@/lib/logger";
-import { registryErrorReporter } from "@/lib/registry/action-errors";
+import { registryErrorReporter, text } from "@/lib/registry/action-errors";
 import { recordVerification } from "@/lib/registry/registry-api";
 
 /**
@@ -67,11 +67,6 @@ const toErrorState = registryErrorReporter({
   unavailable: UNAVAILABLE,
   unavailableEvent: "operations.registry_unavailable",
 });
-
-function text(formData: FormData, key: string): string {
-  const value = formData.get(key);
-  return typeof value === "string" ? value : "";
-}
 
 export async function recordDecisionAction(
   _previous: DecisionState,

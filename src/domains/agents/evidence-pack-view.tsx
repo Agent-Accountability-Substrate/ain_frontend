@@ -13,7 +13,7 @@ import { EvidencePackWatch } from "@/domains/agents/evidence-pack-watch";
 import {
   isInFlight,
   packPeriod,
-  PACK_STATUS_LABELS,
+  PACK_STATUS_VIEW,
   utcMoment,
   type EvidencePackDetail,
 } from "@/domains/agents/evidence-pack";
@@ -29,7 +29,7 @@ import { Callout } from "@/lib/ui/callout";
 import { Card } from "@/lib/ui/card";
 import { Eyebrow } from "@/lib/ui/eyebrow";
 import { PageHeading } from "@/lib/ui/page-heading";
-import { StatusPill, type StatusTone } from "@/lib/ui/status-pill";
+import { StatusPill } from "@/lib/ui/status-pill";
 
 /**
  * One evidence package, and the two files it produced.
@@ -45,13 +45,6 @@ import { StatusPill, type StatusTone } from "@/lib/ui/status-pill";
  * than presenting them as addresses that keep working, and nothing here stores
  * or logs one.
  */
-
-const TONE: Record<EvidencePackDetail["status"], StatusTone> = {
-  queued: "pending",
-  generating: "pending",
-  completed: "success",
-  failed: "refused",
-};
 
 function Field({
   icon: Icon,
@@ -160,8 +153,8 @@ export function EvidencePackView({
           <PageHeading eyebrow={agent.name} lede={packPeriod(pack)}>
             Evidence package
           </PageHeading>
-          <StatusPill tone={TONE[pack.status]}>
-            {PACK_STATUS_LABELS[pack.status]}
+          <StatusPill tone={PACK_STATUS_VIEW[pack.status].tone}>
+            {PACK_STATUS_VIEW[pack.status].label}
           </StatusPill>
         </div>
 

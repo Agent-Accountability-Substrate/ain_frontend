@@ -102,4 +102,37 @@ describe("watching a package that is still being assembled", () => {
       screen.getByText(/checking for you/i).getAttribute("aria-live"),
     ).toBe("polite");
   });
+
+  it("does not refill a package's budget when another one finishes", () => {
+    // The budget is per package. Keyed on the set instead, a package landing
+    // changed the key and handed every package still in flight a full budget
+    // again — so the one case the bound exists for, a package stuck in
+    // `generating`, polled for as long as the tab stayed open.
+    const { rerender } = render(<EvidencePackWatch watching={["a", "b"]} />);
+
+    tick(FOREVER);
+    const spent = refreshMock.mock.calls.length;
+    expect(screen.getByText(/stopped checking/i)).not.toBeNull();
+
+    // "b" completes; "a" is still going, and has already spent its budget.
+    rerender(<EvidencePackWatch watching={["a"]} />);
+    tick(FOREVER);
+
+    expect(refreshMock.mock.calls.length).toBe(spent);
+    expect(screen.getByText(/stopped checking/i)).not.toBeNull();
+  });
+
+  it("gives a newly requested package a budget of its own", () => {
+    const { rerender } = render(<EvidencePackWatch watching={["a"]} />);
+
+    tick(FOREVER);
+    const spent = refreshMock.mock.calls.length;
+
+    // A different package is different work, so it is watched afresh.
+    rerender(<EvidencePackWatch watching={["c"]} />);
+    tick(15_000);
+
+    expect(refreshMock.mock.calls.length).toBeGreaterThan(spent);
+    expect(screen.getByText(/checking for you/i)).not.toBeNull();
+  });
 });

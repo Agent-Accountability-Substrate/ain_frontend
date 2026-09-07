@@ -1,4 +1,5 @@
 import type { PackStatus } from "@/lib/registry/pack-status";
+import type { StatusTone } from "@/lib/ui/status-pill";
 
 /**
  * An evidence package, as the workspace shows it.
@@ -114,16 +115,25 @@ export const inFlightIds = (packs: readonly EvidencePack[]): string[] =>
   packs.filter(isInFlight).map((pack) => pack.packId);
 
 /**
- * What each status means, said as an outcome rather than as a queue state.
+ * What each status means, said as an outcome rather than as a queue state,
+ * and how it looks when it is said.
  *
  * "Queued" and "generating" both mean *come back shortly*, so they read the
  * same; the distinction is real inside the registry and is not this reader's.
+ *
+ * The label and the tone travel together because they describe one thing. Kept
+ * apart, the two screens that show a package could disagree about what a
+ * status looks like while agreeing about what it says — and both tables would
+ * stay exhaustive, so nothing would catch it.
  */
-export const PACK_STATUS_LABELS: Record<PackStatus, string> = {
-  queued: "Being assembled",
-  generating: "Being assembled",
-  completed: "Ready",
-  failed: "Could not be assembled",
+export const PACK_STATUS_VIEW: Record<
+  PackStatus,
+  { label: string; tone: StatusTone }
+> = {
+  queued: { label: "Being assembled", tone: "pending" },
+  generating: { label: "Being assembled", tone: "pending" },
+  completed: { label: "Ready", tone: "success" },
+  failed: { label: "Could not be assembled", tone: "refused" },
 };
 
 /**

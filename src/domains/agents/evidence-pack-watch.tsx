@@ -16,11 +16,11 @@ import { useRouter } from "next/navigation";
  * Fetching the same rows into client state would be a second, unvalidated copy
  * of the boundary this repo puts a Zod schema on.
  *
- * Deliberately bounded. A package still going after this has hit something the
- * registry has to work out — its lease expiring and another worker taking it, or
- * a failure landing on the row — and a tab left open for a day should not poll a
- * tenant API for a day. When the bound is spent the screen says so and offers
- * the one thing that helps.
+ * Deliberately bounded, per package. A package still going after this has hit
+ * something the registry has to work out — its lease expiring and another
+ * worker taking it, or a failure landing on the row — and a tab left open for a
+ * day should not poll a tenant API for a day. When every package being watched
+ * has spent its bound the screen says so and offers the one thing that helps.
  */
 
 /** Slower than a spinner deserves, because a package takes as long as it takes. */
@@ -28,6 +28,8 @@ const EVERY_MS = 5_000;
 
 /** Roughly two minutes. Past this, something is being worked out server-side. */
 const ATTEMPTS = 24;
+
+const EMPTY: ReadonlySet<string> = new Set();
 
 export function EvidencePackWatch({
   watching,
@@ -40,26 +42,48 @@ export function EvidencePackWatch({
   // budget — recording *which* run gave up is what makes that fall out, and it
   // keeps the reset out of the effect body, where setting state would mean a
   // cascading render on every change of what is in flight.
-  const [gaveUpOn, setGaveUpOn] = useState<string | null>(null);
+  // Which packages this page gave up on, not merely that it gave up. A
+  // package asked for afterwards is different work, so the screen goes back to
+  // watching without anything having to reset a flag.
+  const [gaveUp, setGaveUp] = useState<ReadonlySet<string>>(EMPTY);
   const run = watching.join(" ");
+  const ids = run === "" ? [] : run.split(" ");
+  const stopped = ids.length > 0 && ids.every((id) => gaveUp.has(id));
 
-  // The budget belongs to the run, not to this effect. Held in the closure it
-  // refilled on every re-render that re-ran the effect — and `router` is a
-  // dependency, so anything returning a fresh one turned a bounded watch into
-  // an unbounded one. Which is the whole failure the bound exists to prevent.
-  const budget = useRef({ run: "", left: ATTEMPTS });
+  // One budget per package, not one shared by whichever set is in flight. The
+  // budget belongs outside this effect because `router` is a dependency, so
+  // anything returning a fresh one would refill a budget held in the closure.
+  // Keying it on the set had the same effect by another route: a package
+  // finishing changes the set, which refilled the budget of every package
+  // still in flight — so a package stuck in `generating`, which is exactly
+  // what the bound exists for, polled for as long as the tab stayed open.
+  const budget = useRef(new Map<string, number>());
 
   useEffect(() => {
     if (run === "") return;
-    if (budget.current.run !== run) budget.current = { run, left: ATTEMPTS };
+    const left = budget.current;
+    const watched = run.split(" ");
+    // A package that has landed stops consuming its budget; one still in
+    // flight keeps what it has already spent, and a new one arrives with a
+    // budget of its own.
+    for (const id of [...left.keys()])
+      if (!watched.includes(id)) left.delete(id);
+    for (const id of watched) if (!left.has(id)) left.set(id, ATTEMPTS);
 
     const timer = setInterval(() => {
-      if (budget.current.left <= 0) {
+      let polled = false;
+      for (const id of watched) {
+        const remaining = left.get(id) ?? 0;
+        if (remaining > 0) {
+          left.set(id, remaining - 1);
+          polled = true;
+        }
+      }
+      if (!polled) {
         clearInterval(timer);
-        setGaveUpOn(run);
+        setGaveUp(new Set(watched));
         return;
       }
-      budget.current.left -= 1;
       router.refresh();
     }, EVERY_MS);
 
@@ -75,7 +99,7 @@ export function EvidencePackWatch({
     // screen reader interrupted every five seconds by "still assembling" would
     // be worse served than by not being told at all.
     <p aria-live="polite" className="text-[11px] leading-4 text-mist">
-      {gaveUpOn === run
+      {stopped
         ? "Still assembling. This page has stopped checking — reload it to look again."
         : "Assembling. This page is checking for you and will update on its own."}
     </p>

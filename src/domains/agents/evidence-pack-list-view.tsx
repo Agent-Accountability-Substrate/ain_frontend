@@ -8,9 +8,8 @@ import {
   inFlightIds,
   isInFlight,
   packPeriod,
-  PACK_STATUS_LABELS,
+  PACK_STATUS_VIEW,
   utcMoment,
-  type EvidencePack,
   type EvidencePackPage,
 } from "@/domains/agents/evidence-pack";
 import type { AgentRecord } from "@/domains/agents/agent-record";
@@ -30,7 +29,7 @@ import { Card } from "@/lib/ui/card";
 import { EmptyState } from "@/lib/ui/empty-state";
 import { Eyebrow } from "@/lib/ui/eyebrow";
 import { PageHeading } from "@/lib/ui/page-heading";
-import { StatusPill, type StatusTone } from "@/lib/ui/status-pill";
+import { StatusPill } from "@/lib/ui/status-pill";
 
 /**
  * One page of the evidence packages requested for one agent.
@@ -48,13 +47,6 @@ import { StatusPill, type StatusTone } from "@/lib/ui/status-pill";
  * read mints links — asking for the one you want is a narrower exposure than
  * being handed a credential for every package this organisation ever requested.
  */
-
-const TONE: Record<EvidencePack["status"], StatusTone> = {
-  queued: "pending",
-  generating: "pending",
-  completed: "success",
-  failed: "refused",
-};
 
 /**
  * A draft has no signed document, no chain and no receipts, so a package over it
@@ -182,8 +174,8 @@ export function EvidencePackListView({
                       <span className="text-sm font-semibold text-ink">
                         {packPeriod(pack)}
                       </span>
-                      <StatusPill tone={TONE[pack.status]}>
-                        {PACK_STATUS_LABELS[pack.status]}
+                      <StatusPill tone={PACK_STATUS_VIEW[pack.status].tone}>
+                        {PACK_STATUS_VIEW[pack.status].label}
                       </StatusPill>
                       <time
                         dateTime={pack.createdAt}

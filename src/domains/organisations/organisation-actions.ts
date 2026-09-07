@@ -5,7 +5,7 @@ import { z } from "zod";
 
 import { JURISDICTION_CODES } from "@/domains/organisations/jurisdictions";
 import { logger } from "@/lib/logger";
-import { registryErrorReporter } from "@/lib/registry/action-errors";
+import { registryErrorReporter, text } from "@/lib/registry/action-errors";
 import {
   createOrganisation,
   inviteMember,
@@ -73,11 +73,6 @@ const toErrorState = registryErrorReporter({
   unavailable: UNAVAILABLE,
   unavailableEvent: "organisation.registry_unavailable",
 });
-
-function text(formData: FormData, key: string): string {
-  const value = formData.get(key);
-  return typeof value === "string" ? value : "";
-}
 
 export async function createOrganisationAction(
   _previous: CreateOrganisationState,
