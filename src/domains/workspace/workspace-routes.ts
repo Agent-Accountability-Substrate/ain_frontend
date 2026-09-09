@@ -93,6 +93,36 @@ export function agentHref(ulid: string, ain: string) {
 }
 
 /**
+ * The evidence packages requested for one agent.
+ *
+ * Under the agent rather than beside it: a package is a claim about one agent
+ * over one period, and the registry addresses it the same way — so the
+ * membership check the `/o/{ulid}` segment already performs is the whole gate,
+ * and there is no second place a package could be reached from.
+ */
+export function agentEvidenceHref(ulid: string, ain: string, cursor?: string) {
+  const listing = `${agentHref(ulid, ain)}/evidence-packs`;
+  // The cursor is the listing's own token, carried in the address so a page
+  // of it is a place — shareable, reloadable, and survivable by a back button
+  // — rather than something a component remembers.
+  return cursor === undefined
+    ? listing
+    : `${listing}?cursor=${encodeURIComponent(cursor)}`;
+}
+
+/**
+ * One package by its id.
+ *
+ * The id is a uuid the registry minted, so it needs no encoding of its own —
+ * it is escaped anyway, for the same reason the AIN is: what the registry
+ * returns is opaque to this layer, and a route helper is the wrong place to
+ * start believing otherwise.
+ */
+export function evidencePackHref(ulid: string, ain: string, packId: string) {
+  return `${agentEvidenceHref(ulid, ain)}/${encodeURIComponent(packId)}`;
+}
+
+/**
  * The wizard, continuing a draft the registry already holds.
  *
  * A draft is a real row with a permanent AIN already minted, so re-entering

@@ -9,6 +9,12 @@ import type {
   AgentTransition,
 } from "@/domains/agents/agent-record";
 import type {
+  EvidencePack,
+  EvidencePackDetail,
+  EvidencePackPage,
+} from "@/domains/agents/evidence-pack";
+import { PACK_STATUSES } from "@/lib/registry/pack-status";
+import type {
   AccountWorkspaceState,
   OrganisationMember,
   OrganisationSummary,
@@ -818,6 +824,199 @@ export async function transitionAgent(
     await request(
       `/orgs/${encodeURIComponent(organisationId)}/agents/${encodeURIComponent(ain)}/${transition}`,
       { method: "POST", body: { reason } },
+    ),
+  );
+}
+
+/**
+ * One evidence package, in the shape every read reports it.
+ *
+ * The registry deliberately publishes no storage key for either object and no
+ * digest of the rendering, so neither appears here — a schema that admitted
+ * them would be this layer inventing a field to be disappointed by.
+ */
+const packSchema = z.object({
+  pack_id: z.uuid(),
+  ain: z.string(),
+  pack_type: z.string(),
+  pack_version: z.string(),
+  range_start: z.string(),
+  range_end: z.string(),
+  status: z.enum(PACK_STATUSES),
+  content_hash: z.string().nullable(),
+  export_signature: z.string().nullable(),
+  kid: z.string().nullable(),
+  created_at: z.string(),
+});
+
+/**
+ * One page of packs, and where the next one starts.
+ *
+ * ``next_cursor`` is opaque by construction — it encodes an ordering the
+ * listing keeps to itself — so it is carried, never parsed. `null` means this
+ * page is the end.
+ */
+const packListSchema = z.object({
+  evidence_packs: z.array(packSchema),
+  next_cursor: z.string().nullable(),
+});
+
+/**
+ * A link this client will let a page put in an `href`.
+ *
+ * Held to `http`/`https` rather than merely to being a URL. `javascript:` is a
+ * syntactically valid URL and `z.url()` accepts it, so a plain URL check would
+ * turn a compromised or misconfigured registry into script execution in a
+ * signed-in session — for a field whose only legitimate value is an object
+ * store's address. The registry would never send one; that is exactly the
+ * assumption a boundary exists not to depend on.
+ */
+const downloadUrl = z
+  .url()
+  .refine(
+    (value) => {
+      const scheme = URL.parse(value)?.protocol;
+      return scheme === "https:" || scheme === "http:";
+    },
+    { message: "a download link must be http or https" },
+  )
+  .nullable();
+
+/** The single-package read, which alone mints download links. */
+const packDetailSchema = packSchema.extend({
+  download_url: downloadUrl,
+  pdf_download_url: downloadUrl,
+  download_expires_in: z.number().int().positive().nullable(),
+});
+
+/** Null-and-present at the boundary becomes absent-and-optional inside. */
+function toPack(pack: z.infer<typeof packSchema>): EvidencePack {
+  return {
+    packId: pack.pack_id,
+    ain: pack.ain,
+    packType: pack.pack_type,
+    packVersion: pack.pack_version,
+    rangeStart: pack.range_start,
+    rangeEnd: pack.range_end,
+    status: pack.status,
+    ...(pack.content_hash !== null && { contentHash: pack.content_hash }),
+    ...(pack.export_signature !== null && {
+      exportSignature: pack.export_signature,
+    }),
+    ...(pack.kid !== null && { kid: pack.kid }),
+    createdAt: pack.created_at,
+  };
+}
+
+function agentPath(organisationId: string, ain: string): string {
+  return `/orgs/${encodeURIComponent(organisationId)}/agents/${encodeURIComponent(ain)}/evidence-packs`;
+}
+
+/**
+ * `GET /orgs/{id}/agents/{ain}/evidence-packs` — one page of the packages
+ * requested for this agent, newest first.
+ *
+ * In-flight and failed packages are listed with the finished ones, because a
+ * reader has to be able to tell a request still running, or one that failed,
+ * from one never made. This read mints no download links: asking for the
+ * package you want is a narrower exposure than being handed a credential for
+ * every package an organisation ever requested.
+ *
+ * A page, because the registry keeps every package ever requested and the
+ * listing grows without bound. The cursor is passed straight back as the
+ * registry issued it — it is opaque, and a client that took it apart would
+ * depend on an ordering the listing does not promise.
+ */
+export async function listEvidencePacks(
+  organisationId: string,
+  ain: string,
+  cursor?: string,
+): Promise<EvidencePackPage> {
+  // Encoded even though the registry issues base64url for exactly this
+  // reason: what a cursor may contain is the registry's to change, and this
+  // side should not be the thing that decides it was safe.
+  const query =
+    cursor === undefined ? "" : `?cursor=${encodeURIComponent(cursor)}`;
+  const body = packListSchema.parse(
+    await get(`${agentPath(organisationId, ain)}${query}`),
+  );
+  return {
+    packs: body.evidence_packs.map(toPack),
+    ...(body.next_cursor !== null && { nextCursor: body.next_cursor }),
+  };
+}
+
+/**
+ * `GET /orgs/{id}/agents/{ain}/evidence-packs/{pack_id}` — one package, with
+ * short-lived links to what was generated for it.
+ *
+ * A 404 is "no such package on this agent", which a screen renders as not found
+ * rather than as an outage — the same treatment `getAgent` gives a missing
+ * agent, and for the same reason.
+ */
+export async function getEvidencePack(
+  organisationId: string,
+  ain: string,
+  packId: string,
+): Promise<EvidencePackDetail | null> {
+  let pack: z.infer<typeof packDetailSchema>;
+  try {
+    pack = packDetailSchema.parse(
+      await get(
+        `${agentPath(organisationId, ain)}/${encodeURIComponent(packId)}`,
+      ),
+    );
+  } catch (error) {
+    if (
+      isUnsupportedRoute(error) ||
+      (error instanceof RegistryUnavailableError && error.status === 404)
+    ) {
+      return null;
+    }
+    throw error;
+  }
+
+  return {
+    ...toPack(pack),
+    ...(pack.download_url !== null && { downloadUrl: pack.download_url }),
+    ...(pack.pdf_download_url !== null && {
+      pdfDownloadUrl: pack.pdf_download_url,
+    }),
+    ...(pack.download_expires_in !== null && {
+      downloadExpiresIn: pack.download_expires_in,
+    }),
+  };
+}
+
+/**
+ * `POST /orgs/{id}/agents/{ain}/evidence-packs` — ask for a package.
+ *
+ * Answers **202** with the row that records the request: what exists after this
+ * call is the request, and the package does not exist until it has been
+ * assembled and signed. Asking twice for the same period while one is still
+ * running returns the one already running rather than queuing a second.
+ */
+export async function requestEvidencePack(
+  organisationId: string,
+  ain: string,
+  period: {
+    packType: string;
+    packVersion: string;
+    rangeStart: string;
+    rangeEnd: string;
+  },
+): Promise<EvidencePack> {
+  return toPack(
+    packSchema.parse(
+      await request(agentPath(organisationId, ain), {
+        method: "POST",
+        body: {
+          pack_type: period.packType,
+          pack_version: period.packVersion,
+          range_start: period.rangeStart,
+          range_end: period.rangeEnd,
+        },
+      }),
     ),
   );
 }

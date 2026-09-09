@@ -2,8 +2,10 @@ import { describe, expect, it } from "vitest";
 
 import {
   ACCOUNT_SETTINGS,
+  agentEvidenceHref,
   agentHref,
   ainFromParam,
+  evidencePackHref,
   isOrganisationUlid,
   landingHref,
   NEW_ORGANISATION,
@@ -82,5 +84,36 @@ describe("ainFromParam", () => {
     // An AIN is `did:ain:` plus two Crockford base32 ULIDs — an alphabet with
     // no `%` in it — so this keeps working if Next ever starts decoding.
     expect(ainFromParam(AIN)).toBe(AIN);
+  });
+});
+
+describe("evidence package addresses", () => {
+  const ULID = "01ARZ3NDEKTSV4RRFFQ69G5FAV";
+  const AIN = `did:ain:gb:${ULID}:01BX5ZZKBKACTAV9WEVGEMMVRZ`;
+
+  it("sits under the agent, so the tenant gate above covers it", () => {
+    // Nothing about a package is addressable outside `/o/{ulid}/agents/{ain}`,
+    // so the membership check that segment performs is the whole gate.
+    expect(agentEvidenceHref(ULID, AIN)).toBe(
+      `/o/${ULID}/agents/${encodeURIComponent(AIN)}/evidence-packs`,
+    );
+  });
+
+  it("keeps the AIN one path segment", () => {
+    // Unencoded, its colons would be read as further segments and the route
+    // would not match at all.
+    expect(agentEvidenceHref(ULID, AIN)).not.toContain("did:ain");
+  });
+
+  it("carries a cursor in the address, so a page of the listing is a place", () => {
+    expect(agentEvidenceHref(ULID, AIN, "MjAyNn4xYw")).toBe(
+      `/o/${ULID}/agents/${encodeURIComponent(AIN)}/evidence-packs?cursor=MjAyNn4xYw`,
+    );
+  });
+
+  it("addresses one package beneath the agent it is about", () => {
+    expect(evidencePackHref(ULID, AIN, "0b6f1d2c-8a4e")).toBe(
+      `/o/${ULID}/agents/${encodeURIComponent(AIN)}/evidence-packs/0b6f1d2c-8a4e`,
+    );
   });
 });

@@ -1,6 +1,7 @@
 import {
   ArrowUpRight,
   CircleAlert,
+  FileCheck2,
   Fingerprint,
   KeyRound,
   Link2,
@@ -22,7 +23,11 @@ import {
   WorkspacePane,
 } from "@/domains/workspace/workspace-content";
 import type { OrganisationSummary } from "@/domains/workspace/account-workspace";
-import { agentDraftHref, orgHref } from "@/domains/workspace/workspace-routes";
+import {
+  agentDraftHref,
+  agentEvidenceHref,
+  orgHref,
+} from "@/domains/workspace/workspace-routes";
 import { ButtonLink } from "@/lib/ui/button";
 import { Callout, type CalloutTone } from "@/lib/ui/callout";
 import { Card } from "@/lib/ui/card";
@@ -467,6 +472,35 @@ export function AgentRecordView({
               </ol>
             </>
           )}
+        </Card>
+
+        {/* A link, not a list. The packages are a read of their own and this
+            page already makes four; carrying them here would spend a call on
+            every visit for a surface most of them are not here for. A draft is
+            offered it too — the screen explains why it cannot have one, which
+            is more use than an entry point that silently is not there. */}
+        <Card as="section" className="flex flex-wrap items-center gap-4">
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-wash-blue text-cobalt">
+            <FileCheck2 className="h-4 w-4" aria-hidden="true" />
+          </span>
+          <div className="flex min-w-0 flex-col gap-1">
+            <Eyebrow>Evidence</Eyebrow>
+            <p className="text-sm font-semibold text-ink">
+              Assemble this agent&rsquo;s record for a period
+            </p>
+            <p className="text-[11px] leading-4 text-mist">
+              A signed package of the identity, scope, accountability, lifecycle
+              and receipts in force over a span — the thing you hand a
+              regulator.
+            </p>
+          </div>
+          <ButtonLink
+            variant="secondary"
+            href={agentEvidenceHref(organisation.ulid, agent.ain)}
+            className="ml-auto"
+          >
+            Evidence packages
+          </ButtonLink>
         </Card>
       </WorkspacePane>
     </WorkspaceContent>

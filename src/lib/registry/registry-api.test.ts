@@ -23,6 +23,9 @@ import {
   submitAgent,
   transitionAgent,
   listAgents,
+  listEvidencePacks,
+  getEvidencePack,
+  requestEvidencePack,
   listOrganisations,
   loadAccountWorkspace,
   NotAuthenticatedError,
@@ -884,5 +887,234 @@ describe("the single-agent read", () => {
     );
     expect(init.method).toBe("POST");
     expect(JSON.parse(String(init.body))).toEqual({ reason: "Model replaced" });
+  });
+});
+
+describe("evidence packages", () => {
+  const AIN =
+    "did:ain:gb:01ARZ3NDEKTSV4RRFFQ69G5FAV:01BX5ZZKBKACTAV9WEVGEMMVRZ";
+  const PACK_ID = "0b6f1d2c-8a4e-4f19-9c3d-5e7a1b2c4d6f";
+  const HASH = "c3d4".repeat(16);
+
+  const QUEUED = {
+    pack_id: PACK_ID,
+    ain: AIN,
+    pack_type: "agent-activity",
+    pack_version: "1",
+    range_start: "2026-07-01T00:00:00Z",
+    range_end: "2026-07-31T23:59:59Z",
+    status: "queued",
+    content_hash: null,
+    export_signature: null,
+    kid: null,
+    created_at: "2026-08-01T06:00:00Z",
+  };
+
+  const COMPLETED = {
+    ...QUEUED,
+    status: "completed",
+    content_hash: HASH,
+    export_signature: "eyJhbGciOiJFZERTQSJ9..c2ln",
+    kid: "ain-issuer-2026-01",
+  };
+
+  it("addresses the packages under the agent they are about", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(
+        jsonResponse({ evidence_packs: [QUEUED], next_cursor: null }),
+      );
+    vi.stubGlobal("fetch", fetchMock);
+
+    await listEvidencePacks(ORG_ID, AIN);
+
+    const [url] = fetchMock.mock.calls[0] as [URL];
+    // The AIN is percent-encoded: it is opaque once minted, and its colons
+    // would otherwise be read as further path segments.
+    expect(url.pathname).toBe(
+      `/orgs/${ORG_ID}/agents/${encodeURIComponent(AIN)}/evidence-packs`,
+    );
+  });
+
+  it("turns an unfinished package's nulls into absent fields", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi
+        .fn()
+        .mockResolvedValue(
+          jsonResponse({ evidence_packs: [QUEUED], next_cursor: null }),
+        ),
+    );
+
+    const { packs } = await listEvidencePacks(ORG_ID, AIN);
+    const [pack] = packs;
+
+    // Absent rather than null, so a screen asks "is there a hash" rather than
+    // rendering the word null where a digest belongs.
+    expect(pack).not.toHaveProperty("contentHash");
+    expect(pack).not.toHaveProperty("kid");
+    expect(pack?.status).toBe("queued");
+  });
+
+  it("carries the digest and the signature once there are any", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi
+        .fn()
+        .mockResolvedValue(
+          jsonResponse({ evidence_packs: [COMPLETED], next_cursor: null }),
+        ),
+    );
+
+    const { packs } = await listEvidencePacks(ORG_ID, AIN);
+    const [pack] = packs;
+
+    expect(pack?.contentHash).toBe(HASH);
+    expect(pack?.kid).toBe("ain-issuer-2026-01");
+  });
+
+  it("carries the cursor back exactly as the registry issued it", async () => {
+    // A fresh Response per call: a body can only be read once, and the second
+    // page is a second request.
+    const fetchMock = vi.fn(async () =>
+      jsonResponse({ evidence_packs: [QUEUED], next_cursor: "MjAyNn4xYw" }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const first = await listEvidencePacks(ORG_ID, AIN);
+    await listEvidencePacks(ORG_ID, AIN, first.nextCursor);
+
+    expect(first.nextCursor).toBe("MjAyNn4xYw");
+    const [, next] = fetchMock.mock.calls;
+    const [url] = next as unknown as [URL];
+    // Opaque: passed back as issued, never taken apart.
+    expect(url.searchParams.get("cursor")).toBe("MjAyNn4xYw");
+  });
+
+  it("has no cursor at the end of the listing", async () => {
+    // Absent rather than null, so a caller asks "is there more" rather than
+    // passing the word null back as a position.
+    vi.stubGlobal(
+      "fetch",
+      vi
+        .fn()
+        .mockResolvedValue(
+          jsonResponse({ evidence_packs: [QUEUED], next_cursor: null }),
+        ),
+    );
+
+    const page = await listEvidencePacks(ORG_ID, AIN);
+
+    expect(page).not.toHaveProperty("nextCursor");
+  });
+
+  it("asks for the first page when no cursor is given", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(
+        jsonResponse({ evidence_packs: [], next_cursor: null }),
+      );
+    vi.stubGlobal("fetch", fetchMock);
+
+    await listEvidencePacks(ORG_ID, AIN);
+
+    const [url] = fetchMock.mock.calls[0] as [URL];
+    expect(url.search).toBe("");
+  });
+
+  it("refuses a status the registry has grown and this build does not know", async () => {
+    // Loudly at the boundary rather than as a blank pill halfway down a page.
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        jsonResponse({
+          evidence_packs: [{ ...QUEUED, status: "archived" }],
+          next_cursor: null,
+        }),
+      ),
+    );
+
+    await expect(listEvidencePacks(ORG_ID, AIN)).rejects.toThrow();
+  });
+
+  it("takes the download links from the single-package read", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        jsonResponse({
+          ...COMPLETED,
+          download_url: "https://objects.example.test/p.json?X-Amz-Signature=a",
+          pdf_download_url:
+            "https://objects.example.test/p.pdf?X-Amz-Signature=a",
+          download_expires_in: 300,
+        }),
+      ),
+    );
+
+    const pack = await getEvidencePack(ORG_ID, AIN, PACK_ID);
+
+    expect(pack?.downloadUrl).toContain("p.json");
+    expect(pack?.pdfDownloadUrl).toContain("p.pdf");
+    expect(pack?.downloadExpiresIn).toBe(300);
+  });
+
+  it("refuses a download link that is not a URL", async () => {
+    // The value goes straight into an `href`. Where it points is the
+    // registry's to decide and this boundary's to check.
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        jsonResponse({
+          ...COMPLETED,
+          download_url: "javascript:alert(1)",
+          pdf_download_url: null,
+          download_expires_in: 300,
+        }),
+      ),
+    );
+
+    await expect(getEvidencePack(ORG_ID, AIN, PACK_ID)).rejects.toThrow();
+  });
+
+  it("reports a package this agent does not have as not found", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(jsonResponse({ detail: "not found" }, 404)),
+    );
+
+    await expect(getEvidencePack(ORG_ID, AIN, PACK_ID)).resolves.toBeNull();
+  });
+
+  it("keeps an outage an outage rather than an empty package", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(jsonResponse({ detail: "down" }, 500)),
+    );
+
+    await expect(getEvidencePack(ORG_ID, AIN, PACK_ID)).rejects.toBeInstanceOf(
+      RegistryUnavailableError,
+    );
+  });
+
+  it("posts the period in the registry's own field names", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(jsonResponse(QUEUED));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const pack = await requestEvidencePack(ORG_ID, AIN, {
+      packType: "agent-activity",
+      packVersion: "1",
+      rangeStart: "2026-07-01T00:00:00Z",
+      rangeEnd: "2026-07-31T23:59:59Z",
+    });
+
+    const [, init] = fetchMock.mock.calls[0] as [URL, RequestInit];
+    expect(init.method).toBe("POST");
+    expect(JSON.parse(String(init.body))).toEqual({
+      pack_type: "agent-activity",
+      pack_version: "1",
+      range_start: "2026-07-01T00:00:00Z",
+      range_end: "2026-07-31T23:59:59Z",
+    });
+    expect(pack.packId).toBe(PACK_ID);
   });
 });
