@@ -76,10 +76,12 @@ function Field({
  * A plain anchor, not the router's `Link`. This points at object storage rather
  * than at a route, so there is no client navigation to preserve — and a URL
  * carrying its own credential is not something to hand to a router that
- * prefetches and caches. `download` asks the browser to save the file instead
- * of navigating away from the page explaining what it is, and `noreferrer`
- * keeps this workspace's address — which names the organisation and the agent —
- * out of the request that fetches it.
+ * prefetches and caches. Saving rather than navigating is the store's doing:
+ * the registry signs an attachment disposition under this same filename into
+ * each link, because a browser honours `download` only on a same-origin URL
+ * and these are not. The attribute stays as the name for the same-origin
+ * case, and `noreferrer` keeps this workspace's address — which names the
+ * organisation and the agent — out of the request that fetches it.
  */
 function FileLink({
   href,

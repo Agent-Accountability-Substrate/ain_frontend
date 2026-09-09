@@ -131,6 +131,21 @@ describe("requesting an evidence package", () => {
     expect(requestEvidencePackMock).not.toHaveBeenCalled();
   });
 
+  it("refuses a day its month does not have", async () => {
+    // `2026-02-30` parses: V8 rolls it into 2 March rather than refusing it,
+    // so the schema prints the parsed day back and compares.
+    const state = await requestEvidencePackAction(
+      { status: "idle" },
+      period({ from: "2026-02-01", to: "2026-02-30" }),
+    );
+
+    expect(state).toMatchObject({
+      status: "error",
+      errors: { to: "Choose a real date" },
+    });
+    expect(requestEvidencePackMock).not.toHaveBeenCalled();
+  });
+
   it("puts a refusal about the period beside the period", async () => {
     requestEvidencePackMock.mockRejectedValue(
       new RegistryRefusedError(409, "agent has not been issued"),

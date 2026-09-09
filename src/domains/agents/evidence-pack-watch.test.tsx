@@ -67,6 +67,24 @@ describe("watching a package that is still being assembled", () => {
     expect(refreshMock).toHaveBeenCalledTimes(tries);
   });
 
+  it("does not keep re-arming its timer after giving up", () => {
+    // `useRouter` here returns a fresh object per render, so a give-up that
+    // re-rendered on every tick would re-run the effect and arm a new
+    // interval each time: a tab left open would tick forever with nothing to
+    // poll. Giving up is one state change, so it is one re-render.
+    const armIntervals = vi.spyOn(globalThis, "setInterval");
+    render(<EvidencePackWatch watching={["a"]} />);
+
+    tick(FOREVER);
+    expect(screen.getByText(/stopped checking/i)).not.toBeNull();
+    const armed = armIntervals.mock.calls.length;
+
+    tick(FOREVER);
+
+    expect(armIntervals.mock.calls.length).toBe(armed);
+    armIntervals.mockRestore();
+  });
+
   it("gives a later package its own budget rather than the last one's", () => {
     const { rerender } = render(<EvidencePackWatch watching={["a"]} />);
     tick(FOREVER);

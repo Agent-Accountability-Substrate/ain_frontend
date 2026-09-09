@@ -3,7 +3,11 @@
 import { z } from "zod";
 
 import { logger } from "@/lib/logger";
-import { registryErrorReporter, text } from "@/lib/registry/action-errors";
+import {
+  fieldErrors,
+  registryErrorReporter,
+  text,
+} from "@/lib/registry/action-errors";
 import { recordVerification } from "@/lib/registry/registry-api";
 
 /**
@@ -79,14 +83,11 @@ export async function recordDecisionAction(
     reviewReason: reviewReason || undefined,
   });
   if (!parsed.success) {
-    const errors: Partial<Record<string, string>> = {};
-    for (const issue of parsed.error.issues) {
-      const field = issue.path[0];
-      if (typeof field === "string" && !(field in errors)) {
-        errors[field] = issue.message;
-      }
-    }
-    return { status: "error", message: "Check the decision.", errors };
+    return {
+      status: "error",
+      message: "Check the decision.",
+      errors: fieldErrors(parsed.error),
+    };
   }
 
   try {

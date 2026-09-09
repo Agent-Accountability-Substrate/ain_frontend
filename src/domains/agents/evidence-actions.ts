@@ -59,9 +59,20 @@ export type RequestPackState =
 const DAY = z
   .string()
   .regex(/^\d{4}-\d{2}-\d{2}$/, "Choose a date")
-  .refine((value) => !Number.isNaN(Date.parse(`${value}T00:00:00Z`)), {
-    message: "Choose a real date",
-  });
+  // Parsed and printed back, not merely parsed: V8 rolls a day past the end
+  // of its month into the next one rather than refusing it, so `2026-02-30`
+  // parses as 2 March and only the round trip tells a day that exists from
+  // one that does not.
+  .refine(
+    (value) => {
+      const parsed = new Date(`${value}T00:00:00Z`);
+      return (
+        !Number.isNaN(parsed.getTime()) &&
+        parsed.toISOString().slice(0, 10) === value
+      );
+    },
+    { message: "Choose a real date" },
+  );
 
 const periodSchema = z
   .object({

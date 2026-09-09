@@ -5,7 +5,11 @@ import { z } from "zod";
 
 import { JURISDICTION_CODES } from "@/domains/organisations/jurisdictions";
 import { logger } from "@/lib/logger";
-import { registryErrorReporter, text } from "@/lib/registry/action-errors";
+import {
+  fieldErrors,
+  registryErrorReporter,
+  text,
+} from "@/lib/registry/action-errors";
 import {
   createOrganisation,
   inviteMember,
@@ -87,17 +91,10 @@ export async function createOrganisationAction(
     webUrl: webUrl || undefined,
   });
   if (!parsed.success) {
-    const errors: Partial<Record<string, string>> = {};
-    for (const issue of parsed.error.issues) {
-      const field = issue.path[0];
-      if (typeof field === "string" && !(field in errors)) {
-        errors[field] = issue.message;
-      }
-    }
     return {
       status: "error",
       message: "Check the highlighted fields.",
-      errors,
+      errors: fieldErrors(parsed.error),
     };
   }
 
@@ -160,12 +157,7 @@ export async function inviteMemberAction(
     return {
       status: "error",
       message: "Check the highlighted fields.",
-      errors: Object.fromEntries(
-        parsed.error.issues.map((issue) => [
-          String(issue.path[0] ?? ""),
-          issue.message,
-        ]),
-      ),
+      errors: fieldErrors(parsed.error),
     };
   }
 

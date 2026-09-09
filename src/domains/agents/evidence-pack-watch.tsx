@@ -37,11 +37,6 @@ export function EvidencePackWatch({
   watching: readonly string[];
 }) {
   const router = useRouter();
-  // What the budget was spent on, not merely that it was. A second package
-  // requested after the first timed out is different work and gets its own
-  // budget — recording *which* run gave up is what makes that fall out, and it
-  // keeps the reset out of the effect body, where setting state would mean a
-  // cascading render on every change of what is in flight.
   // Which packages this page gave up on, not merely that it gave up. A
   // package asked for afterwards is different work, so the screen goes back to
   // watching without anything having to reset a flag.
@@ -81,7 +76,17 @@ export function EvidencePackWatch({
       }
       if (!polled) {
         clearInterval(timer);
-        setGaveUp(new Set(watched));
+        // The previous set is kept when it already says this, so React bails
+        // out of the update. A fresh Set here would re-render, and under a
+        // `router` that is a new object per render the effect would re-arm
+        // this interval and give up again every five seconds for as long as
+        // the tab stayed open.
+        setGaveUp((previous) =>
+          previous.size === watched.length &&
+          watched.every((id) => previous.has(id))
+            ? previous
+            : new Set(watched),
+        );
         return;
       }
       router.refresh();
