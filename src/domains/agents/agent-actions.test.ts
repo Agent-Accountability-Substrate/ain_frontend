@@ -276,7 +276,7 @@ describe("submitAgentAction", () => {
   });
 
   it("says which subsystem is unconfigured rather than advising a retry", async () => {
-    // Issuance is the one step needing custody. Without Vault the registry
+    // Issuance is the one step needing custody. Without KMS the registry
     // refuses rather than signing under a development key, and "try again
     // shortly" would be advice that can never work.
     submitAgentMock.mockRejectedValue(

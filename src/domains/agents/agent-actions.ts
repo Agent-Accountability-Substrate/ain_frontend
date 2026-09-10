@@ -300,7 +300,7 @@ const submitSchema = z.object({
 /**
  * Step 3 — `POST /orgs/{id}/agents/{ain}/submit`. Signs and activates.
  *
- * The only step that needs custody provisioned. Without Vault the registry
+ * The only step that needs custody provisioned. Without KMS the registry
  * refuses rather than issuing an agent under a development key, so a refusal
  * here is usually configuration rather than anything the person did wrong.
  */

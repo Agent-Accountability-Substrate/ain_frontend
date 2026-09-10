@@ -588,7 +588,7 @@ export type SubmittedAgent = z.infer<typeof submittedAgentSchema>;
  *
  * The one write that needs custody provisioned: it canonicalises the payload,
  * has it signed, and appends the genesis lifecycle events in one transaction.
- * Without Vault the registry refuses rather than issue under a development key,
+ * Without KMS the registry refuses rather than issue under a development key,
  * so a 503 here is configuration rather than a bug.
  */
 export async function submitAgent(
