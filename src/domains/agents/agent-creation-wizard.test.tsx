@@ -164,6 +164,82 @@ describe("AgentCreationWizard", () => {
       "href",
       "https://resolve.ain.test/" + AIN,
     );
+    expect(
+      screen.getByRole("link", { name: /open the record/i }),
+    ).toHaveProperty(
+      "href",
+      `http://localhost:3000/o/${ORG_ULID}/agents/${encodeURIComponent(AIN)}`,
+    );
+  });
+
+  it("keeps showing the issuance when the page stops resolving the draft", async () => {
+    // The submit action revalidates the page, and a draft this wizard was
+    // opened to continue then resolves as an issued agent. The person just
+    // signed it; that is the state to show, not "cannot resume".
+    const view = renderWizard({
+      draft: { ain: AIN, name: "Payments Operations Agent" },
+    });
+    patchMock.mockResolvedValue({ status: "done" });
+    fillDeclaration();
+    fireEvent.click(
+      screen.getByRole("button", { name: /attach declaration/i }),
+    );
+    submitMock.mockResolvedValue({
+      status: "done",
+      ain: AIN,
+      resolverUrl: "https://resolve.ain.test/" + AIN,
+      documentVersion: 1,
+    });
+    fireEvent.click(
+      await screen.findByRole("button", { name: /^sign and issue$/i }),
+    );
+    expect(
+      await screen.findByRole("heading", { name: /registered and signed/i }),
+    ).toBeDefined();
+
+    view.rerender(
+      <AgentCreationWizard
+        organisationId={ORG_ID}
+        organisationName="Northwind Advisory Ltd"
+        organisationUlid={ORG_ULID}
+        organisationVerified
+        draft={null}
+        issuedAgent={{
+          ain: AIN,
+          name: "Payments Operations Agent",
+          status: "active",
+        }}
+      />,
+    );
+
+    expect(
+      screen.getByRole("heading", { name: /registered and signed/i }),
+    ).toBeDefined();
+    expect(screen.queryByText(/already registered/i)).toBeNull();
+  });
+
+  it("sends a resume link naming an issued agent to its record", () => {
+    // Nothing here applies to an agent with a signed document: its scope
+    // changes by supersede from its record, and the identity step would
+    // mint a second identifier for it.
+    renderWizard({
+      issuedAgent: {
+        ain: AIN,
+        name: "Payments Operations Agent",
+        status: "active",
+      },
+    });
+
+    expect(
+      screen.getByRole("heading", { name: "This agent is already registered" }),
+    ).toBeDefined();
+    expect(screen.queryByLabelText(/agent name/i)).toBeNull();
+    expect(
+      screen.getByRole("link", { name: /open the record/i }),
+    ).toHaveProperty(
+      "href",
+      `http://localhost:3000/o/${ORG_ULID}/agents/${encodeURIComponent(AIN)}`,
+    );
   });
 
   it("shows a refusal at the step that caused it, keeping the entered work", async () => {

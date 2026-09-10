@@ -71,6 +71,33 @@ describe("AgentCreationView", () => {
     ).toHaveProperty("href", `http://localhost:3000/o/${ORG_ULID}/agents`);
   });
 
+  it("sends a resume link naming an issued agent to its record", () => {
+    render(
+      <AgentCreationView
+        organisation={organisation("verified")}
+        issuedAgent={{
+          ain: `did:ain:gb:${ORG_ULID}:01BX5ZZKBKACTAV9WEVGEMMVRZ`,
+          name: "Collections Assistant",
+          status: "active",
+        }}
+      />,
+    );
+
+    expect(
+      screen.getByRole("heading", {
+        level: 1,
+        name: "This agent is already registered",
+      }),
+    ).toBeDefined();
+    expect(screen.queryByLabelText("Agent name")).toBeNull();
+    expect(
+      screen.getByRole("link", { name: "Open the record" }),
+    ).toHaveProperty(
+      "href",
+      `http://localhost:3000/o/${ORG_ULID}/agents/${encodeURIComponent(`did:ain:gb:${ORG_ULID}:01BX5ZZKBKACTAV9WEVGEMMVRZ`)}`,
+    );
+  });
+
   it("opens the identity step once the organisation is verified", () => {
     renderFor(organisation("verified"));
 

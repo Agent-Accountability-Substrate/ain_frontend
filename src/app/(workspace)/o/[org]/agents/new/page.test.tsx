@@ -123,21 +123,25 @@ describe("agent creation page", () => {
     expect(screen.queryByLabelText("Agent name")).toBeNull();
   });
 
-  it("refuses to start afresh from a draft query naming an issued agent", async () => {
+  it("sends a draft query naming an issued agent to its record", async () => {
     // Scope changes by supersede, not by re-running the declaration form —
-    // and never by minting a second identifier from the identity step.
+    // and never by minting a second identifier from the identity step. The
+    // record is where that agent lives now.
     render(await AgentCreationPage(params(ULID, ISSUED_AIN)));
 
     expect(
       screen.getByRole("heading", {
         level: 1,
-        name: "Cannot resume this draft",
+        name: "This agent is already registered",
       }),
     ).toBeDefined();
     expect(screen.queryByLabelText("Agent name")).toBeNull();
     expect(
-      screen.getByRole("link", { name: "Open the register" }),
-    ).toHaveProperty("href", `http://localhost:3000/o/${ULID}/agents`);
+      screen.getByRole("link", { name: "Open the record" }),
+    ).toHaveProperty(
+      "href",
+      `http://localhost:3000/o/${ULID}/agents/${encodeURIComponent(ISSUED_AIN)}`,
+    );
   });
 
   it("refuses to start afresh from an identifier that is not in this register", async () => {

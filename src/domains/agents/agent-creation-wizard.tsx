@@ -26,8 +26,9 @@ import {
 } from "@/domains/agents/agent-actions";
 import {
   ORGANISATION_SETTINGS,
-  orgHref,
   WORKSPACE,
+  agentHref,
+  orgHref,
 } from "@/domains/workspace/workspace-routes";
 import { Callout } from "@/lib/ui/callout";
 import { Button, ButtonLink } from "@/lib/ui/button";
@@ -106,6 +107,7 @@ export function AgentCreationWizard({
   organisationUlid,
   organisationVerified,
   draft,
+  issuedAgent,
   unresolvedDraft,
   onBack,
 }: {
@@ -124,9 +126,16 @@ export function AgentCreationWizard({
    */
   draft?: { ain: string; name: string } | null;
   /**
-   * An identifier a resume link named that resolved to no draft here. The
+   * An agent a resume link named that is past its draft, resolved by the
+   * page. It has a signed document, so there is nothing here to declare or
+   * sign: the wizard points at its record rather than at the identity step,
+   * which would mint a second identifier for it.
+   */
+  issuedAgent?: { ain: string; name: string; status: string } | null;
+  /**
+   * An identifier a resume link named that resolved to nothing here. The
    * wizard must not fall through to the identity step for it: that step mints
-   * a permanent identifier, and the agent named may already hold one.
+   * a permanent identifier, and the agent named may exist elsewhere.
    */
   unresolvedDraft?: string | null;
   onBack?: () => void;
@@ -207,9 +216,81 @@ export function AgentCreationWizard({
     );
   }
 
-  // A resume link whose draft cannot be found says so and stops. The register
-  // is where the draft is waiting if it exists; a fresh start is offered as a
-  // separate, deliberate act rather than as the silent default.
+  // Issuance is decided here, by this wizard's own action, before anything
+  // the page resolved: the action revalidates the page, and a draft this
+  // wizard was opened to continue then resolves as an issued agent underneath
+  // it. What the person just did is the state to show.
+  if (issued.status === "done") {
+    return (
+      <section className="flex flex-col items-start gap-4 rounded-2xl border border-success-soft bg-success-wash/40 p-6">
+        <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-white text-success-strong">
+          <CheckCircle2 className="h-6 w-6" aria-hidden="true" />
+        </span>
+        <Eyebrow>Issued · document v{issued.documentVersion}</Eyebrow>
+        <h2 className="text-xl font-semibold tracking-[-0.02em] text-ink">
+          The agent is registered and signed
+        </h2>
+        <p className="text-xs leading-5 text-mist">
+          Its AIN Document is signed and its lifecycle chain has begun. The
+          identifier below is permanent: it is never reissued or recycled.
+        </p>
+        <CopyableAin value={issued.ain} />
+        <div className="flex flex-wrap gap-3">
+          <ButtonLink
+            variant="primary"
+            href={
+              organisationUlid
+                ? agentHref(organisationUlid, issued.ain)
+                : registerHref
+            }
+          >
+            Open the record
+          </ButtonLink>
+          <ButtonLink href={issued.resolverUrl}>Resolver URL</ButtonLink>
+          <ButtonLink href={registerHref}>Back to the register</ButtonLink>
+        </div>
+      </section>
+    );
+  }
+
+  // A resume link naming an agent past its draft has nowhere to go here: the
+  // record is where its signed document, and any change to it, lives.
+  if (issuedAgent) {
+    return (
+      <Blocked
+        icon={Bot}
+        eyebrow="Already registered"
+        title="This agent is already registered"
+        action={
+          <>
+            <ButtonLink
+              variant="primary"
+              href={
+                organisationUlid
+                  ? agentHref(organisationUlid, issuedAgent.ain)
+                  : registerHref
+              }
+            >
+              Open the record
+            </ButtonLink>
+            <ButtonLink href={registerHref}>
+              <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+              Open the register
+            </ButtonLink>
+          </>
+        }
+      >
+        {issuedAgent.name} holds the identifier{" "}
+        <code className="break-all font-mono">{issuedAgent.ain}</code> and is{" "}
+        {issuedAgent.status}. Its scope changes by a new signed version from its
+        record, not here. Nothing has been minted.
+      </Blocked>
+    );
+  }
+
+  // A resume link whose identifier resolves to nothing says so and stops. The
+  // register is where a draft is waiting if it exists; a fresh start is
+  // offered as a separate, deliberate act rather than as the silent default.
   if (unresolvedDraft) {
     return (
       <Blocked
@@ -237,35 +318,9 @@ export function AgentCreationWizard({
       >
         No draft with the identifier{" "}
         <code className="break-all font-mono">{unresolvedDraft}</code> is
-        waiting in {organisationName}. It may already be issued, in which case
-        its scope changes by a new signed version rather than here. Nothing has
+        waiting in {organisationName}, and no agent here holds it. Nothing has
         been minted.
       </Blocked>
-    );
-  }
-
-  if (issued.status === "done") {
-    return (
-      <section className="flex flex-col items-start gap-4 rounded-2xl border border-success-soft bg-success-wash/40 p-6">
-        <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-white text-success-strong">
-          <CheckCircle2 className="h-6 w-6" aria-hidden="true" />
-        </span>
-        <Eyebrow>Issued · document v{issued.documentVersion}</Eyebrow>
-        <h2 className="text-xl font-semibold tracking-[-0.02em] text-ink">
-          The agent is registered and signed
-        </h2>
-        <p className="text-xs leading-5 text-mist">
-          Its AIN Document is signed and its lifecycle chain has begun. The
-          identifier below is permanent: it is never reissued or recycled.
-        </p>
-        <CopyableAin value={issued.ain} />
-        <div className="flex flex-wrap gap-3">
-          <ButtonLink href={registerHref}>Back to the register</ButtonLink>
-          <ButtonLink variant="primary" href={issued.resolverUrl}>
-            Resolver URL
-          </ButtonLink>
-        </div>
-      </section>
     );
   }
 

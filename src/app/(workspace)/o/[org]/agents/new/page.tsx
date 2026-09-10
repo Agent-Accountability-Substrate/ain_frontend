@@ -9,9 +9,10 @@ export const dynamic = "force-dynamic";
  *
  * `?draft=<ain>` resumes. The identifier is resolved against this
  * organisation's own register, which the workspace has already read for this
- * request, so a fabricated or foreign AIN in the query resolves to nothing,
- * and so does an agent that is no longer a draft: its scope changes by
- * supersede, not by this form.
+ * request, so a fabricated or foreign AIN in the query resolves to nothing.
+ * An agent that is no longer a draft resolves to its record instead: its scope
+ * changes by supersede, not by this form, and the wizard that has just issued
+ * it keeps showing the issuance while this page re-resolves underneath it.
  *
  * What an unresolved identifier must never do is open a blank wizard. A draft
  * is a real row holding a permanent AIN, and a resume link landing on the
@@ -44,13 +45,18 @@ export default async function AgentCreationPage({
         ) ?? null);
   const draft =
     record?.status === "draft" ? { ain: record.ain, name: record.name } : null;
+  const issuedAgent =
+    record !== null && record.status !== "draft"
+      ? { ain: record.ain, name: record.name, status: record.status }
+      : null;
 
   return (
     <AgentCreationView
       draft={draft}
+      issuedAgent={issuedAgent}
       organisation={page.organisation}
       unresolvedDraft={
-        requestedAin !== null && draft === null ? requestedAin : null
+        requestedAin !== null && record === null ? requestedAin : null
       }
     />
   );
