@@ -9,7 +9,11 @@ import { registryErrorReporter } from "@/lib/registry/action-errors";
 import {
   createOrganisation,
   inviteMember,
-  leaveOrganisation,
+  listMembers,
+  NotAuthenticatedError,
+  RegistryRefusedError,
+  RegistryUnavailableError,
+  removeMember,
 } from "@/lib/registry/registry-api";
 
 /**
@@ -189,31 +193,51 @@ export type LeaveOrganisationState =
   | { status: "left" }
   | { status: "error"; message: string };
 
-const NOT_SUPPORTED =
-  "You cannot leave from here yet. Ask an owner or admin of this organisation to remove you.";
+const UNLISTABLE =
+  "We cannot look up your membership of this organisation right now, so we " +
+  "cannot end it from here. An owner or admin can remove you from the " +
+  "members list.";
+
+const NOT_A_MEMBER =
+  "You do not appear to be a member of this organisation any more.";
 
 /**
  * Give up your own access to a company.
  *
- * Not offered to an owner: an organisation's owner is a column on the row
+ * The registry ends a membership by id, and there is no `/me` alias, so the
+ * caller's own row is looked up first. That read is what makes this work at
+ * all: the previous version posted to a route the registry does not serve, so
+ * the confirm dialog could only ever answer "not supported".
+ *
+ * Not offered to an owner. An organisation's owner is a column on the row
  * rather than a role, so an owner walking out would leave a registered company
- * with signed records and nobody who can act for it. The registry would refuse
- * it too — this is the same rule, said before the click rather than after.
+ * with signed records and nobody who can act for it. The registry refuses it
+ * too — this is the same rule, said before the click rather than after.
  */
 export async function leaveOrganisationAction(
   _previous: LeaveOrganisationState,
   formData: FormData,
 ): Promise<LeaveOrganisationState> {
   const organisationId = z.uuid().safeParse(formData.get("organisationId"));
-  if (!organisationId.success) {
+  const email = z.email().safeParse(formData.get("email"));
+  if (!organisationId.success || !email.success) {
     return { status: "error", message: "That organisation is not recognised." };
   }
 
   try {
-    const outcome = await leaveOrganisation(organisationId.data);
-    if (outcome === "unsupported") {
-      return { status: "error", message: NOT_SUPPORTED };
+    const members = await listMembers(organisationId.data);
+    if (members === null) {
+      return { status: "error", message: UNLISTABLE };
     }
+    // Matched on the address the session carries, which is the same verified
+    // address the registry binds a membership by.
+    const own = members.find(
+      (member) => member.email.toLowerCase() === email.data.toLowerCase(),
+    );
+    if (own === undefined) {
+      return { status: "error", message: NOT_A_MEMBER };
+    }
+    await removeMember(organisationId.data, own.id);
   } catch (error) {
     // This state carries no field errors, so only the message crosses over.
     const { message } = toErrorState(error, "organisation.leave_refused");
@@ -223,4 +247,60 @@ export async function leaveOrganisationAction(
   logger.info("organisation.left");
   revalidatePath("/o", "layout");
   return { status: "left" };
+}
+
+export type RemoveMemberState =
+  | { status: "idle" }
+  | { status: "removed"; email: string }
+  | { status: "error"; message: string };
+
+/**
+ * Take someone's access away.
+ *
+ * The same transition as leaving — `status` becomes `removed`, the row stays,
+ * because a membership that authorised an action has to remain evidenceable.
+ * The registry refuses to remove the last admin, since no route grants the
+ * role back from outside and an organisation without one could never be
+ * administered again; that refusal reads back verbatim.
+ */
+export async function removeMemberAction(
+  _previous: RemoveMemberState,
+  formData: FormData,
+): Promise<RemoveMemberState> {
+  const parsed = z
+    .object({
+      organisationId: z.uuid(),
+      memberId: z.uuid(),
+      email: z.email(),
+    })
+    .safeParse({
+      organisationId: formData.get("organisationId"),
+      memberId: formData.get("memberId"),
+      email: formData.get("email"),
+    });
+  if (!parsed.success) {
+    return { status: "error", message: "That member is not recognised." };
+  }
+
+  try {
+    await removeMember(parsed.data.organisationId, parsed.data.memberId);
+  } catch (error) {
+    if (error instanceof NotAuthenticatedError) {
+      return { status: "error", message: SIGNED_OUT };
+    }
+    if (error instanceof RegistryRefusedError) {
+      return { status: "error", message: error.detail };
+    }
+    if (error instanceof RegistryUnavailableError) {
+      logger.error("organisation.registry_unavailable");
+      return { status: "error", message: error.detail ?? UNAVAILABLE };
+    }
+    throw error;
+  }
+
+  // The address is not logged: it identifies a real person, and that a removal
+  // happened is the part worth recording here.
+  logger.info("organisation.member_removed");
+  revalidatePath("/o", "layout");
+  return { status: "removed", email: parsed.data.email };
 }

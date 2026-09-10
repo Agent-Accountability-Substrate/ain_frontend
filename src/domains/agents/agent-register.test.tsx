@@ -30,8 +30,13 @@ const AGENTS: WorkspaceAgent[] = [
   },
 ];
 
-const ONE_ORG = [{ id: ORG_A, name: "Example Holdings Ltd" }];
-const TWO_ORGS = [...ONE_ORG, { id: ORG_B, name: "Northgate Trading Ltd" }];
+const ULID_A = "01ARZ3NDEKTSV4RRFFQ69G5FAV";
+const ULID_B = "01BX5ZZKBKACTAV9WEVGEMMVRZ";
+const ONE_ORG = [{ id: ORG_A, name: "Example Holdings Ltd", ulid: ULID_A }];
+const TWO_ORGS = [
+  ...ONE_ORG,
+  { id: ORG_B, name: "Northgate Trading Ltd", ulid: ULID_B },
+];
 
 describe("AgentRegister", () => {
   it("shows each agent's permanent identifier in full", () => {

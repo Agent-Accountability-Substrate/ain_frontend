@@ -58,8 +58,10 @@ const STATUS: Record<
  * the row is the menu beside it.
  */
 function OrganisationRow({
+  email,
   organisation,
 }: {
+  email: string;
   organisation: OrganisationSummary;
 }) {
   const status = STATUS[organisation.verificationStatus];
@@ -91,12 +93,18 @@ function OrganisationRow({
         ) : null}
       </div>
 
-      <OrganisationRowMenu organisation={organisation} />
+      <OrganisationRowMenu email={email} organisation={organisation} />
     </li>
   );
 }
 
-export function OrganisationsView({ state }: { state: AccountWorkspaceState }) {
+export function OrganisationsView({
+  email,
+  state,
+}: {
+  email: string | null | undefined;
+  state: AccountWorkspaceState;
+}) {
   const stats = getAccountOverviewStats(state);
 
   const metrics: {
@@ -199,7 +207,11 @@ export function OrganisationsView({ state }: { state: AccountWorkspaceState }) {
 
           <ul className="mt-5 flex flex-col gap-2.5">
             {state.organisations.map((row) => (
-              <OrganisationRow key={row.id} organisation={row} />
+              <OrganisationRow
+                key={row.id}
+                email={email ?? ""}
+                organisation={row}
+              />
             ))}
           </ul>
         </Card>

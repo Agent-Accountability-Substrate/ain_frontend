@@ -5,8 +5,9 @@ Thin pointer. Canonical guidance lives in the **[`ain_docs`](https://github.com/
 ## This repo's rules
 - Calls `ain_backend_api` **over a typed HTTP client**; **validate every response with Zod** at the boundary. No DB, no domain logic.
 - The **public resolver view shows no tenant data and requires no login** — keep tenant data off that path entirely.
-- App Router: `page.tsx` / `route.ts` are entry points only; logic under `domains/`. Each domain owns its own components, actions and types — `agents/`, `organisations/`, `operations/`, `identity/`, `workspace/` (the authenticated shell), `marketing/` (the public landing page), `auth/`. Cross-cutting infrastructure lives in `lib/`: the typed registry client (`lib/registry/`), boot-time env validation (`lib/config/`), the wordmark (`lib/brand/`), vendored shadcn primitives (`lib/ui/`, per `components.json`), and `logger`, `rate-limit`, `sentry`, `utils`.
-- `as const` over enums; state order server → URL → `useState` → Context; **no browser storage** for app state.
+- App Router: `page.tsx` / `route.ts` are entry points only; logic under `domains/`. Each domain owns its own components, actions and types — `agents/`, `organisations/`, `operations/`, `identity/`, `workspace/` (the authenticated shell), `marketing/` (the public landing page), `auth/`. Cross-cutting infrastructure lives in `lib/`: the typed registry client (`lib/registry/`), boot-time env validation (`lib/config/`), the wordmark (`lib/brand/`), the Base UI primitives vendored in `lib/ui/`, and `logger`, `rate-limit`, `sentry`, `utils`.
+- Authenticated screens live in the `(workspace)` route group. Anything belonging to a company is addressed by its **public ULID** — `/o/{ulid}/…` — and inherits the membership check from that segment's `layout.tsx`; **every page under it still resolves the organisation for itself**, and a test fails any page that does not. The account's own screens (`/settings`, `/settings/account`, `/settings/organisations`) stay outside the segment.
+- `as const` over enums; state order server → URL → `useState` → Context; **no browser storage** for app state. One cookie is permitted — the selected-organisation preference, consulted only when the address names none, and never an authority (see `conventions-frontend.md`).
 - The browser **never** holds key material.
 
 ## Conventions

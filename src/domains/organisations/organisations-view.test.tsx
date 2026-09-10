@@ -37,7 +37,7 @@ const STATE: AccountWorkspaceState = {
 
 describe("OrganisationsView", () => {
   it("lists the organisations the account belongs to", () => {
-    render(<OrganisationsView state={STATE} />);
+    render(<OrganisationsView email="founder@example.com" state={STATE} />);
 
     expect(
       screen.getByRole("heading", { name: "2 organisations" }),
@@ -58,7 +58,7 @@ describe("OrganisationsView", () => {
   });
 
   it("shows each organisation's public identifier on its row", () => {
-    render(<OrganisationsView state={STATE} />);
+    render(<OrganisationsView email="founder@example.com" state={STATE} />);
 
     // The ULID is the organisation segment of every AIN this company mints, so
     // it is what gets quoted and matched. Making someone open the organisation
@@ -71,7 +71,7 @@ describe("OrganisationsView", () => {
   });
 
   it("does not double as a second organisation switcher", () => {
-    render(<OrganisationsView state={STATE} />);
+    render(<OrganisationsView email="founder@example.com" state={STATE} />);
 
     const entries = within(
       screen.getByRole("region", { name: "2 organisations" }),
@@ -87,7 +87,7 @@ describe("OrganisationsView", () => {
   });
 
   it("keeps the account's totals above the list", () => {
-    render(<OrganisationsView state={STATE} />);
+    render(<OrganisationsView email="founder@example.com" state={STATE} />);
 
     const metrics = screen.getByRole("region", { name: "Account metrics" });
     expect(within(metrics).getByText("Organisations owned")).toBeDefined();

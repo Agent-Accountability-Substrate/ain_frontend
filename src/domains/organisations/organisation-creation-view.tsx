@@ -51,7 +51,16 @@ export function OrganisationCreationView({
     createOrganisationAction,
     INITIAL,
   );
-  const [step, setStep] = useState<1 | 2>(1);
+  // Which step to show, remembered together with the action result it was
+  // chosen under. A fresh refusal that names a step-one field shows step one
+  // until the person chooses again. Deriving it from the result alone pinned
+  // the form to step one for as long as that result stood, and the only
+  // control that could replace the result was the submit button step two
+  // renders, so a corrected number could never be resubmitted.
+  const [choice, setChoice] = useState<{
+    step: 1 | 2;
+    under: CreateOrganisationState;
+  }>({ step: 1, under: INITIAL });
   const [name, setName] = useState("");
   const [registrationNumber, setRegistrationNumber] = useState("");
   const [jurisdiction, setJurisdiction] = useState<string>(
@@ -63,11 +72,18 @@ export function OrganisationCreationView({
 
   const errors = result.status === "error" ? result.errors : {};
   const created = result.status === "created";
-  const shownStep =
+  const stepOneRefused =
     result.status === "error" &&
-    STEP_ONE_FIELDS.some((f) => errors[f] !== undefined)
-      ? 1
-      : step;
+    STEP_ONE_FIELDS.some((f) => errors[f] !== undefined);
+  const step = choice.under === result || !stepOneRefused ? choice.step : 1;
+  const choose = (next: 1 | 2) => setChoice({ step: next, under: result });
+  // The refusal is shown on the step that can act on it. Once step one has
+  // been corrected and left, repeating "check the highlighted fields" above a
+  // review that highlights nothing would only send the person back again.
+  const refusal =
+    result.status === "error" && (!stepOneRefused || step === 1)
+      ? result.message
+      : null;
 
   const jurisdictionLabel =
     JURISDICTIONS.find((entry) => entry.code === jurisdiction)?.label ??
@@ -132,7 +148,7 @@ export function OrganisationCreationView({
                   <Building2 className="h-5 w-5" aria-hidden="true" />
                 </span>
                 <div className="flex flex-col gap-2">
-                  <Eyebrow>Step {shownStep} of 2 · Organisation setup</Eyebrow>
+                  <Eyebrow>Step {step} of 2 · Organisation setup</Eyebrow>
                   <h1 className="text-xl font-semibold tracking-[-0.02em] text-ink">
                     Create your organisation
                   </h1>
@@ -151,18 +167,16 @@ export function OrganisationCreationView({
                   (label, index) => (
                     <li
                       key={label}
-                      aria-current={
-                        shownStep === index + 1 ? "step" : undefined
-                      }
+                      aria-current={step === index + 1 ? "step" : undefined}
                       className={
-                        shownStep === index + 1
+                        step === index + 1
                           ? "flex items-center gap-2 border-b-2 border-cobalt pb-2 text-xs font-semibold text-ink"
                           : "flex items-center gap-2 border-b-2 border-line pb-2 text-xs font-medium text-mist"
                       }
                     >
                       <span
                         className={
-                          shownStep === index + 1
+                          step === index + 1
                             ? "flex h-5 w-5 items-center justify-center rounded-full bg-cobalt text-[10px] font-semibold text-white"
                             : "flex h-5 w-5 items-center justify-center rounded-full border border-line-strong text-[10px] font-semibold text-mist"
                         }
@@ -175,7 +189,7 @@ export function OrganisationCreationView({
                 )}
               </ol>
 
-              {shownStep === 1 ? (
+              {step === 1 ? (
                 <div className="grid gap-4 sm:grid-cols-2">
                   <TextField
                     className="sm:col-span-2"
@@ -283,9 +297,9 @@ export function OrganisationCreationView({
                 </>
               )}
 
-              {result.status === "error" ? (
+              {refusal !== null ? (
                 <Callout tone="danger" alert>
-                  {result.message}
+                  {refusal}
                 </Callout>
               ) : (
                 <Callout>
@@ -296,11 +310,11 @@ export function OrganisationCreationView({
               )}
 
               <div className="flex flex-wrap items-center justify-between gap-3">
-                {shownStep === 2 ? (
+                {step === 2 ? (
                   <Button
                     type="button"
                     variant="secondary"
-                    onClick={() => setStep(1)}
+                    onClick={() => choose(1)}
                   >
                     Back
                   </Button>
@@ -309,17 +323,22 @@ export function OrganisationCreationView({
                     Save and return
                   </ButtonLink>
                 )}
-                {/* `shownStep`, not `step`: a server-side refusal on a
-                    step-one field collapses the form back to step one, and
-                    keying the primary action off the raw `step` left the
-                    step-one fields sitting under step two's submit button
-                    while the control beside it had already switched to step
-                    one's. Continuing re-enters step two, which is where the
-                    corrected field was headed. */}
-                {shownStep === 1 ? (
+                {/* Keyed off the same `step` as the fields above, so a
+                    refusal that collapses the form to step one never leaves
+                    step one's fields under step two's submit button.
+
+                    The two buttons carry distinct keys on purpose. Without
+                    them React reuses one <button> node for both, and a click
+                    on Continue turns that node into the submit button before
+                    the browser runs the click's default action, which then
+                    submits the form. Harmless while the attestation is
+                    unticked, because the submit is disabled; after Back, or
+                    after a refusal, it is ticked, and Continue submitted. */}
+                {step === 1 ? (
                   <Button
+                    key="continue"
                     type="button"
-                    onClick={() => setStep(2)}
+                    onClick={() => choose(2)}
                     disabled={
                       !name.trim() ||
                       !registrationNumber.trim() ||
@@ -331,6 +350,7 @@ export function OrganisationCreationView({
                   </Button>
                 ) : (
                   <Button
+                    key="submit"
                     type="submit"
                     disabled={pending || !authorityConfirmed}
                   >

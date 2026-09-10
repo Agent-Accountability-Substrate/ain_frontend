@@ -7,5 +7,5 @@ export default async function OrganisationsPage() {
   const page = await loadAccountPage();
   if (page.status !== "ready") return null;
 
-  return <OrganisationsView state={page.state} />;
+  return <OrganisationsView email={page.email} state={page.state} />;
 }

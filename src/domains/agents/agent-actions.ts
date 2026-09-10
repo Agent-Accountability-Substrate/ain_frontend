@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
+import { AGENT_TRANSITIONS } from "@/domains/agents/agent-record";
 import { ORGANISATION_SETTINGS } from "@/domains/workspace/workspace-routes";
 import { logger } from "@/lib/logger";
 import { registryErrorReporter } from "@/lib/registry/action-errors";
@@ -10,6 +11,7 @@ import {
   patchAgent,
   registerAgent,
   submitAgent,
+  transitionAgent,
 } from "@/lib/registry/registry-api";
 
 /**
@@ -118,6 +120,108 @@ export async function registerAgentAction(
   }
 }
 
+/**
+ * The value types the scope vocabulary can compare, and the parser for each.
+ *
+ * Typing is not cosmetic. The evaluator refuses a declared bound of the wrong
+ * type — deliberately, and it treats booleans and numbers as different kinds
+ * even though `isinstance(True, int)` is true in Python, so `true` must never
+ * slip under a positive ceiling. A form that posted every value as a string
+ * would declare bounds the evaluator then denies at admission, which is the
+ * worst possible time to find out.
+ */
+const CONSTRAINT_TYPES = [
+  "number",
+  "string",
+  "boolean",
+  "string_list",
+] as const;
+
+export type ConstraintType = (typeof CONSTRAINT_TYPES)[number];
+
+const constraintTypeSchema = z.enum(CONSTRAINT_TYPES);
+
+function parseConstraintValue(
+  type: ConstraintType,
+  raw: string,
+): { ok: true; value: unknown } | { ok: false; message: string } {
+  const trimmed = raw.trim();
+  if (trimmed === "") return { ok: false, message: "Give the bound a value" };
+  if (type === "number") {
+    const value = Number(trimmed);
+    return Number.isFinite(value)
+      ? { ok: true, value }
+      : { ok: false, message: "A number bound needs a number" };
+  }
+  if (type === "boolean") {
+    if (trimmed === "true") return { ok: true, value: true };
+    if (trimmed === "false") return { ok: true, value: false };
+    return { ok: false, message: "A boolean bound is true or false" };
+  }
+  if (type === "string_list") {
+    const entries = [
+      ...new Set(
+        trimmed
+          .split(",")
+          .map((entry) => entry.trim())
+          .filter(Boolean),
+      ),
+    ].sort();
+    return entries.length > 0
+      ? { ok: true, value: entries }
+      : { ok: false, message: "List at least one value" };
+  }
+  return { ok: true, value: trimmed };
+}
+
+/**
+ * Per-action-class bounds, read from the repeated rows of the declaration form.
+ *
+ * Contract v1 requires every constraint key to name a declared action class,
+ * so a row naming a class that is not in the scope is refused here rather than
+ * sent for the registry to reject.
+ */
+function collectConstraints(
+  formData: FormData,
+  declared: readonly string[],
+):
+  | { ok: true; constraints: Record<string, Record<string, unknown>> }
+  | { ok: false; message: string } {
+  const classes = formData.getAll("constraintClass").map(String);
+  const keys = formData.getAll("constraintKey").map(String);
+  const types = formData.getAll("constraintType").map(String);
+  const values = formData.getAll("constraintValue").map(String);
+
+  const constraints: Record<string, Record<string, unknown>> = {};
+  for (const [index, actionClass] of classes.entries()) {
+    const key = (keys[index] ?? "").trim();
+    // A blank row is one somebody added and did not fill in, not an error.
+    if (actionClass.trim() === "" && key === "") continue;
+    if (!declared.includes(actionClass)) {
+      return {
+        ok: false,
+        message: `A bound names "${actionClass}", which is not one of the authorised action classes`,
+      };
+    }
+    if (key === "") {
+      return { ok: false, message: `Name the bound on ${actionClass}` };
+    }
+    const type = constraintTypeSchema.safeParse(types[index] ?? "string");
+    if (!type.success) {
+      return { ok: false, message: `${key} has no value type` };
+    }
+    const parsed = parseConstraintValue(type.data, values[index] ?? "");
+    if (!parsed.ok) {
+      return { ok: false, message: `${key}: ${parsed.message}` };
+    }
+    constraints[actionClass] = {
+      ...constraints[actionClass],
+      [key]: parsed.value,
+    };
+  }
+  return { ok: true, constraints };
+}
+
 const declarationSchema = z.object({
   organisationId: z.uuid(),
   ain: z.string().min(1),
@@ -167,14 +271,23 @@ export async function patchAgentAction(
   }
 
   const { organisationId, ain, ...declaration } = parsed.data;
+  const collected = collectConstraints(formData, declaration.actionClasses);
+  if (!collected.ok) {
+    return {
+      status: "error",
+      message: collected.message,
+      errors: { constraints: collected.message },
+    };
+  }
+
   try {
     await patchAgent(organisationId, ain, {
       scope: {
         actionClasses: declaration.actionClasses,
-        // No per-class constraints from this form yet. The contract requires
-        // every constraint key to name a declared action class, so an empty
-        // object is the honest "none stated" — not a placeholder.
-        constraints: {},
+        // Bounds the caller stated, per declared class. An empty object is the
+        // honest "none stated" — an unbounded scope, which is a real thing to
+        // declare and not a placeholder.
+        constraints: collected.constraints,
         riskLevel: declaration.riskLevel,
         regulatoryMappings: declaration.regulatoryMappings,
       },
@@ -225,6 +338,8 @@ export async function submitAgentAction(
       parsed.data.ain,
     );
     logger.info("agent.issued");
+    // `/organisations` is not a route — the list lives under `/settings`, and
+    // every workspace screen sits beneath the `/o` layout this already covers.
     revalidatePath("/o", "layout");
     revalidatePath(ORGANISATION_SETTINGS);
     return {
@@ -235,5 +350,79 @@ export async function submitAgentAction(
     };
   } catch (error) {
     return toErrorState(error, "agent.submit_refused");
+  }
+}
+
+const transitionSchema = z.object({
+  organisationId: z.uuid(),
+  ain: z.string().min(1),
+  transition: z.enum(AGENT_TRANSITIONS),
+  reason: z
+    .string()
+    .trim()
+    .min(1, "Say why. It is recorded for this organisation to read")
+    .max(1000),
+});
+
+/**
+ * `agentStatus` rather than `status`, which the step state already uses for
+ * its own discriminant. Two meanings of one key in one object is how a
+ * `"done"` result ends up reading as an agent that is done.
+ */
+export type TransitionAgentState = AgentStepState<{
+  agentStatus: string;
+  eventType: string;
+  seq: number;
+}>;
+
+/**
+ * `POST /orgs/{id}/agents/{ain}/suspend` or `/revoke` — withdraw authority.
+ *
+ * The registry decides whether a transition is legal from the agent's current
+ * status; the menu only offers ones it would accept, so a refusal here usually
+ * means somebody else moved the agent first. That reads back verbatim rather
+ * than as "something went wrong".
+ *
+ * The reason is never logged. It is an operator's words about a real agent in
+ * a real firm, it is stored for that organisation's members to read, and it
+ * has no business also sitting in an application log.
+ */
+export async function transitionAgentAction(
+  _previous: TransitionAgentState,
+  formData: FormData,
+): Promise<TransitionAgentState> {
+  const parsed = transitionSchema.safeParse({
+    organisationId: text(formData, "organisationId"),
+    ain: text(formData, "ain"),
+    transition: text(formData, "transition"),
+    reason: text(formData, "reason"),
+  });
+  if (!parsed.success) {
+    return {
+      status: "error",
+      message: "Check the highlighted fields.",
+      errors: fieldErrors(parsed.error),
+    };
+  }
+
+  try {
+    const recorded = await transitionAgent(
+      parsed.data.organisationId,
+      parsed.data.ain,
+      parsed.data.transition,
+      parsed.data.reason,
+    );
+    logger.info("agent.transitioned", { transition: parsed.data.transition });
+    // The register, the record and the organisation's own counts all read this
+    // agent's status, and they sit under different routes.
+    revalidatePath("/o", "layout");
+    return {
+      status: "done",
+      agentStatus: recorded.status,
+      eventType: recorded.event_type,
+      seq: recorded.seq,
+    };
+  } catch (error) {
+    return toErrorState(error, "agent.transition_refused");
   }
 }

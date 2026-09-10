@@ -13,6 +13,10 @@ import type { ReactNode } from "react";
 
 import { CopyableAin } from "@/domains/agents/copyable-ain";
 import {
+  ScopeConstraintsField,
+  type ConstraintRow,
+} from "@/domains/agents/scope-constraints-field";
+import {
   patchAgentAction,
   registerAgentAction,
   submitAgentAction,
@@ -22,8 +26,9 @@ import {
 } from "@/domains/agents/agent-actions";
 import {
   ORGANISATION_SETTINGS,
-  orgHref,
   WORKSPACE,
+  agentHref,
+  orgHref,
 } from "@/domains/workspace/workspace-routes";
 import { Callout } from "@/lib/ui/callout";
 import { Button, ButtonLink } from "@/lib/ui/button";
@@ -79,7 +84,7 @@ function Blocked({
           <p className="text-xs leading-5 text-mist">{children}</p>
         </div>
       </div>
-      <div className="flex">{action}</div>
+      <div className="flex flex-wrap gap-3">{action}</div>
     </section>
   );
 }
@@ -101,6 +106,9 @@ export function AgentCreationWizard({
   organisationName,
   organisationUlid,
   organisationVerified,
+  draft,
+  issuedAgent,
+  unresolvedDraft,
   onBack,
 }: {
   /** `null` when no organisation is selected — the wizard then refuses to run. */
@@ -108,6 +116,28 @@ export function AgentCreationWizard({
   organisationName: string | null;
   organisationUlid: string | null;
   organisationVerified: boolean;
+  /**
+   * A draft the registry already holds, resolved by the page.
+   *
+   * Present when the wizard was opened to continue one. Its AIN is permanent
+   * and already minted, so the identity step is behind us — starting blank
+   * would mint a second identifier for the same agent, and an AIN is never
+   * recycled.
+   */
+  draft?: { ain: string; name: string } | null;
+  /**
+   * An agent a resume link named that is past its draft, resolved by the
+   * page. It has a signed document, so there is nothing here to declare or
+   * sign: the wizard points at its record rather than at the identity step,
+   * which would mint a second identifier for it.
+   */
+  issuedAgent?: { ain: string; name: string; status: string } | null;
+  /**
+   * An identifier a resume link named that resolved to nothing here. The
+   * wizard must not fall through to the identity step for it: that step mints
+   * a permanent identifier, and the agent named may exist elsewhere.
+   */
+  unresolvedDraft?: string | null;
   onBack?: () => void;
 }) {
   // Every way out of the wizard leads back to the register it was opened
@@ -132,6 +162,7 @@ export function AgentCreationWizard({
     role: "",
     riskClass: "high",
   });
+  const [constraints, setConstraints] = useState<readonly ConstraintRow[]>([]);
   const [declaration, setDeclaration] = useState({
     actionClasses: "",
     riskLevel: "high",
@@ -185,6 +216,10 @@ export function AgentCreationWizard({
     );
   }
 
+  // Issuance is decided here, by this wizard's own action, before anything
+  // the page resolved: the action revalidates the page, and a draft this
+  // wizard was opened to continue then resolves as an issued agent underneath
+  // it. What the person just did is the state to show.
   if (issued.status === "done") {
     return (
       <section className="flex flex-col items-start gap-4 rounded-2xl border border-success-soft bg-success-wash/40 p-6">
@@ -201,19 +236,111 @@ export function AgentCreationWizard({
         </p>
         <CopyableAin value={issued.ain} />
         <div className="flex flex-wrap gap-3">
-          <ButtonLink href={registerHref}>Back to the register</ButtonLink>
-          <ButtonLink variant="primary" href={issued.resolverUrl}>
-            Resolver URL
+          <ButtonLink
+            variant="primary"
+            href={
+              organisationUlid
+                ? agentHref(organisationUlid, issued.ain)
+                : registerHref
+            }
+          >
+            Open the record
           </ButtonLink>
+          <ButtonLink href={issued.resolverUrl}>Resolver URL</ButtonLink>
+          <ButtonLink href={registerHref}>Back to the register</ButtonLink>
         </div>
       </section>
     );
   }
 
+  // A resume link naming an agent past its draft has nowhere to go here: the
+  // record is where its signed document, and any change to it, lives.
+  if (issuedAgent) {
+    return (
+      <Blocked
+        icon={Bot}
+        eyebrow="Already registered"
+        title="This agent is already registered"
+        action={
+          <>
+            <ButtonLink
+              variant="primary"
+              href={
+                organisationUlid
+                  ? agentHref(organisationUlid, issuedAgent.ain)
+                  : registerHref
+              }
+            >
+              Open the record
+            </ButtonLink>
+            <ButtonLink href={registerHref}>
+              <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+              Open the register
+            </ButtonLink>
+          </>
+        }
+      >
+        {issuedAgent.name} holds the identifier{" "}
+        <code className="break-all font-mono">{issuedAgent.ain}</code> and is{" "}
+        {issuedAgent.status}. Its scope changes by a new signed version from its
+        record, not here. Nothing has been minted.
+      </Blocked>
+    );
+  }
+
+  // A resume link whose identifier resolves to nothing says so and stops. The
+  // register is where a draft is waiting if it exists; a fresh start is
+  // offered as a separate, deliberate act rather than as the silent default.
+  if (unresolvedDraft) {
+    return (
+      <Blocked
+        icon={Bot}
+        eyebrow="Draft not found"
+        title="This draft could not be resumed"
+        action={
+          <>
+            <ButtonLink href={registerHref}>
+              <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+              Open the register
+            </ButtonLink>
+            <ButtonLink
+              variant="secondary"
+              href={
+                organisationUlid
+                  ? orgHref(organisationUlid, "agents/new")
+                  : WORKSPACE
+              }
+            >
+              Start a new agent
+            </ButtonLink>
+          </>
+        }
+      >
+        No draft with the identifier{" "}
+        <code className="break-all font-mono">{unresolvedDraft}</code> is
+        waiting in {organisationName}, and no agent here holds it. Nothing has
+        been minted.
+      </Blocked>
+    );
+  }
+
   const identityErrors = registered.status === "error" ? registered.errors : {};
   const declarationErrors = declared.status === "error" ? declared.errors : {};
-  const ain = registered.status === "done" ? registered.ain : null;
+  // A resumed draft is already past step 1 — its identifier exists and is
+  // permanent, so the wizard opens on the declaration rather than re-minting.
+  const ain =
+    draft?.ain ?? (registered.status === "done" ? registered.ain : null);
   const declarationAttached = declared.status === "done";
+  // A bound must name a declared class, so the selector reads what has been
+  // typed above rather than a list of its own.
+  const declaredClasses = [
+    ...new Set(
+      declaration.actionClasses
+        .split(/[,\n]/)
+        .map((entry) => entry.trim())
+        .filter(Boolean),
+    ),
+  ].sort();
   const step = ain === null ? 1 : declarationAttached ? 3 : 2;
 
   return (
@@ -338,6 +465,14 @@ export function AgentCreationWizard({
         <form action={patchAction} className="flex flex-col gap-5">
           <input type="hidden" name="organisationId" value={organisationId} />
           <input type="hidden" name="ain" value={ain} />
+          {draft ? (
+            <Note>
+              Continuing the draft <strong>{draft.name}</strong>. Its identifier
+              below was minted when the draft was opened and is permanent — this
+              declares scope and accountability against that identifier rather
+              than creating a second one.
+            </Note>
+          ) : null}
           <CopyableAin value={ain} />
           <div className="grid gap-4 sm:grid-cols-2">
             <TextField
@@ -357,6 +492,14 @@ export function AgentCreationWizard({
               placeholder={"payments.initiate\ncustomer_comms.send"}
               description="One per line. Anything you do not list here is not authorised."
               error={declarationErrors["actionClasses"]}
+            />
+            <ScopeConstraintsField
+              actionClasses={declaredClasses}
+              rows={constraints}
+              onChange={setConstraints}
+              {...(declarationErrors["constraints"] !== undefined && {
+                error: declarationErrors["constraints"],
+              })}
             />
             <SelectField
               label="Operational risk level"
