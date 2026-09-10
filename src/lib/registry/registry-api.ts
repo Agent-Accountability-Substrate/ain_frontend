@@ -178,11 +178,15 @@ const agentRecordSchema = agentSchema.extend({
       verified: z.boolean(),
     }),
   ),
-  lifecycle: z.array(
+  // Each event as the registry serves it: the signed body verbatim with its
+  // chain links beside it. The event's own time is inside the body, where the
+  // signature covers it; the row's `created_at` is when the registry wrote
+  // the event, which is not the claim a reader checks.
+  lifecycle_events: z.array(
     z.object({
       seq: z.number().int(),
       event_type: z.string(),
-      occurred_at: z.iso.datetime({ offset: true }),
+      body: z.object({ occurred_at: z.iso.datetime({ offset: true }) }),
       event_hash: z.string(),
       previous_event_hash: z.string().nullable(),
     }),
@@ -416,10 +420,10 @@ export async function getAgent(
       refValue: reference.ref_value,
       verified: reference.verified,
     })),
-    lifecycle: record.lifecycle.map((event) => ({
+    lifecycle: record.lifecycle_events.map((event) => ({
       seq: event.seq,
       eventType: event.event_type,
-      occurredAt: event.occurred_at,
+      occurredAt: event.body.occurred_at,
       eventHash: event.event_hash,
       previousEventHash: event.previous_event_hash,
     })),

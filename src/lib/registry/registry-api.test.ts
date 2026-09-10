@@ -759,13 +759,28 @@ describe("the single-agent read", () => {
     external_identities: [
       { ref_type: "spiffe", ref_value: "spiffe://x/y", verified: false },
     ],
-    lifecycle: [
+    // The shape the registry serves: the signed body verbatim, its signature
+    // and chain links, and who triggered it.
+    lifecycle_events: [
       {
+        lifecycle_contract: "ain-lifecycle-v1",
         seq: 1,
         event_type: "registered",
-        occurred_at: "2026-07-16T11:00:00Z",
-        event_hash: "aa",
+        body: {
+          lifecycle_contract: "ain-lifecycle-v1",
+          ain: AIN,
+          seq: 1,
+          event_type: "registered",
+          occurred_at: "2026-07-16T11:00:00Z",
+          document_version: 3,
+          document_hash: "9f2c7a",
+        },
         previous_event_hash: null,
+        event_hash: "aa",
+        signature: "eyJhbGciOiJFZERTQSIsImtpZCI6ImsifQ..c2ln",
+        kid: "ain-registry-2026-07",
+        actor_user_id: null,
+        created_at: "2026-07-16T11:00:01Z",
       },
     ],
     resolver_url: `https://resolver.example/${AIN}`,
@@ -795,6 +810,8 @@ describe("the single-agent read", () => {
     });
     expect(record?.accountability?.regulatoryIdentifier).toBe("SMF24-000123");
     expect(record?.lifecycle[0]?.previousEventHash).toBeNull();
+    // The event's time is the signed body's, not the row's write time.
+    expect(record?.lifecycle[0]?.occurredAt).toBe("2026-07-16T11:00:00Z");
     expect(record?.document?.documentVersion).toBe(3);
   });
 
@@ -810,7 +827,7 @@ describe("the single-agent read", () => {
           document: null,
           scope: null,
           accountability: null,
-          lifecycle: [],
+          lifecycle_events: [],
           resolver_url: null,
         }),
       ),
